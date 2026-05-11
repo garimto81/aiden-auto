@@ -1,0 +1,143 @@
+# Mockup Hybrid 자동 선택 규칙
+# 우선순위: 강제 옵션 > 키워드 > 컨텍스트 > 환경 > 기본값
+
+version: "2.0.0"
+
+rules:
+  # 1순위: 강제 옵션 (사용자 명시)
+  force_options:
+    --force-html: html
+    --force-hifi: stitch
+    --force-mermaid: mermaid
+
+  # 2순위: 키워드 감지
+  keywords:
+    # Mermaid 트리거 키워드 (다이어그램/플로우 필요) — 최우선
+    mermaid_triggers:
+      - "흐름"
+      - "플로우"
+      - "flow"
+      - "시퀀스"
+      - "sequence"
+      - "API 호출"
+      - "api call"
+      - "DB"
+      - "database"
+      - "데이터베이스"
+      - "스키마"
+      - "schema"
+      - "ER"
+      - "er diagram"
+      - "클래스"
+      - "class diagram"
+      - "아키텍처"
+      - "architecture"
+      - "파이프라인"
+      - "pipeline"
+      - "상태 머신"
+      - "state machine"
+      - "워크플로우"
+      - "workflow"
+      - "의존성"
+      - "dependency"
+      - "통신"
+      - "communication"
+      - "인증 흐름"
+      - "auth flow"
+
+    # Stitch API 트리거 키워드 (고품질 필요)
+    stitch_triggers:
+      - "프레젠테이션"
+      - "presentation"
+      - "고품질"
+      - "high quality"
+      - "hifi"
+      - "hi-fi"
+      - "리뷰용"
+      - "review"
+      - "이해관계자"
+      - "stakeholder"
+      - "최종"
+      - "final"
+      - "공식"
+      - "official"
+      - "데모"
+      - "demo"
+      - "발표"
+      - "deliver"
+      - "클라이언트"
+      - "client"
+
+    # HTML 트리거 키워드 (빠른 생성 필요)
+    html_triggers:
+      - "빠른"
+      - "quick"
+      - "fast"
+      - "구조"
+      - "structure"
+      - "와이어프레임"
+      - "wireframe"
+      - "초안"
+      - "draft"
+      - "검토"
+      - "check"
+      - "스케치"
+      - "sketch"
+      - "러프"
+      - "rough"
+      - "테스트"
+      - "test"
+      - "임시"
+      - "temp"
+      - "temporary"
+
+  # 3순위: 컨텍스트
+  context:
+    # PRD 연결 시 → Stitch (문서용 고품질)
+    prd_linked: stitch
+
+    # 다중 화면 (3개 이상) → HTML (빠른 생성)
+    multi_screen_threshold: 3
+    multi_screen_backend: html
+
+  # 4순위: 환경 검사
+  environment:
+    # Stitch API 키 없음 → HTML
+    stitch_api_unavailable: html
+
+    # Rate Limit 초과 → HTML
+    stitch_rate_limited: html
+
+  # 기본값 (위 조건 해당 없음)
+  default: html
+
+# 백엔드별 설정
+backends:
+  mermaid:
+    name: "Mermaid Diagram"
+    emoji: "📊"
+    description: "텍스트 기반 다이어그램 생성"
+    avg_time_seconds: 2
+    suffix: ".mermaid"
+
+  html:
+    name: "HTML Generator"
+    emoji: "📝"
+    description: "로컬 HTML 와이어프레임 생성"
+    avg_time_seconds: 5
+    suffix: ""
+
+  stitch:
+    name: "Stitch API"
+    emoji: "🤖"
+    description: "Google Stitch AI 생성"
+    avg_time_seconds: 15
+    suffix: "-hifi"
+
+# 폴백 설정
+fallback:
+  # Stitch 실패 시 HTML로 폴백
+  enabled: true
+  from: stitch
+  to: html
+  reason: "Stitch 실패 → HTML 폴백"

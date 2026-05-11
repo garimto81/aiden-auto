@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <style>
+    /* Notion 스타일 기본 설정 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      background: white;
+      padding: 0;
+      margin: 0;
+      color: #242424;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 540px;
+      max-width: 540px;
+      margin: 0;
+      padding: 24px;
+      background: white;
+    }
+
+    /* 헤더 */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #E6E6E3;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #242424;
+      margin-bottom: 8px;
+    }
+
+    .header .subtitle {
+      font-size: 16px;
+      color: #6B6B6B;
+    }
+
+    /* 제목 스타일 */
+    h1 { font-size: 28px; font-weight: 700; }
+    h2 { font-size: 22px; font-weight: 600; margin-top: 24px; margin-bottom: 12px; }
+    h3 { font-size: 18px; font-weight: 600; margin-top: 16px; margin-bottom: 8px; }
+
+    /* Notion 색상 변수 */
+    :root {
+      --notion-text: #242424;
+      --notion-text-secondary: #6B6B6B;
+      --notion-text-muted: #A6A6A6;
+      --notion-bg: #F7F7F5;
+      --notion-border: #E6E6E3;
+      --notion-blue: #87B5E1;
+      --notion-green: #8FCC9E;
+      --notion-purple: #BAA1D6;
+      --notion-orange: #F0BB78;
+      --notion-red: #E99488;
+      --notion-yellow: #F5E18F;
+      --notion-pink: #E8A7BF;
+    }
+
+    /* 공통 카드 스타일 */
+    .card {
+      background: white;
+      border: 1px solid var(--notion-border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 12px 0;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--notion-border);
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--notion-text);
+    }
+
+    .card-subtitle {
+      font-size: 16px;
+      color: var(--notion-text-secondary);
+      margin-top: 2px;
+    }
+
+    .card-body {
+      font-size: 16px;
+      color: var(--notion-text-secondary);
+      line-height: 1.5;
+    }
+
+    /* 태그 */
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--notion-bg);
+      color: var(--notion-text-secondary);
+      margin-right: 6px;
+      margin-top: 8px;
+    }
+
+    .tag.blue { background: #DDEDFA; color: #2563eb; }
+    .tag.green { background: #E0F4E5; color: #059669; }
+    .tag.purple { background: #EDE4F8; color: #7c3aed; }
+    .tag.orange { background: #FCF0DB; color: #d97706; }
+
+    /* 연결선 */
+    .connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .arrow-down {
+      width: 2px;
+      height: 32px;
+      background: var(--notion-border);
+      position: relative;
+    }
+
+    .arrow-down::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: -5px;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid var(--notion-border);
+    }
+
+    .arrow-right {
+      width: 32px;
+      height: 2px;
+      background: var(--notion-border);
+      position: relative;
+    }
+
+    .arrow-right::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: -5px;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 8px solid var(--notion-border);
+    }
+
+    /* 레이어 구분 */
+    .layer {
+      margin: 24px 0;
+    }
+
+    .layer-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--notion-text-muted);
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    .layer-content {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* 그리드 레이아웃 */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* 플렉스 레이아웃 */
+    .flex-row { display: flex; gap: 16px; align-items: stretch; }
+    .flex-col { display: flex; flex-direction: column; gap: 12px; }
+    .flex-1 { flex: 1; }
+    .flex-center { display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    {{ content }}
+  </div>
+</body>
+</html>

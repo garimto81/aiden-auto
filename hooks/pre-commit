@@ -1,0 +1,39 @@
+#!/bin/bash
+# Pre-Commit Hook: Automatic Phase Validation
+# Install: cp .claude/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+# Detect current phase from branch name or commit message
+BRANCH=$(git branch --show-current)
+COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+
+# Extract PRD number from branch (e.g., feature/PRD-0001-name)
+if [[ "$BRANCH" =~ feature/PRD-([0-9]+) ]]; then
+  PRD_NUM="${BASH_REMATCH[1]}"
+else
+  # No PRD number, skip validation
+  exit 0
+fi
+
+echo "🔍 Pre-commit validation for PRD-${PRD_NUM}..."
+
+# Detect phase from git status
+if [ -d "src" ] && [ -d "tests" ]; then
+  # Phase 1 or later: Check 1:1 test pairing
+  echo "   Running Phase 1 validation (1:1 test pairing)..."
+  if bash scripts/validate-phase-1.sh; then
+    echo "   ✅ Phase 1 validation passed"
+  else
+    echo "   ❌ Phase 1 validation failed"
+    echo "   Fix test pairing before committing"
+    exit 1
+  fi
+fi
+
+# Check for Phase 0 (PRD must exist)
+if [ ! -f "tasks/prds/${PRD_NUM}-prd-"*.md ]; then
+  echo "   ⚠️  PRD not found: tasks/prds/${PRD_NUM}-prd-*.md"
+  echo "   Phase 0 may not be complete"
+fi
+
+echo "✅ Pre-commit validation passed"
+exit 0

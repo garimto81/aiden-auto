@@ -1,0 +1,70 @@
+# project-profiles.yml — 5종 프로젝트 프로파일
+# 사용: session_init.py가 cwd 분석 → 프로파일 매칭 → state/runtime.yml에 기록
+
+version: 1
+
+profiles:
+  python-cli:
+    detect:
+      any_of:
+        - file_exists: pyproject.toml
+        - file_exists: setup.py
+        - dir_exists: src
+        - dir_exists: tests
+      ext_pattern: "*.py"
+    lint: "ruff check src/ --fix"
+    test: "pytest tests/test_specific.py -v"
+    test_all: "pytest tests/ -v --cov"
+    test_warning: "전체 테스트는 120초 초과 시 크래시. 개별 파일 실행 권장"
+    build: "python -m build"
+    skills_enabled: [auto, check, debug, tdd, commit, prd-sync, parallel, research, issue, pr]
+
+  nextjs-app:
+    detect:
+      all_of:
+        - file_exists: package.json
+        - package_json_contains: "next"
+      any_of:
+        - dir_exists: app
+        - dir_exists: pages
+    lint: "npm run lint"
+    test: "npm test"
+    e2e: "npx playwright test"
+    build: "npm run build"
+    skills_enabled: [auto, check, debug, mockup, mockup-hybrid, commit, pr, parallel, research]
+
+  rust-system:
+    detect:
+      file_exists: Cargo.toml
+    lint: "cargo clippy --fix"
+    test: "cargo test"
+    build: "cargo build --release"
+    skills_enabled: [auto, check, debug, commit, parallel, research, pr]
+
+  monorepo:
+    detect:
+      any_of:
+        - file_exists: turbo.json
+        - file_exists: pnpm-workspace.yaml
+        - file_exists: nx.json
+        - file_exists: lerna.json
+    lint: "turbo run lint || pnpm -r lint || npx nx run-many --target=lint"
+    test: "turbo run test || pnpm -r test || npx nx run-many --target=test"
+    build: "turbo run build || pnpm -r build"
+    skills_enabled: [all]
+
+  generic:
+    detect:
+      fallback: true
+    lint: null
+    test: null
+    build: null
+    skills_enabled: [auto, commit, session, todo]
+
+# 매칭 순서: 위에서 아래로 첫 매칭 사용. generic이 최후 fallback.
+matching_order:
+  - python-cli
+  - nextjs-app
+  - rust-system
+  - monorepo
+  - generic

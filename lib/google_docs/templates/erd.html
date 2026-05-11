@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title | default('Entity Relationship Diagram') }}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      background: white;
+      padding: 0;
+      margin: 0;
+      color: #242424;
+      font-size: 16px;
+    }
+
+    .container {
+      width: 540px;
+      max-width: 540px;
+      margin: 0;
+      padding: 24px;
+      background: white;
+    }
+
+    :root {
+      --notion-text: #242424;
+      --notion-text-secondary: #6B6B6B;
+      --notion-text-muted: #A6A6A6;
+      --notion-bg: #F7F7F5;
+      --notion-border: #E6E6E3;
+      --notion-blue: #87B5E1;
+      --notion-green: #8FCC9E;
+      --notion-purple: #BAA1D6;
+      --notion-orange: #F0BB78;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--notion-border);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .header .subtitle {
+      font-size: 16px;
+      color: var(--notion-text-secondary);
+    }
+
+    /* ERD 컨테이너 */
+    .erd-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* 엔티티 카드 */
+    .entity {
+      background: white;
+      border: 1px solid var(--notion-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .entity-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--notion-border);
+    }
+
+    .entity-icon {
+      font-size: 18px;
+    }
+
+    .entity-name {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--notion-text);
+    }
+
+    .entity-fields {
+      padding: 8px 0;
+    }
+
+    .field {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      font-size: 15px;
+      gap: 8px;
+    }
+
+    .field:hover {
+      background: var(--notion-bg);
+    }
+
+    .field-key {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .field-key.pk {
+      background: #FFF8DB;
+      color: #b45309;
+    }
+
+    .field-key.fk {
+      background: #DDEDFA;
+      color: #2563eb;
+    }
+
+    .field-name {
+      font-weight: 500;
+      color: var(--notion-text);
+      flex: 1;
+    }
+
+    .field-type {
+      color: var(--notion-text-muted);
+      font-size: 14px;
+      font-family: 'Consolas', monospace;
+    }
+
+    .field-nullable {
+      color: var(--notion-text-muted);
+      font-size: 13px;
+    }
+
+    /* 엔티티 색상 */
+    .entity.blue .entity-header { border-top: 3px solid var(--notion-blue); }
+    .entity.green .entity-header { border-top: 3px solid var(--notion-green); }
+    .entity.purple .entity-header { border-top: 3px solid var(--notion-purple); }
+    .entity.orange .entity-header { border-top: 3px solid var(--notion-orange); }
+
+    /* 관계 설명 */
+    .relations {
+      background: var(--notion-bg);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .relations-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--notion-text-secondary);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .relation {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 15px;
+      border-bottom: 1px solid var(--notion-border);
+    }
+
+    .relation:last-child {
+      border-bottom: none;
+    }
+
+    .relation-from, .relation-to {
+      font-weight: 500;
+      color: var(--notion-text);
+    }
+
+    .cardinality {
+      color: var(--notion-text-muted);
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      padding: 2px 8px;
+      background: white;
+      border-radius: 4px;
+    }
+
+    .relation-label {
+      color: var(--notion-text-secondary);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{{ title | default('Entity Relationship Diagram') }}</h1>
+      <div class="subtitle">{{ subtitle | default('Database schema and relationships') }}</div>
+    </div>
+
+    <div class="erd-container">
+      {% for entity in entities %}
+      <div class="entity {{ entity.color | default('blue') }}">
+        <div class="entity-header">
+          <span class="entity-icon">{{ entity.icon | default('') }}</span>
+          <span class="entity-name">{{ entity.name }}</span>
+        </div>
+        <div class="entity-fields">
+          {% for field in entity.fields %}
+          <div class="field">
+            {% if field.pk %}
+            <span class="field-key pk">PK</span>
+            {% elif field.fk %}
+            <span class="field-key fk">FK</span>
+            {% else %}
+            <span class="field-key" style="visibility: hidden;">--</span>
+            {% endif %}
+            <span class="field-name">{{ field.name }}</span>
+            <span class="field-type">{{ field.type }}</span>
+            {% if field.nullable %}
+            <span class="field-nullable">?</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if relations %}
+    <div class="relations">
+      <div class="relations-title">Relationships</div>
+      {% for relation in relations %}
+      <div class="relation">
+        <span class="relation-from">{{ relation.from }}</span>
+        <span class="cardinality">{{ relation.cardinality | default('1:N') }}</span>
+        <span class="relation-to">{{ relation.to }}</span>
+        {% if relation.label %}
+        <span class="relation-label">- {{ relation.label }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

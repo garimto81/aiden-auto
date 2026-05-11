@@ -1,0 +1,49 @@
+# aiden-auto v28.0 .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+bdist*/
+*.whl
+*.tar.gz
+
+# Runtime artifacts
+state/runtime.yml
+state/circuit-breaker.json
+state/.tmp/
+
+# OAuth tokens (절대 commit 금지)
+**/oauth_tokens/
+**/credentials.json
+**/token.json
+**/*.token
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bak
+*.aiden-auto-v27.2
+*.cclaude-v18.0
+
+# Logs
+*.log
+auto-logs/
+
+# Hooks 임시 상태
+hooks/.circuit_breaker_state.json
+hooks/.pre_compact_snapshot.json

@@ -1,0 +1,76 @@
+# platform-detect.yml — 환경 자동 감지
+# 사용: session_init.py가 세션 시작 시 로드 → state/runtime.yml 생성
+
+version: 1
+
+detection_order:
+  - os
+  - claude_runtime
+  - capability
+  - project
+
+os:
+  windows:
+    detect:
+      env: { OS: "Windows_NT" }
+      python_executable: "python"
+    shell: powershell
+    path_style: backslash
+    path_separator: "\\"
+    null_device: "$null"
+    junction_cmd: "mklink /J"
+    cmd_chain: "; if ($?) { %s }"
+
+  darwin:
+    detect:
+      uname_s: "Darwin"
+      python_executable: "python3"
+    shell: bash
+    path_style: forward
+    path_separator: "/"
+    null_device: "/dev/null"
+    junction_cmd: "ln -s"
+    cmd_chain: "&& %s"
+
+  linux:
+    detect:
+      uname_s: "Linux"
+      python_executable: "python3"
+    shell: bash
+    path_style: forward
+    path_separator: "/"
+    null_device: "/dev/null"
+    junction_cmd: "ln -s"
+    cmd_chain: "&& %s"
+
+claude_runtime:
+  detect_cmd: "claude --version"
+  ide_env: "CLAUDE_CODE_IDE"
+  plugin_path:
+    windows: "%USERPROFILE%\\.claude\\plugins"
+    posix: "~/.claude/plugins"
+
+capability:
+  git:
+    required: true
+    detect_cmd: "git --version"
+  python:
+    required: true
+    min_version: "3.10"
+    detect_cmd: "python --version"
+  node:
+    required: false
+    detect_cmd: "node --version"
+    on_missing: "skip JS hooks (post_edit_check.js, post_edit_test_runner.js)"
+  docker:
+    required: false
+    detect_cmd: "docker --version"
+    on_missing: "skip containerized agents"
+  gh_cli:
+    required: false
+    detect_cmd: "gh --version"
+    on_missing: "PR/issue commands degrade to git-only"
+
+output:
+  runtime_file: "state/runtime.yml"
+  ttl_minutes: 60  # 60분마다 재감지

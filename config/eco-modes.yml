@@ -1,0 +1,51 @@
+# eco-modes.yml — 사양 적응 모드
+# 사용: --eco / --eco-2 / --eco-3 옵션 시 모델 라우팅 자동 다운그레이드
+
+version: 1
+
+modes:
+  default:
+    description: 고사양 로컬 (Opus 사용 가능)
+    routing:
+      opus: opus
+      sonnet: sonnet
+      haiku: haiku
+    cost_factor: 1.0
+    use_when: "프로덕션, 복잡한 추론, critic, architect"
+
+  eco:
+    description: 일반 로컬 (Opus → Sonnet, ~30% 절감)
+    routing:
+      opus: sonnet
+      sonnet: sonnet
+      haiku: haiku
+    cost_factor: 0.7
+    use_when: "일반 비용 절감"
+
+  eco-2:
+    description: CI/CD (Opus → Sonnet, 비핵심 Sonnet → Haiku, ~50% 절감)
+    routing:
+      opus: sonnet
+      sonnet: sonnet  # 핵심
+      sonnet_noncore: haiku  # 비핵심 (writer, analyst 등)
+      haiku: haiku
+    cost_factor: 0.5
+    use_when: "CI/CD, 자동 배포"
+    non_core_agents: [writer, analyst, researcher, qa-tester]
+
+  eco-3:
+    description: 저사양/프로토타이핑 (전부 Haiku, ~70% 절감)
+    routing:
+      opus: sonnet
+      sonnet: haiku
+      haiku: haiku
+    cost_factor: 0.3
+    use_when: "프로토타이핑 전용. 프로덕션 금지"
+    warning: "품질 저하 가능. critic/architect 신뢰도 ↓"
+
+auto_select:
+  high_perf_local: default
+  general_local: default
+  ci_cd: eco-2
+  prototype: eco-3
+  low_resource: eco-3
