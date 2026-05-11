@@ -1,0 +1,93 @@
+{
+  "discovered_at": "2026-05-11T19:30:00+09:00",
+  "discoverer": "v28.4 운영 첫 사이클 (autonomous iteration)",
+  "parent_monorepo": "anthropics/claude-plugins-public",
+  "discovery_method": "subdir-commits with auto_discover_subdir simulation",
+  "total_subdirs_found": 35,
+  "already_registered": ["frontend-design"],
+  "candidates_evaluated": 34,
+  "candidates_passed_prescreen": 4,
+  "candidates": [
+    {
+      "id": "claude-md-management",
+      "subdir": "plugins/claude-md-management",
+      "last_commit": "aecd4c85",
+      "last_commit_date": "2026-02-20",
+      "prescreen_score": 80,
+      "rationale": "우리 5원칙 CLAUDE.md 관리에 직결. 자가개선 사이클 #2 강화 가능.",
+      "5_questions": {
+        "q1_user_entry_minimize": 9,
+        "q2_autonomous_iteration": 8,
+        "q3_chapter_compatible": 8,
+        "q4_reference_not_copy": 9,
+        "q5_circuit_breaker_ok": 9
+      },
+      "verdict": "NEEDS_USER_OPT_IN",
+      "registry_proposal": {
+        "owner": "anthropics",
+        "repo": "claude-plugins-public",
+        "subdir": "plugins/claude-md-management",
+        "check_method": "subdir-commits"
+      }
+    },
+    {
+      "id": "pr-review-toolkit",
+      "subdir": "plugins/pr-review-toolkit",
+      "last_commit": "ce721c1f",
+      "last_commit_date": "2026-04-28",
+      "prescreen_score": 75,
+      "rationale": "우리 v28.x PR flow (#1/#2/#3)와 동형. 자동 review 자가개선 영감.",
+      "5_questions": {
+        "q1_user_entry_minimize": 8,
+        "q2_autonomous_iteration": 9,
+        "q3_chapter_compatible": 7,
+        "q4_reference_not_copy": 8,
+        "q5_circuit_breaker_ok": 7
+      },
+      "verdict": "NEEDS_USER_OPT_IN"
+    },
+    {
+      "id": "hookify",
+      "subdir": "plugins/hookify",
+      "last_commit": "ce721c1f",
+      "last_commit_date": "2026-04-28",
+      "prescreen_score": 70,
+      "rationale": "Hook 표준 차용. 우리 27 hooks 정리 참고 가능.",
+      "5_questions": {
+        "q1_user_entry_minimize": 7,
+        "q2_autonomous_iteration": 7,
+        "q3_chapter_compatible": 6,
+        "q4_reference_not_copy": 8,
+        "q5_circuit_breaker_ok": 7
+      },
+      "verdict": "NEEDS_USER_OPT_IN"
+    },
+    {
+      "id": "skill-creator",
+      "subdir": "plugins/skill-creator",
+      "last_commit": "aecd4c85",
+      "last_commit_date": "2026-02-20",
+      "prescreen_score": 70,
+      "rationale": "이미 우리 세션에서 활용 중 (skill 생성 표준). 공식 표준 동기화 가치.",
+      "5_questions": {
+        "q1_user_entry_minimize": 7,
+        "q2_autonomous_iteration": 6,
+        "q3_chapter_compatible": 7,
+        "q4_reference_not_copy": 8,
+        "q5_circuit_breaker_ok": 7
+      },
+      "verdict": "NEEDS_USER_OPT_IN"
+    }
+  ],
+  "rejected_candidates_summary": {
+    "lsp_specific": ["clangd-lsp","csharp-lsp","gopls-lsp","jdtls-lsp","kotlin-lsp","lua-lsp","php-lsp","pyright-lsp","ruby-lsp","rust-analyzer-lsp","swift-lsp","typescript-lsp"],
+    "demo_or_example": ["example-plugin","math-olympiad","playground","cwc-makers"],
+    "duplicate_with_our_agents": ["code-review","code-simplifier","security-guidance"],
+    "low_relevance": ["agent-sdk-dev","claude-code-setup","code-modernization","commit-commands","explanatory-output-style","feature-dev","learning-output-style","mcp-server-dev","plugin-dev","ralph-loop","session-report"]
+  },
+  "next_actions": [
+    "사용자 평문 '신규 plugin 등록해줘' 시 4 후보 batch 등록",
+    "또는 사용자가 4 후보 중 일부 선택",
+    "거절 시 'discovered_ignore' 자동 추가 (3회 누적 시 영구 ignore)"
+  ]
+}
