@@ -1,23 +1,29 @@
-# aiden-auto v28.0 — 통합 슈퍼 플러그인
+# aiden-auto v28.1 — Index Router
 
 > **Core Philosophy**: 사용자 진입점 최소화 + 자율 이터레이션 최대화. 가장 완벽한 산출물을 만든다.
+
+## 5가지 핵심 원칙 (HARD ENFORCE)
+
+1. **외부 harness framework 그대로 유지** — bkit-claude-code, anthropics/claude-code, vercel, atlassian, superpowers 등은 *복사하지 않고 참조만*. `references/external-harness-registry.md` 등록.
+2. **자가개선 critic 사이클** — `agents/meta/harness-watcher` (매일) → `harness-critic` (5원칙 부합 판정) → `harness-applier` (patch + PR).
+3. **SKILL.md = 최소 진입점** — `skills/auto/SKILL.md` ≤120줄. 모든 상세는 `references/`로 lazy load. *거대 문서 통째 로드 금지*.
+4. **Intent → Chapter 라우팅** — 평문 → `references/index.yml` lookup → chapter 1개만 로드.
+5. **스킬/커맨드/워크플로우 = 방대 (슈퍼앱)** — 진입점 작고 도구 풍부.
 
 ## 진입 경로
 
 ```
-사용자 메시지
+사용자 평문 (또는 /auto, /iteration)
       ↓
-Rule 16 자동 트리거 판단 (작업 요청이면 /auto)
-      ↓
-Step 0: Index Lookup (references/index.yml)
+SKILL.md (≤120줄) Step 0: Index Lookup
       ↓
 Phase -2 Triage (모호 시만)
       ↓
-Phase -1 Context Detect (OS/profile/eco 감지)
-      ↓
 Chapter 1개 로드 (chapter-{CAT}.md)
       ↓
-Phase 0~4 (chapter 지정 경로)
+Phase 진입 시 해당 phase reference 1개만 lazy load
+      ↓
+필요 시 plan-design-gate.md / ml-assist.md 조건부 로드
       ↓
 Phase 3 검증 — Multi-perspective Parallel (architect + security + test + verifier)
       ↓
@@ -26,17 +32,18 @@ pdca-iterator (Match Rate <90% 시 iteration-runner 자동)
 Phase 4 Close
 ```
 
-## Components
+## Components (실측 2026-05-11)
 
 | 컴포넌트 | 개수 | 핵심 출처 |
 |---------|:----:|----------|
-| skills | 25 | aiden-auto chapter 분할 + C:\claude 자체 완결 |
-| agents | 34 | aiden-auto iteration V10.0 + C:\claude creative |
-| hooks | 25 | C:\claude 압도적 |
-| rules | 8 | rule 16 (C:\claude active) + rule 17 (aiden-auto) |
-| references | 25 | 양쪽 union (chapter + skill-causality-graph 핵심) |
+| skills | 22 | chapter 진입 + 자체 완결 (SKILL_TEMPLATE/checklist 제외) |
+| agents | 34 | iteration V10.0 (13) + verification (4) + creative (2) + meta (5, 신규 harness-watcher/critic/applier 포함) + core/domain (10) |
+| hooks | 27 | C:\claude 압도적 (PreToolUse Agent matcher는 v28.1에서 비활성 — 옛 패턴 강제 해소) |
+| rules | 8 | rule 16 (auto-trigger) + rule 17 (Circuit Breaker) + 6 |
+| references | 38 | chapter 6 + phase 5 + 핵심 + v28.1 신규 3 (plan-design-gate, ml-assist, external-harness-registry) |
 | commands | 20 | C:\claude 그대로 |
-| lib | 15 | C:\claude 압도적 (advisor, ai_auth, confluence, workflow_critic 고유) |
+| lib | 13 | advisor, ai_auth, confluence, workflow_critic 고유 |
+| **합계** | **162** | v28.0 (156 추정) 대비 실측 +6 (v28.1 신규 reference 3 + agents 3) |
 
 ## 범용성 — Adaptive Configuration
 
