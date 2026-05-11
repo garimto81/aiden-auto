@@ -136,6 +136,14 @@ categories:
     typical_phase_path: ["-2", "-1", "0", "1", "2", "4"]
     skip_phases: ["3"]
 
+  HARNESS:
+    description: "외부 framework 추적 / 자가개선 사이클 운영 (v28.3 신규)"
+    keywords: [harness, watcher, "외부 framework", "framework 업데이트"]
+    chapter: "chapter-harness.md"
+    agent_team: [harness-watcher, harness-critic, harness-applier, cc-version-researcher]
+    typical_phase_path: ["-2", "0", "4"]
+    skip_phases: ["1", "2", "3"]
+
 # ─────────────────────────────────────────────────────────────
 # 모호성 패턴 — Triage가 감지하면 명확화 질문
 # ─────────────────────────────────────────────────────────────
@@ -209,6 +217,10 @@ plain_text_triggers:
     # 반복
     - "반복"
     - "cycle"
+    # HARNESS chapter (v28.3 신규)
+    - "harness 상태"
+    - "harness 체크"
+    - "외부 framework 업데이트"
 
   disabled_patterns:
     # 단순 질문/탐색 — /auto 발동 안 함
