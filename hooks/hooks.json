@@ -1,29 +1,19 @@
 {
+  "_disabled_2026-05-11": {
+    "reason": "PreToolUse Agent matcher 제거 — agent_teams_guard.py는 글로벌 정책(2026-05-07 TeamCreate 폐기)과 충돌하여 신규 1:1 subagent 호출 차단. loop_detector.py는 파일 부재로 file-not-found 에러 발생. 둘 다 사용자 진입점 증가 (Core Philosophy 위반). 추후 신규 1:1 매핑 호환 hook 재작성 시 복구.",
+    "removed_pre_tool_use_agent_hooks": [
+      "agent_teams_guard.py",
+      "loop_detector.py"
+    ]
+  },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/agent_teams_guard.py",
-            "statusMessage": "Validating Agent Teams protocol..."
-          },
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/loop_detector.py",
-            "statusMessage": "Running loop detector..."
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Bash|Edit|Write|Agent",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/circuit_breaker.py",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/circuit_breaker.py",
             "statusMessage": "Checking circuit breaker..."
           }
         ]
@@ -33,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/task_completed_trigger.py",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/task_completed_trigger.py",
             "async": true
           }
         ]
@@ -45,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py"
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py"
           }
         ]
       }
@@ -56,11 +46,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/auto_deploy.py"
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/auto_deploy.py"
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/post_commit_quality.py"
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/post_commit_quality.py"
           }
         ]
       }

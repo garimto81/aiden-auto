@@ -1,6 +1,14 @@
-# aiden-auto v28.0
+# aiden-auto v28.1
 
-Universal Adaptive Orchestrator — Claude Code 통합 슈퍼 플러그인.
+**Index Router** — Intent 분석 후 chapter 1개만 lazy load 하는 최소 진입점 + 외부 harness framework 자가개선 사이클.
+
+## 5가지 핵심 원칙
+
+1. 외부 harness framework 그대로 유지 (참조만, 복사 안 함)
+2. 매일 update 자동 critic → 자가개선 (`harness-watcher/critic/applier`)
+3. SKILL.md 최소 진입점 (≤120줄, lazy load only)
+4. Intent → Chapter 라우팅
+5. 스킬/커맨드/워크플로우 = 방대 (슈퍼앱)
 
 ## 설치
 
@@ -31,18 +39,23 @@ git clone https://github.com/garimto81/aiden-auto ~/.claude/plugins/aiden-auto
 - **범용 적용**: Windows/Mac/Linux + Python/JS/Rust/Monorepo
 - **Circuit Breaker**: 4-카운터 hard limit으로 무한 루프 방지
 
-## 구조
+## 구조 (실측 2026-05-11)
 
 ```
-aiden-auto/
-├── skills/        25개 (auto 진입점 + 카테고리별 chapter)
-├── agents/        34개 (6 카테고리: core/domain/iteration/verification/creative/meta)
-├── hooks/         25개 (lifecycle/quality/safety/integrations)
-├── rules/          8개
-├── references/    25개
-├── commands/      20개
-├── lib/           15개 (calendar/figma/gmail/jira/slack 등 + advisor/ai_auth 고유)
-└── config/         3개 (platform/profile/eco)
+aiden-auto/                              (162 elements)
+├── skills/        22 (auto 진입점 ≤120줄 + chapter 22)
+├── agents/        34 (iteration 13 + verification 4 + creative 2 +
+│                      meta 5 [+harness-watcher/critic/applier 신규] +
+│                      core/domain 10)
+├── hooks/         27 (PreToolUse Agent matcher 비활성 — v28.1에서
+│                      옛 Agent Teams 강제 패턴 해소)
+├── rules/          8 (rule 16 auto-trigger + rule 17 Circuit Breaker + 6)
+├── references/    38 (chapter 6 + phase 5 + v28.1 신규 3:
+│                      plan-design-gate / ml-assist / external-harness-registry)
+├── commands/      20
+├── lib/           13 (calendar/figma/gmail/jira/slack/confluence 등 +
+│                      advisor/ai_auth/workflow_critic 고유)
+└── config/         3 (platform/profile/eco)
 ```
 
 ## 라이선스
