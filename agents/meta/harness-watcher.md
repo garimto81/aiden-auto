@@ -114,7 +114,17 @@ Output:
 ```
 if updates is not empty:
   Write state/harness-critic-pending.flag: {"updates_file": "state/harness-updates-{date}.json"}
-  # 다음 사이클에서 harness-critic이 이 flag를 보고 자동 진행
+
+# v28.3 신규: claude-code 신규 release 감지 시 cc-researcher chain
+if any update.framework_id == "claude-code":
+  Write state/cc-researcher-pending.flag: {framework_id: "claude-code", from, to, priority: "HIGH"}
+
+# v28.3 신규: effort.level 신호 통합 (Anthropic v2.1.133+)
+# hook 입력에서 $CLAUDE_EFFORT 읽기 → high면 deep diff, low면 shallow
+
+# v28.3 신규: D3 축소 sub-step (live references KB ratio 측정)
+Bash("python -c 'from pathlib import Path; print(sum(p.stat().st_size for p in Path(\"references\").glob(\"*.md\")))'")
+# baseline 대비 ratio 계산 → harness-status.md D3 KPI 섹션 갱신
 ```
 
 # Output 형식
