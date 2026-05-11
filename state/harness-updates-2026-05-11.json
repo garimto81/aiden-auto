@@ -1,0 +1,106 @@
+{
+  "checked_at": "2026-05-11T16:55:00+09:00",
+  "watcher_version": "v28.1.0 (dry-run baseline)",
+  "frameworks_checked": 6,
+  "new_updates_found": 0,
+  "owner_corrections": 4,
+  "first_baselines_established": 4,
+  "summary": "v28.1 cutover 후 첫 dry-run. 6 framework 모두 GitHub API 도달. owner 4건 보정 (atlassian/superpowers/vercel/frontend-design 모두 추정 오류). baseline 4건 신규 수립. 2건 (bkit-claude-code, superpowers) 기존 baseline 일치. 신규 update는 0건이라 critic-pending flag 미생성.",
+  "updates": [],
+  "baseline_snapshot": [
+    {
+      "id": "bkit-claude-code",
+      "owner": "popup-studio-ai",
+      "repo": "bkit-claude-code",
+      "check_method": "tags",
+      "current_version": "v2.1.12",
+      "current_sha": "d26c57c2",
+      "current_date": null,
+      "baseline_status": "unchanged"
+    },
+    {
+      "id": "claude-code",
+      "owner": "anthropics",
+      "repo": "claude-code",
+      "check_method": "releases",
+      "current_version": "v2.1.138",
+      "current_sha": null,
+      "current_date": "2026-05-09",
+      "baseline_status": "first_baseline",
+      "note": "이전 baseline null → 최신 v2.1.138로 첫 수립. cc-version-researcher agent가 별도로 v2.1.116~v2.1.133 분석 이력 보유."
+    },
+    {
+      "id": "vercel",
+      "owner": "vercel",
+      "repo": "vercel-plugin",
+      "check_method": "commits",
+      "current_version": "61f1903b",
+      "current_sha": "61f1903bed7b322c9745f6ba67095bc006de7e63",
+      "current_date": "2026-05-07",
+      "baseline_status": "first_baseline_with_owner_correction",
+      "owner_correction": {
+        "previous_assumption": "vercel/claude-code-plugin",
+        "corrected_to": "vercel/vercel-plugin",
+        "source": "claude-plugins-official marketplace.json"
+      }
+    },
+    {
+      "id": "superpowers",
+      "owner": "obra",
+      "repo": "superpowers",
+      "check_method": "tags",
+      "current_version": "v5.1.0",
+      "current_sha": "f2cbfbef",
+      "current_date": null,
+      "baseline_status": "unchanged_with_owner_correction",
+      "owner_correction": {
+        "previous_assumption": "anthropic-experiments/superpowers",
+        "corrected_to": "obra/superpowers",
+        "source": "claude-plugins-official marketplace.json"
+      }
+    },
+    {
+      "id": "atlassian",
+      "owner": "atlassian",
+      "repo": "atlassian-mcp-server",
+      "check_method": "commits",
+      "current_version": "9b52fb18",
+      "current_sha": "9b52fb18e184edc307ce33f8bf4cdf148dedf1f2",
+      "current_date": "2026-04-14",
+      "baseline_status": "first_baseline_with_owner_correction",
+      "owner_correction": {
+        "previous_assumption": "atlassian-labs/claude-code-plugin",
+        "corrected_to": "atlassian/atlassian-mcp-server",
+        "source": "claude-plugins-official marketplace.json"
+      }
+    },
+    {
+      "id": "frontend-design",
+      "owner": "anthropics",
+      "repo": "claude-plugins-public",
+      "subdir": "plugins/frontend-design",
+      "check_method": "subdir-commits",
+      "current_version": "00679aef",
+      "current_sha": null,
+      "current_date": "2026-05-09",
+      "baseline_status": "first_baseline_with_owner_correction_and_method_change",
+      "owner_correction": {
+        "previous_assumption": "anthropic-experiments/frontend-design (standalone)",
+        "corrected_to": "anthropics/claude-plugins-public/plugins/frontend-design (monorepo)",
+        "source": "claude-plugins-official marketplace.json",
+        "method_change": "tags → subdir-commits (mono-repo 하위 디렉토리, semantic version 없음)"
+      }
+    }
+  ],
+  "next_actions": [
+    "registry external-harness-registry.md 보정 완료 (영구 반영, marketplace clone)",
+    "다음 watcher 실행 시 이 baseline 기준으로 delta 계산",
+    "신규 update 0건이라 critic-pending flag 미생성 (정상 동작)"
+  ],
+  "dry_run_observations": [
+    "owner 추정의 4/6 부정확 — registry 첫 운영 시 marketplace.json 기반 자동 보정 로직이 watcher agent에 필요 (현재는 수동 보정)",
+    "tag 없는 repo (atlassian-mcp-server, vercel-plugin)도 다수 — check_method 'commits' 추가 (default branch HEAD)",
+    "monorepo 하위 디렉토리 framework (frontend-design) 존재 — 'subdir-commits' 신규 방식 도입",
+    "frontend-design처럼 anthropics/claude-plugins-public 안에는 더 많은 plugin 후보 있음. 추후 추적 대상 확장 고려"
+  ]
+}
