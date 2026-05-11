@@ -130,3 +130,27 @@ frameworks:
   - `releases`: GitHub releases API (release notes 포함)
   - `commits`: default branch HEAD commit sha (tag 없는 repo)
   - `subdir-commits`: monorepo의 하위 디렉토리 commit (path 필터)
+
+## v28.3 신규: auto_discover_subdir + cc-researcher chain
+
+### auto_discover_subdir (B 영역)
+```yaml
+# 사용 예 (frontend-design 같은 monorepo plugin)
+auto_discover_subdir: true       # default false
+discovery_path: "plugins/*"       # subdir 패턴
+discovery_threshold: 3            # 한 번에 N건 이상 발견 시 사용자 보고
+discovered_ignore: []             # 3회 거절 누적 시 자동 추가
+```
+
+watcher가 monorepo 하위 plugin 후보 발견 → `state/harness-discoveries-{date}.json` → 사용자 옵트인 등록.
+
+### cc-researcher chain (A 영역)
+`claude-code` framework 신규 release 감지 시:
+```
+1. watcher가 last_known_version != current 감지
+2. Write state/cc-researcher-pending.flag {framework_id: claude-code, from, to, priority: HIGH}
+3. cc-version-researcher (opus, on-flag) 발동 → 심층 분석 → state/cc-research-{date}.json
+4. harness-critic이 cc-research 결과 흡수 후 5질문 평가 (deep analysis 가중 반영)
+```
+
+watcher 본체 *수정 없음* — flag 한 줄만 추가.
