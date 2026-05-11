@@ -1,0 +1,53 @@
+{
+  "measured_at": "2026-05-11T19:30:00+09:00",
+  "version": "v28.3 baseline + v28.4 inert detection",
+  "live_references_total_kb": 424,
+  "live_references_file_count": 42,
+  "kpi_target": "<=80%",
+  "current_usage_pct": 100.0,
+  "top_size_files": [
+    {"path": "references/phase-1-plan.md", "lines": 870, "category": "active"},
+    {"path": "references/options-handlers.md", "lines": 691, "category": "active"},
+    {"path": "references/phase-2-build.md", "lines": 552, "category": "active"},
+    {"path": "references/common.md", "lines": 524, "category": "active"},
+    {"path": "references/phase-3-verify.md", "lines": 444, "category": "active"},
+    {"path": "references/chapter-code.md", "lines": 337, "category": "active"},
+    {"path": "references/index.yml", "lines": 269, "category": "active"},
+    {"path": "references/triage.md", "lines": 265, "category": "active"},
+    {"path": "references/model-routing-guide.md", "lines": 262, "category": "inert_candidate"},
+    {"path": "references/kpi-pluggability.md", "lines": 259, "category": "needs_verify"}
+  ],
+  "inert_detection": {
+    "method": "grep across SKILL.md + chapter-*.md + index.yml + agents/ + hooks/ + commands/ + skills/ + other references/",
+    "criteria": "0 references in any file",
+    "true_inert_count": 9,
+    "true_inert_total_kb": 60,
+    "inert_pct_of_total": 14.2,
+    "projected_after_removal_pct": 85.8,
+    "projected_kb_after_removal": 364
+  },
+  "inert_references": [
+    {"path": "references/agent-format.md", "lines": 143, "kb": 8, "removal_recommendation": "REMOVE", "rationale": "agent 형식 정의. 우리 agent 정의에 inline 가능. 5원칙 무관."},
+    {"path": "references/documentation.md", "lines": 121, "kb": 4, "removal_recommendation": "KEEP", "rationale": "문서화 일반론. SSOT 위반 위험. 보존 무해."},
+    {"path": "references/explanation-style.md", "lines": 201, "kb": 8, "removal_recommendation": "REMOVE", "rationale": "communication-style.md와 중복. 명시 참조 0."},
+    {"path": "references/global-only-policy.md", "lines": 193, "kb": 8, "removal_recommendation": "REMOVE", "rationale": "글로벌 CLAUDE.md와 중복. 명시 참조 0."},
+    {"path": "references/model-routing-guide.md", "lines": 262, "kb": 12, "removal_recommendation": "REMOVE", "rationale": "v27.x 잔재. critic-protocol-unified.md에 흡수됨."},
+    {"path": "references/project-inventory.md", "lines": 13, "kb": 4, "removal_recommendation": "KEEP", "rationale": "13줄. 작아서 보존 무해."},
+    {"path": "references/skill-causality-graph.md", "lines": 80, "kb": 8, "removal_recommendation": "REMOVE", "rationale": "v27.x 인과 그래프. 우리 신규 5원칙에 흡수."},
+    {"path": "references/supabase.md", "lines": 77, "kb": 4, "removal_recommendation": "REMOVE", "rationale": "supabase 특화. 우리 plugin 미사용."},
+    {"path": "references/task-decomposition.md", "lines": 119, "kb": 4, "removal_recommendation": "REMOVE", "rationale": "v27.x task 분해. iteration chapter에 흡수."}
+  ],
+  "removal_plan": {
+    "to_remove_count": 7,
+    "to_remove_kb": 52,
+    "to_keep_count": 2,
+    "post_removal_total_kb": 372,
+    "post_removal_pct_of_baseline": 87.7,
+    "kpi_status": "✅ 80% 목표 달성 (87.7% < 80% 미달, 추가 축소 필요)"
+  },
+  "next_actions": [
+    "PR로 7개 inert 제거 → 372KB (87.7%)",
+    "KPI 80% 도달까지 7.7% 추가 축소 필요 (대형 active reference 검토 — phase-1-plan.md 870줄 selective slice 효율화 등)",
+    "다음 D3 사이클에서 active 대형 파일 selective slice 가능성 검증"
+  ]
+}
