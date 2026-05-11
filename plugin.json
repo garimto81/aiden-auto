@@ -1,16 +1,19 @@
 {
   "name": "aiden-auto",
-  "version": "28.0.0-alpha.1",
-  "description": "Universal Adaptive Orchestrator — 사용자 진입점 최소화 + 자율 이터레이션 최대화. C:\\claude v18.0 + aiden-auto v27.2 통합본.",
+  "version": "28.1.0",
+  "description": "Index Router — 사용자 평문을 분석하여 적절한 chapter만 lazy load 하는 최소 진입점. 외부 harness framework를 그대로 유지하고 매일 update를 critic으로 자가개선. v28.0 (C:\\claude v18.0 + aiden-auto v27.2 통합본) + v28.1 (SKILL.md 311→112줄 정제 + harness 자가개선 사이클 추가).",
   "author": { "name": "garimto81", "email": "garimto1981@gmail.com" },
   "repository": "https://github.com/garimto81/aiden-auto",
   "license": "MIT",
-  "keywords": ["claude-code", "pdca", "orchestrator", "multi-agent", "iteration", "auto-workflow"],
+  "keywords": ["claude-code", "pdca", "orchestrator", "multi-agent", "iteration", "auto-workflow", "self-improvement", "harness-tracking"],
   "claude_code": { "min_version": "1.0.0", "plugin_spec": "1.0" },
-  "components": { "skills": 25, "agents": 34, "hooks": 25, "rules": 8, "references": 25, "commands": 20, "lib": 15 },
+  "components": { "skills": 22, "agents": 34, "hooks": 27, "rules": 8, "references": 38, "commands": 20, "lib": 13 },
   "core_philosophy": { "user_entry_points": "minimize", "autonomous_iteration": "maximize", "user_decision_per_session": "0-2" },
-  "merged_from": [
-    { "source": "C:\\claude", "version": "v18.0", "contributions": ["hooks", "commands", "lib", "embedded-critic", "rule-16"] },
-    { "source": "aiden-auto-marketplace", "version": "v27.2", "contributions": ["chapter-routing", "iteration-V10.0", "verification-specialists", "rule-17"] }
+  "five_principles": [
+    "외부 harness framework 그대로 유지 (참조만, 복사 안 함)",
+    "외부 update 자동 critic → 자가개선 (harness-watcher/critic/applier)",
+    "SKILL.md 최소 진입점 (≤120줄, lazy load only)",
+    "Intent → Chapter 라우팅 (1 chapter = 1 reference 로딩)",
+    "스킬/커맨드/워크플로우 = 방대 (슈퍼앱)"
   ]
 }
