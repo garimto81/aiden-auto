@@ -126,6 +126,9 @@ Read("references/communication-style.md")
 | Phase 진입 | `phase-{N}-*.md` (해당 phase 1개) |
 | Plan→Design 전환 | `plan-design-gate.md` (CODE/ITERATION chapter, 자동) |
 | 복잡도 산정 직후 | `ml-assist.md` (`.claude/ml/.ml_session_state.json` 존재 시만) |
+| Phase 진입 전 토큰 절약 | `compaction-gate.md` (조건부: score>=4 OR load>15KB OR effort=high) |
+| critic 호출 시 (verdict 통일) | `critic-protocol-unified.md` (5 기존 critic + compaction-critic) |
+| HARNESS chapter (운영) | `chapter-harness.md` ("harness 상태" 평문 트리거) |
 | 옵션 사용 | `options-handlers.md` |
 | 외부 harness 추적 | `external-harness-registry.md` (harness-watcher 매일 자동) |
 
