@@ -36,6 +36,11 @@
           {
             "type": "command",
             "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py"
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/cc_auth_check.py",
+            "statusMessage": "Checking Claude Code OAuth (advisor-tool)..."
           }
         ]
       }

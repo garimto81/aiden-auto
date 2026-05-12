@@ -1,13 +1,13 @@
 {
   "name": "aiden-auto",
-  "version": "28.1.0",
-  "description": "Index Router — 사용자 평문을 분석하여 적절한 chapter만 lazy load 하는 최소 진입점. 외부 harness framework를 그대로 유지하고 매일 update를 critic으로 자가개선. v28.0 (C:\\claude v18.0 + aiden-auto v27.2 통합본) + v28.1 (SKILL.md 311→112줄 정제 + harness 자가개선 사이클 추가).",
+  "version": "28.5.0",
+  "description": "Index Router — 사용자 평문을 분석하여 적절한 chapter만 lazy load 하는 최소 진입점. 외부 harness framework를 그대로 유지하고 매일 update를 critic으로 자가개선. v28.0 (C:\\claude v18.0 + aiden-auto v27.2 통합본) + v28.1 (SKILL.md 311→112줄 정제 + harness 자가개선 사이클) + v28.5 (Anthropic advisor-tool 패턴 차용 — Claude Code CLI OAuth Executor-Advisor 2-tier).",
   "author": { "name": "garimto81", "email": "garimto1981@gmail.com" },
   "repository": "https://github.com/garimto81/aiden-auto",
   "license": "MIT",
   "keywords": ["claude-code", "pdca", "orchestrator", "multi-agent", "iteration", "auto-workflow", "self-improvement", "harness-tracking"],
   "claude_code": { "min_version": "1.0.0", "plugin_spec": "1.0" },
-  "components": { "skills": 22, "agents": 34, "hooks": 27, "rules": 8, "references": 38, "commands": 20, "lib": 13 },
+  "components": { "skills": 22, "agents": 36, "hooks": 28, "rules": 8, "references": 39, "commands": 20, "lib": 13 },
   "core_philosophy": { "user_entry_points": "minimize", "autonomous_iteration": "maximize", "user_decision_per_session": "0-2" },
   "five_principles": [
     "외부 harness framework 그대로 유지 (참조만, 복사 안 함)",

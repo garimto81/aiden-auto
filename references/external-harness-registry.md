@@ -120,6 +120,28 @@ frameworks:
 | 2026-05-11 | (initial) | — | — | registry 신규 생성 |
 | 2026-05-11 | (dry-run baseline) | 6 framework | — | 첫 watcher dry-run으로 4건 owner 보정 + 4건 baseline 신규 수립 (claude-code v2.1.138, vercel 61f1903b, atlassian 9b52fb18, frontend-design 00679aef). 2건은 일치 (bkit-claude-code v2.1.12, superpowers v5.1.0). 신규 update 0건. |
 
+## Internal Advisors (자가개선 사이클 내부 advisor)
+
+> external framework와 별개로, plugin 내부의 자율 advisor 추세를 harness-watcher가 함께 추적한다. Anthropic 공식 advisor-tool 패턴 차용분(2026-05-12).
+
+```yaml
+internal_advisors:
+  - id: cc-auth-advisor
+    trigger: SessionStart
+    executor_agent: agents/meta/cc-auth-executor.md
+    advisor_agent: agents/meta/cc-auth-advisor.md
+    hook_script: hooks/cc_auth_check.py
+    state_file_pattern: "state/cc-auth-decisions-{date}.json"
+    protocol: references/cc-auth-advisor-protocol.md
+    weekly_thresholds:
+      prompt_user_warn: 3       # 주 3회 이상 → "scope 사전 등록 권고" issue 자동 생성
+      block_alert: 1            # 주 1회 이상 → "rate limit / 보안 점검 권고" issue 자동 생성
+    last_reviewed: "2026-05-12"
+    rationale: "Claude Code CLI 자체 OAuth(.credentials.json claudeAiOauth) 사전 점검. advisor-tool 패턴 차용 (Executor-Advisor 2-tier)."
+```
+
+watcher가 daily 실행 시 `state/cc-auth-decisions-{date}.json` 7일치를 읽어 위 임계값 초과 시 issue 자동 생성 (harness-applier에 위임).
+
 ## 운영 규칙
 
 - **last_checked 갱신 의무**: watcher가 매번 갱신해야 다음 daily에 정확한 delta 계산 가능

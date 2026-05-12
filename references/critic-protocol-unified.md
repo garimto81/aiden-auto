@@ -35,6 +35,7 @@
 | `harness-critic` (외부 framework critic) | weighted 0-100 + verdict | **이미 정합** (변환 불필요) | 그대로 사용 |
 | `phase-3 architect` (E2E 검증) | APPROVE / CONDITIONAL / REJECT | verdict 매핑 (CONDITIONAL→NEEDS_INFO) | weighted_score는 산출 (Match Rate 활용) |
 | `self-evaluation-gate` (Phase -1.5 fit) | `GO / PROCEED / RECOMMEND` + fit_score | verdict 매핑 (GO→APPROVE, PROCEED→NEEDS_INFO, RECOMMEND→REJECT) | weighted_score=fit_score, confidence=HIGH/MEDIUM/LOW (fit_score 구간별) |
+| `cc-auth-advisor` (Claude Code OAuth) | 4-verdict 직접 (`cc_auth_verdict_v1`) | verdict alias: AUTO_REFRESH→APPROVE / PROMPT_USER→NEEDS_INFO / BLOCK→REJECT / DEFER→NEEDS_INFO | weighted_score=5-질문 가중합, scores_per_question 포함. 출처: `references/cc-auth-advisor-protocol.md` |
 
 ### Adapter 변환 — 실패 처리 (Critic agent 권고 흡수)
 
@@ -105,6 +106,7 @@ bkit-claude-code의 *Match Rate* 패턴을 critic verdict에 적용:
 | phase-3 architect | Match Rate ≥ 90% (Design vs Code) |
 | embedded-critic | VERDICT == APPROVE AND RISK_SCORE ≤ 3 |
 | self-evaluation-gate | fit_score ≥ 70 (GO) |
+| cc-auth-advisor | weighted_score ≥ 70 + (Q3 or Q4 ≥ 7) → BLOCK / 50-69 또는 Q2 ≥ 7 → PROMPT_USER |
 
 threshold 미달 시 REJECT 또는 NEEDS_INFO.
 
