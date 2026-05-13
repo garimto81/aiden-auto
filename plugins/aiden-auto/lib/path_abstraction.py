@@ -95,6 +95,32 @@ def detect_eco_mode() -> str:
     return "default"
 
 
+def resolve_plugin_root() -> Path:
+    """PLUGIN_ROOT 결정: env var → __file__ 기반 fallback.
+
+    path_abstraction.py 가 lib/ 안에 있으므로:
+      Path(__file__).resolve().parent  = lib/
+      Path(__file__).resolve().parent.parent = plugin root
+    """
+    env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parent.parent
+
+
+def resolve_project_root() -> Path:
+    """PROJECT_ROOT 결정: env var → cwd fallback.
+
+    우선순위:
+    1. CLAUDE_PROJECT_DIR env var
+    2. 현재 작업 디렉토리 (os.getcwd())
+    """
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env:
+        return Path(env)
+    return Path(os.getcwd())
+
+
 def detect_runtime(project_dir: str | None = None) -> Runtime:
     """전체 런타임 감지 → Runtime 객체 반환"""
     pd = project_dir or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()

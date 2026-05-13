@@ -2,6 +2,25 @@
 
 > 이 파일은 `/auto` Phase 4 진입 시 로딩됩니다. SKILL.md에서 Phase 4 시작 시 이 파일을 Read합니다.
 > 원본: REFERENCE.md v25.0에서 분리 (v25.2 Progressive Disclosure)
+> v28.2 Section 16: **Gate 5 (user-friendly-reporter)** 신설 — Phase 4 close 출력은 reporter 통과 의무.
+
+---
+
+## Phase 4 진입 게이트 (5단 — v28.2)
+
+Phase 4 close 출력이 사용자에게 도달하기 전 모든 게이트 통과:
+
+| Gate | 책임 | 통과 조건 |
+|:----:|------|----------|
+| 1 | `perfect-output-validator` (opus) | 7항목 자동 검증 모두 PASS |
+| 2 | `e2e-qa-prover` (sonnet, session type 분기) | LOGIC_DATA: unit tests/log/checksum / VISUAL_INTERACTION: Playwright ≥3장 |
+| 3 | Submission Format 4 섹션 의무 | Final Output / QA Report / Verification 증거 / Validation Statement |
+| 4 | 미통과 시 자동 BLOCK | pdca-iterator 재진입 (CB 5회) |
+| **5** | **`user-friendly-reporter` (sonnet) — NEW v28.2 Section 16** | **친절·자세한 보고 형식 통과 (약어 풀이/비유/단계별/"왜?" 설명 의무)** |
+
+Gate 5에서 reporter가 본 protocol 규칙 위반 발견 시 자동 재작성. 모든 사용자 향 출력이 비개발자 친화 형식 보장.
+
+자세한 사양: `references/user-friendly-report-protocol.md`
 
 ---
 

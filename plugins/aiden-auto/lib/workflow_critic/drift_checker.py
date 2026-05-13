@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Workflow Document Drift Checker — 5개 교차 검증으로 문서 간 불일치 감지"""
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
+
+def _resolve_project_root() -> Path:
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env:
+        return Path(env)
+    return Path(os.getcwd())
+
+
 # 경로 설정
-PROJECT_ROOT = Path("C:/claude")
+PROJECT_ROOT = _resolve_project_root()
 SKILL_MD = PROJECT_ROOT / ".claude" / "skills" / "auto" / "SKILL.md"
 REFERENCE_MD = PROJECT_ROOT / ".claude" / "skills" / "auto" / "REFERENCE.md"
 SETTINGS_JSON = PROJECT_ROOT / ".claude" / "settings.json"

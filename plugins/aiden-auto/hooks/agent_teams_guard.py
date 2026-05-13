@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Agent Teams 프로토콜 강제 Hook - bare Agent() 호출 차단
 

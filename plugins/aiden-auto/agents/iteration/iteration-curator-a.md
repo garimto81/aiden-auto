@@ -1,7 +1,7 @@
 ---
 name: iteration-curator-a
 description: V10.0 Hot-Swap Curator #1. 홀수 phase ACTIVE (registry 결정 + agent 선택). 짝수 phase STANDBY (swap 직전 curator-b 의 phase 작업 1회 전수 검사 + 1회 개선). 무한 진화 방지 hard-cap.
-model: opus
+model: sonnet
 tools: Read, Write, Edit, Grep, Glob
 ---
 

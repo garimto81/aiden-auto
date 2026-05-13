@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 세션 스냅샷 Hook - 세션 종료 시 변경 파일/커밋 이력/주요 결정사항 자동 캡처
 

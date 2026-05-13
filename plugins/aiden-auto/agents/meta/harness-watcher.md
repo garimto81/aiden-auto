@@ -1,12 +1,17 @@
 ---
 name: harness-watcher
 description: >
-  매일 외부 harness framework update 추적 agent. references/external-harness-registry.md에
+  외부 harness framework update 추적 agent. references/external-harness-registry.md에
   등록된 모든 framework에 대해 GitHub API로 신규 release/tag/commit 감지하고 diff 요약 산출.
-  daily hook 또는 cron으로 자동 발동. last_checked 자동 갱신.
+  v28.2 (Section 13.3): 4 trigger 지원 — daily / on-demand / first-fail / post-cmd (light mode).
+  last_checked 자동 갱신.
 model: haiku
 tools: Bash, Read, Write, Edit, WebFetch
-auto_invoke: daily
+auto_invoke:
+  - on_daily_cron
+  - on_demand_request
+  - on_adapter_failure_signal
+  - on_post_framework_command
 ---
 
 # Role

@@ -52,10 +52,10 @@ CLAUDE.md, 커맨드, 에이전트, 스킬의 일관성과 품질을 점검합�
     │       └─ [9/9] Setup Audit (deep/HEAVY만)
     │
     ├─ [Phase 1.5] Prompt Quality Check + Auto-Optimize (필수)
-    │       ├─ python -m prompt_learning.src eval --base-path C:/claude --json
+    │       ├─ python -m prompt_learning.src eval --base-path "${CLAUDE_PROJECT_DIR:-$(pwd)}" --json
     │       ├─ 규칙 기반 품질 점수 산출 (구조/명확성)
     │       ├─ 저점수 (< 70%) 프롬프트 자동 최적화 (dry-run)
-    │       │   └─ python -m prompt_learning.src optimize --base-path C:/claude --dry-run
+    │       │   └─ python -m prompt_learning.src optimize --base-path "${CLAUDE_PROJECT_DIR:-$(pwd)}" --dry-run
     │       └─ 최적화 제안 요약 출력 (적용 여부는 사용자 확인)
     │
     ├─ [Phase 2] 웹 리서치 기반 트렌드 분석 (Lead 직접 실행)

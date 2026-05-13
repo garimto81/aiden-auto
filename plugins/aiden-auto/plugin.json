@@ -1,40 +1,38 @@
 {
   "name": "aiden-auto",
-  "version": "28.2.0",
-  "description": "Index Router — Intent 분석 후 chapter 1개만 lazy load. 외부 harness framework는 그대로 유지하고 매일 update를 critic으로 자가개선. 동적 statusline telemetry 포함.",
-  "author": {
-    "name": "garimto81",
-    "email": "garimto1981@gmail.com",
-    "url": "https://github.com/garimto81"
-  },
-  "homepage": "https://github.com/garimto81/aiden-auto",
+  "version": "28.3.0",
+  "description": "Index Router + /goal-based loop driver + Deep Interview + Multi-Session + Perfect Output Gate + Adaptive Framework + Progress Hooks. v28.3: v28.2 RCA 5-flaw fix + FR-004 (95% threshold + Draft PR) + FR-005 (manual reset-breaker) + phase-1 modularization. Minimum Input → Maximum Output Engine.",
+  "author": { "name": "garimto81", "email": "garimto1981@gmail.com" },
   "repository": "https://github.com/garimto81/aiden-auto",
   "license": "MIT",
-  "keywords": [
-    "claude-code",
-    "pdca",
-    "orchestrator",
-    "multi-agent",
-    "iteration",
-    "auto-workflow",
-    "self-improvement",
-    "harness-tracking",
-    "statusline-telemetry"
+  "keywords": ["claude-code", "pdca", "orchestrator", "multi-agent", "iteration", "auto-workflow", "self-improvement", "harness-tracking", "goal-loop", "advisor-tool", "agent-view", "adaptive-framework"],
+  "claude_code": { "min_version": "2.1.139", "plugin_spec": "1.0" },
+  "components": { "skills": 22, "agents": 44, "hooks": 36, "rules": 8, "references": 48, "commands": 22, "lib": 16, "config": 5 },
+  "core_philosophy": { "user_entry_points": "minimize", "autonomous_iteration": "maximize", "user_decision_per_session": "0-2" },
+  "five_principles": [
+    "외부 harness framework 그대로 유지 (참조만, 복사 안 함)",
+    "외부 update 자동 critic → 자가개선 (harness-watcher/critic/applier)",
+    "SKILL.md 최소 진입점 (≤120줄, lazy load only)",
+    "Intent → Chapter 라우팅 (1 chapter = 1 reference 로딩)",
+    "스킬/커맨드/워크플로우 = 방대 (슈퍼앱)"
   ],
-  "metadata": {
-    "claude_code": { "min_version": "1.0.0", "plugin_spec": "1.0" },
-    "components": { "skills": 22, "agents": 34, "hooks": 28, "rules": 8, "references": 38, "commands": 20, "lib": 13 },
-    "core_philosophy": {
-      "user_entry_points": "minimize",
-      "autonomous_iteration": "maximize",
-      "user_decision_per_session": "0-2"
-    },
-    "five_principles": [
-      "외부 harness framework 그대로 유지 (참조만, 복사 안 함)",
-      "외부 update 자동 critic → 자가개선 (harness-watcher/critic/applier)",
-      "SKILL.md 최소 진입점 (≤120줄, lazy load only)",
-      "Intent → Chapter 라우팅 (1 chapter = 1 reference 로딩)",
-      "스킬/커맨드/워크플로우 = 방대 (슈퍼앱)"
-    ]
+  "v28_2_features": {
+    "schema_version": "1.0",
+    "goal_loop_driver": "Stop hook + /goal command (lib/adapters/goal_adapter.py)",
+    "deep_interview": "Phase -1.5 (agents/core/intake-interviewer.md)",
+    "quota_advisor": "advisor-tool API beta (agents/meta/quota-{executor,advisor}.md)",
+    "multi_session": "session type classification + auto-launch (agents/meta/multi-session-router.md)",
+    "perfect_output_gate": "4-stage (Gate 1 validator + Gate 2 e2e-qa-prover + Gate 3 submission + Gate 4 BLOCK)",
+    "adaptive_framework": "5 adapters + feature flags (lib/adapters/, config/feature-flags.yml)",
+    "progress_hooks": "events.jsonl + HMAC + DLQ (lib/sessions/event_schema.py, hooks/event_dispatcher.py)",
+    "statusline": "Dual-source: host의 ~/.claude/hud/* (있으면 우선) 또는 plugin/hud/* (fallback). SessionStart hook이 settings.json의 statusLine 키 부재 시 자동 주입 (비파괴). 4줄 출력 (hybrid 1 + 모델별 3). harness-watcher가 host 파일을 daily 추적.",
+    "user_friendly_reporter": "Section 16 비개발자 친화 보고 워크플로우. agents/core/user-friendly-reporter.md (sonnet, Gate 5 의무). 길이 제한 없이 자세히, 약어 풀이/일상 비유/단계별/'왜?' 설명 의무. 모든 Phase 4 close + audit + plan 갱신 + 검증 출력이 본 reporter 통과."
+  },
+  "v28_3_features": {
+    "rca_5_flaw_fix": "v28.2 RCA Steps 1-6: loop_detector 95줄 실제 구현 (fingerprint sliding window 3-fail block) + circuit_breaker atomic write (os.replace + Windows unique-tmp) + session_init 24h HALF_OPEN 유지 (SessionStart 무조건 리셋 제거) + harness-applier 명시 staging 경로 + state/ 보호 + harness-critic 임계값 70→90 + 4KB sanitize + phase-1-plan 39KB → 3.6KB 코어 + 5 appendix lazy-load 분해",
+    "fr_004_threshold_draft_pr": "harness-critic APPROVE 임계값 90→95 + harness-applier gh pr create --draft 플래그 추가 (사용자 검토 강제)",
+    "fr_005_manual_reset": "commands/reset-breaker.md 신규 사용자 호출 명령 + scripts/reset_breaker.py atomic state reset + circuit_breaker.py block 메시지에 troubleshooting 가이드 첨부",
+    "phase_1_modularization": "references/phase-1-plan.md 906줄 → 코어만 유지. references/appendix/phase-1-{socratic-questioning,plan-steps,design,prd,model-routing}.md 5개로 lazy-load 분해 (Progressive Disclosure)",
+    "stress_test_results": "5-thread × 100 writes: 500/500 성공, JSON 무결성 OK. loop_detector: 3회 동일 fingerprint → decision=block 정상"
   }
 }

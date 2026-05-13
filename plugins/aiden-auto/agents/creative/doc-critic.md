@@ -1,7 +1,7 @@
 ---
 name: doc-critic
 description: 문서 품질 심층 critic. 18세 일반인 기준으로 목차 비약 탐지, 단락별 이해도 평가, 시각 자료 비율 검증 수행. READ-ONLY.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob
 ---
 

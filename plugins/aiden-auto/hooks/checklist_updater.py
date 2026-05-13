@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Checklist Auto-Updater Hook
 서브 에이전트(Task tool) 완료 시 체크리스트 자동 업데이트

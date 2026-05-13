@@ -1,0 +1,61 @@
+# feature-flags.yml — v28.2 Section 13.5 Feature Flag Auto-Enable
+# applier가 외부 framework 안정성 detect 시 자동 ON PR 생성.
+# rollback_signal trip 시 즉시 OFF.
+
+schema_version: "1.0"
+version: 1
+
+flags:
+  goal_v2_multi_condition:
+    enabled: false
+    auto_enable_when: "framework_version >= 2.5.0 AND stability == 'stable'"
+    rollback_signal: "error_rate > 5% in 24h"
+    rationale: "CC /goal v2.5+ 멀티 조건 지원. critic 승인 + 안정성 확인 시 ON."
+    last_evaluated: null
+    last_evaluation_result: null
+
+  advisor_tool_streaming:
+    enabled: false
+    auto_enable_when: "beta_header_stable == true AND release_notes_mention('streaming')"
+    rollback_signal: "advisor_call_failure_rate > 10% in 24h"
+    rationale: "advisor-tool API beta가 streaming 지원하면 sub-inference 응답 streaming."
+    last_evaluated: null
+    last_evaluation_result: null
+
+  agent_view_pubsub:
+    enabled: false
+    auto_enable_when: "claude_code_version >= 2.2.0 AND agent_view_supports_websocket == true"
+    rollback_signal: "websocket_disconnect_rate > 20%"
+    rationale: "agent-view가 pubsub/websocket 지원하면 events.jsonl 대신 실시간 push 가능."
+    last_evaluated: null
+    last_evaluation_result: null
+
+  multi_goal_stack:
+    enabled: false
+    auto_enable_when: "framework_version >= 2.5.0 AND release_notes_mention('multi-goal')"
+    rollback_signal: "goal_corruption_rate > 0.1%"
+    rationale: "/goal 다중 동시 활성 지원 시 multi-session 별 독립 goal 가능."
+    last_evaluated: null
+    last_evaluation_result: null
+
+  orchestrator_v11:
+    enabled: false
+    auto_enable_when: "orchestrator_version >= 11.0 AND backward_compat_pass == true"
+    rollback_signal: "session_spawn_failure_rate > 5%"
+    rationale: "orchestrator v11 새 API 활용. backward_compat 통과 필수."
+    last_evaluated: null
+    last_evaluation_result: null
+
+# 정책
+policy:
+  evaluation_frequency: "daily (via harness-watcher daily trigger)"
+  rollback_window: "24h after auto-enable"
+  rollback_action: "applier가 immediately OFF PR 생성"
+  user_override: "사용자가 명시 enable: true 설정 시 auto evaluation skip"
+
+# 관련
+# - agents/meta/harness-watcher.md — daily evaluation
+# - agents/meta/harness-critic.md  — backward_compat 5번째 질문
+# - agents/meta/harness-applier.md — auto-enable PR + rollback
+# - lib/adapters/__init__.py        — adapter 호환성 매트릭스
+# - Plan Section 13.5

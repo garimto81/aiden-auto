@@ -1,12 +1,13 @@
 ---
 name: auto
 description: >
-  Index Router (v28.1) — 사용자 평문을 분석하여 적절한 chapter만 lazy load 하는 최소 진입점.
-  거대 문서 통째 로드 금지. 외부 harness framework는 그대로 유지하고 매일 update를 critic으로 자가개선.
-  Auto-trigger ON (작업 요청 평문 자동 발동). Skip for trivial questions, file reads, !quick/!hotfix.
-  /aiden-auto:auto / /iteration / iterate 모두 이 SKILL로 redirect.
-version: 28.1.0
+  Index Router (v28.2) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.2: /goal 기반 loop driver,
+  Deep Interview, multi-session, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
+  Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
+  /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
+version: 28.2.0
 auto_trigger: true
+output_style: user_friendly  # v28.2 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
   keywords:
     - "/auto"
@@ -15,6 +16,13 @@ triggers:
     - "/iteration"
     - "iterate"
     - "cycle"
+    - "/goal"
+    - "goal"
+    - "목표"
+    - "쿼타"
+    - "quota"
+    - "멀티세션"
+    - "multi-session"
 ---
 
 # /auto — Index Router (v28.1)
@@ -188,6 +196,6 @@ Read("references/communication-style.md")
 | 버전 | 핵심 변경 |
 |------|----------|
 | v28.1 (2026-05-11) | SKILL.md 311→120줄 정제 + 5원칙 명시 + 외부 harness 자가개선 사이클 추가 |
-| v28.0 (2026-05-11) | C:/claude v18.0 + aiden-auto v27.2 통합 (alpha) |
+| v28.0 (2026-05-11) | aiden-auto v18.0 + aiden-auto v27.2 통합 (alpha) |
 | v27.2 (2026-05-04) | XML chapter + Multi-perspective + Pipeline + Cleanup + 4 specialist agents |
 | v27.0 (2026-05-03) | /iteration 흡수, chapter 라우팅 도입, 평문 트리거 부분 부활 |

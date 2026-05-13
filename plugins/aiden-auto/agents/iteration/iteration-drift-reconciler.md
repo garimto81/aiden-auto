@@ -1,7 +1,7 @@
 ---
 name: iteration-drift-reconciler
 description: V10.0 Impl-first Step 3 의 SSOT vs 코드 결정자. drift 감지 후 Type A/B/C/D 자율 분류. SSOT 모호 시 SSOT 보강 우선 (사용자에게 기술 가치 판단 떠넘기기 금지).
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

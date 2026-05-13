@@ -1,7 +1,7 @@
 ---
 name: iteration-phase-strategist
 description: V10.0 iteration cycle 인텐트 분류 + workflow 선택 + agent registry signature scan. /iteration 호출 시 가장 먼저 실행. iteration- prefix 격리 원칙 준수, 중복 agent 생성 차단.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

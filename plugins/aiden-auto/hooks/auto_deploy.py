@@ -1,7 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Stop hook: server/Flutter/src 변경 감지 시 자동 빌드 + Docker 배포.
 
 기존 deploy_gate.py(경고만)를 대체. 실제 빌드/배포를 자동 실행.
+
+범용 plugin — 특정 프로젝트 기본값 없음.
+프로젝트 루트 .claude/deploy-config.json 이 없으면 silent noop.
+예시: config/profiles/deploy-config.example.json 참고.
 """
 
 import json
@@ -10,42 +14,34 @@ import subprocess
 import sys
 import time
 
-DEFAULT_PROJECT = "C:/claude/game_kfc"
-DEFAULT_FLUTTER_DIR = os.path.join(DEFAULT_PROJECT, "game_kfc_flutter")
-DEFAULT_WEB_BUILD = os.path.join(DEFAULT_PROJECT, "web_build")
-DEFAULT_WATCH_PATHS = ["server/", "game_kfc_flutter/lib/", "src/"]
-
 
 def _load_deploy_config():
-    """프로젝트별 deploy-config.json 로드. 없으면 game_kfc 기본값 사용.
+    """프로젝트별 .claude/deploy-config.json 을 로드.
 
     반복 프롬프트 분석(2026-03-25): Docker 재빌드 6회 반복 해소.
     각 프로젝트에 .claude/deploy-config.json을 두면 자동 배포 대상이 됨.
+
+    deploy-config.json 이 없으면 None 반환 — 호출자가 즉시 noop 종료.
+    범용 plugin 으로서 특정 프로젝트 기본값을 제공하지 않음.
     """
     cwd = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     config_path = os.path.join(cwd, ".claude", "deploy-config.json")
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            return {
-                "project": cwd,
-                "watch_paths": cfg.get("watch_paths", ["server/", "src/"]),
-                "docker_compose": cfg.get("docker_compose", "docker-compose.yml"),
-                "health_check": cfg.get("health_check", ""),
-                "flutter_dir": cfg.get("flutter_dir", ""),
-                "web_build": cfg.get("web_build", ""),
-            }
-        except Exception:
-            pass
-    # 기본값: game_kfc
+    if not os.path.exists(config_path):
+        return None
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+    except Exception as e:
+        sys.stderr.write(f"[auto_deploy] failed to parse {config_path}: {e}\n")
+        return None
     return {
-        "project": DEFAULT_PROJECT,
-        "watch_paths": DEFAULT_WATCH_PATHS,
-        "docker_compose": "docker-compose.yml",
-        "health_check": "http://localhost:8000/api/rooms",
-        "flutter_dir": DEFAULT_FLUTTER_DIR,
-        "web_build": DEFAULT_WEB_BUILD,
+        "project": cwd,
+        "watch_paths": cfg.get("watch_paths", ["server/", "src/"]),
+        "docker_compose": cfg.get("docker_compose", "docker-compose.yml"),
+        "health_check": cfg.get("health_check", ""),
+        "flutter_dir": cfg.get("flutter_dir", ""),
+        "web_build": cfg.get("web_build", ""),
+        "flutter_prefix": cfg.get("flutter_prefix", ""),  # e.g. "my_app_flutter"
     }
 
 
@@ -83,7 +79,8 @@ def main():
         pass
 
     # 0. Deployment Freeze 확인
-    freeze_path = os.path.join("C:/claude/.claude/config", "deploy-freeze.json")
+    project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    freeze_path = os.path.join(project_root, ".claude", "config", "deploy-freeze.json")
     if os.path.exists(freeze_path):
         try:
             with open(freeze_path, "r", encoding="utf-8") as f:
@@ -96,8 +93,10 @@ def main():
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # 설정 로드 (프로젝트별 또는 기본값)
+    # 설정 로드 — deploy-config.json 없으면 silent noop
     cfg = _load_deploy_config()
+    if cfg is None:
+        return  # 범용 환경: deploy-config.json 미존재 → 아무것도 하지 않음
     PROJECT = cfg["project"]
     WATCH_PATHS = cfg["watch_paths"]
     FLAG = _get_flag_path(PROJECT)
@@ -125,29 +124,50 @@ def main():
     flutter_dir = cfg.get("flutter_dir", "")
     web_build = cfg.get("web_build", "")
     if flutter_dir and os.path.isdir(flutter_dir):
-        flutter_changed = any(f.startswith("game_kfc_flutter/") for f in changed)
+        flutter_prefix = cfg.get("flutter_prefix", "")
+        if flutter_prefix:
+            flutter_changed = any(f.startswith(flutter_prefix + "/") for f in changed)
+        else:
+            flutter_changed = False
         if flutter_changed:
-            ok, out = run(
-                f"flutter build web --output={web_build}",
-                cwd=flutter_dir,
-                timeout=300,
-            )
+            try:
+                ok, out = run(
+                    f"flutter build web --output={web_build}",
+                    cwd=flutter_dir,
+                    timeout=300,
+                )
+            except FileNotFoundError:
+                sys.stderr.write("[auto_deploy] flutter not installed — skipping flutter build\n")
+                ok = True  # flutter 없는 환경에서도 docker 단계 진행
+                out = ""
             if not ok:
                 sys.stderr.write(f"❌ Flutter build 실패: {out[:200]}\n")
                 return
 
     # 4b. Docker rebuild
-    ok, out = run("docker compose down --remove-orphans", cwd=PROJECT)
+    try:
+        ok, out = run("docker compose down --remove-orphans", cwd=PROJECT)
+    except FileNotFoundError:
+        sys.stderr.write("[auto_deploy] docker not installed — skipping deploy\n")
+        return
     if not ok:
         sys.stderr.write(f"❌ docker compose down 실패: {out[:200]}\n")
         return
 
-    ok, out = run("docker compose build", cwd=PROJECT, timeout=300)
+    try:
+        ok, out = run("docker compose build", cwd=PROJECT, timeout=300)
+    except FileNotFoundError:
+        sys.stderr.write("[auto_deploy] docker not installed — skipping deploy\n")
+        return
     if not ok:
         sys.stderr.write(f"❌ docker compose build 실패: {out[:200]}\n")
         return
 
-    ok, out = run("docker compose up -d", cwd=PROJECT)
+    try:
+        ok, out = run("docker compose up -d", cwd=PROJECT)
+    except FileNotFoundError:
+        sys.stderr.write("[auto_deploy] docker not installed — skipping deploy\n")
+        return
     if not ok:
         sys.stderr.write(f"❌ docker compose up 실패: {out[:200]}\n")
         return
@@ -168,4 +188,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        sys.stderr.write(f"[auto_deploy] FAILED: {e}\n")
+        sys.stderr.write(traceback.format_exc())
+        sys.exit(0)  # Stop hook — non-zero 회피 (Claude Code 에러 배너 방지)

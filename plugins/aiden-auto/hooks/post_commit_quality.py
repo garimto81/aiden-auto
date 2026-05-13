@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 post-commit Hook - 커밋 메시지 품질 점수 측정
 
@@ -6,6 +6,7 @@ post-commit Hook - 커밋 메시지 품질 점수 측정
 품질 점수가 낮으면 /commit --rewrite 1 개선 제안을 출력합니다.
 """
 
+import os
 import subprocess
 import re
 import sys
@@ -116,7 +117,8 @@ def main():
         print(f'\n📊 커밋 품질 보통 ({score}/100)')
 
     # 로그 저장 (선택적)
-    log_dir = Path('C:/claude/.claude/logs')
+    _project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    log_dir = Path(_project_root) / ".claude" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / 'commit_quality.jsonl'
     try:
@@ -132,4 +134,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        sys.stderr.write(f"[post_commit_quality] FAILED: {e}\n")
+        sys.stderr.write(traceback.format_exc())
+        sys.exit(0)  # Stop hook — non-zero 회피 (Claude Code 에러 배너 방지)

@@ -335,3 +335,18 @@ User: "이 파일 뭐야?"
 ```
 
 </User_Friendly_Explanation>
+
+---
+
+## 종료 보고 의무 (v28.2 Section 16)
+
+CODE chapter의 Phase 4 close 출력은 **`user-friendly-reporter` agent 통과 의무** (Gate 5). 위 User_Friendly_Explanation은 작업 진입 시 안내. **최종 결과 보고**는 reporter가 다음 규칙으로 자동 변환:
+
+- 약어·전문용어 첫 등장 시 무조건 풀이 (`PR`, `TDD`, `executor`, `architect` 등)
+- 핵심 개념마다 일상 비유 1개 (직업군 도메인 금지)
+- 단계별 설명 (1단계, 2단계 ...)
+- 모든 작업·결정에 "왜?" 1-2줄
+- 길이 제한 없음 — 자세히 풀어 설명 (요약 금지)
+- 상세 데이터 채팅에 함께 표시 (별도 파일 분리 안 함)
+
+자세한 사양: `references/user-friendly-report-protocol.md`

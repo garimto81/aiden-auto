@@ -1,0 +1,9 @@
+{
+  "_comment": "이 파일을 프로젝트 .claude/deploy-config.json 으로 복사 후 사용자 환경에 맞게 수정",
+  "watch_paths": ["server/", "src/", "app/"],
+  "docker_compose": "docker-compose.yml",
+  "health_check": "http://localhost:8000/health",
+  "flutter_dir": "my_app_flutter",
+  "flutter_prefix": "my_app_flutter",
+  "web_build": "web_build"
+}

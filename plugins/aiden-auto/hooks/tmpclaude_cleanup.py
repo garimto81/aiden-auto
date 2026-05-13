@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Task 도구 완료 후 tmpclaude-*-cwd 임시 파일 즉시 정리
 

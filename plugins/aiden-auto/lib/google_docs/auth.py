@@ -25,8 +25,8 @@ def _get_project_root() -> Path:
         if (parent / "CLAUDE.md").exists() or (parent / ".git").exists():
             return parent
 
-    # 3. 기본값 (fallback)
-    return Path("C:/claude")
+    # 3. 기본값 (fallback) — env var 또는 cwd
+    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 
 
 # 프로젝트 루트 기반 경로 설정
