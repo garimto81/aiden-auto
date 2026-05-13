@@ -1,19 +1,17 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "garimto81-aiden-auto",
+  "description": "aiden-auto v28.x — Index Router + 외부 harness 자가개선 사이클 (watcher/critic/applier) + 동적 statusline telemetry",
   "owner": {
     "name": "garimto81",
+    "email": "garimto1981@gmail.com",
     "url": "https://github.com/garimto81"
-  },
-  "metadata": {
-    "description": "aiden-auto v28.x — Index Router + 외부 harness 자가개선 사이클 (watcher/critic/applier)",
-    "version": "28.1.0"
   },
   "plugins": [
     {
       "name": "aiden-auto",
-      "source": ".",
       "description": "Index Router — Intent 분석 후 chapter 1개만 lazy load. 5원칙: (1) 외부 harness 그대로 유지 (2) 매일 critic 자가개선 (3) SKILL.md 최소화 (4) Intent→chapter 라우팅 (5) 스킬/커맨드 = 슈퍼앱.",
-      "version": "28.1.0",
+      "version": "28.2.0",
       "author": {
         "name": "garimto81",
         "url": "https://github.com/garimto81"
@@ -21,6 +19,7 @@
       "homepage": "https://github.com/garimto81/aiden-auto",
       "repository": "https://github.com/garimto81/aiden-auto",
       "license": "MIT",
+      "category": "workflow",
       "keywords": [
         "claude-code",
         "pdca",
@@ -29,9 +28,10 @@
         "iteration",
         "auto-workflow",
         "chapter-router",
-        "self-improvement"
+        "self-improvement",
+        "statusline-telemetry"
       ],
-      "category": "workflow",
+      "source": "./plugins/aiden-auto",
       "strict": true
     }
   ]
