@@ -7,6 +7,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_update.py",
+            "async": true
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash|Edit|Write|Agent",
@@ -15,6 +27,16 @@
             "type": "command",
             "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/circuit_breaker.py",
             "statusMessage": "Checking circuit breaker..."
+          }
+        ]
+      },
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_update.py",
+            "async": true
           }
         ]
       },
@@ -36,6 +58,16 @@
           {
             "type": "command",
             "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py"
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/cc_auth_check.py",
+            "statusMessage": "Checking Claude Code OAuth (advisor-tool)..."
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_update.py",
+            "async": true
           }
         ]
       }
