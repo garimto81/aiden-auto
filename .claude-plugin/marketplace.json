@@ -31,8 +31,13 @@
         "self-improvement",
         "statusline-telemetry"
       ],
-      "source": "./plugins/aiden-auto",
-      "strict": true
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/garimto81/aiden-auto.git",
+        "path": "plugins/aiden-auto",
+        "ref": "main",
+        "sha": "2f85bd6eb21647562fca10be8542d15993e27111"
+      }
     }
   ]
 }
