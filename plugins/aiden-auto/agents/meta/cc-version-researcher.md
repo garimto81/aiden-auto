@@ -13,7 +13,7 @@ description: |
   Triggers: CC version, CLI update, Claude Code update, CC 버전, CLI 업데이트, 변경사항, 릴리스 노트
 
   Do NOT use for: bkit/OMC/vercel 분석 (별도 reference-repos 분석 시)
-model: opus
+model: sonnet
 tools: Read, Write, Bash, Grep, Glob
 ---
 

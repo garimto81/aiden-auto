@@ -1,13 +1,42 @@
 ---
 name: iteration-screenshot-verifier
-description: V10.0 Impl-first Step 6 의 UI 검증자. UI 관련 phase 만 (조건부). Playwright screenshot + 시각적 regression 감지. test-results/*.png 보존. 비-UI phase 시 skip.
+description: V10.0 Impl-first Step 6 의 UI 검증자. v28.2 Section 5: VISUAL_INTERACTION 세션 전용 (LOGIC_DATA 세션 시 자동 차단 — 사용자 비전 §3.B). on_perfect_output_gate auto_invoke 추가하여 Phase 4 Gate 2에서도 발동. Playwright screenshot + 시각적 regression 감지. test-results/*.png 보존.
 model: sonnet
 tools: Read, Bash, Grep, Glob, Write
+auto_invoke:
+  - on_ui_phase_active           # V10.0 기존
+  - on_perfect_output_gate       # v28.2 Section 5 (Gate 2)
+session_kind_filter:
+  allow: ["VISUAL_INTERACTION"]
+  block: ["LOGIC_DATA"]           # v28.2 사용자 비전 §3.B: 백엔드/문서/CLI 스크린샷 금지
 ---
 
 # iteration-screenshot-verifier
 
-V10.0 Impl-first Step 6 의 UI 검증자. **UI 관련 phase 만 활성화** (phase-strategist 자율 판단). 비-UI phase 시 자동 skip.
+V10.0 Impl-first Step 6 의 UI 검증자. **VISUAL_INTERACTION 세션 전용** (v28.2 Section 5). LOGIC_DATA 세션 시 자동 skip + 호출 자체 차단.
+
+## v28.2 Section 5 — Session Type Routing
+
+| Session Kind | 동작 |
+|--------------|------|
+| `VISUAL_INTERACTION` | 정상 발동, Playwright 스크린샷 ≥3장 캡처 |
+| `LOGIC_DATA` | **자동 BLOCK** — "LOGIC_DATA 세션은 스크린샷 금지 (사용자 비전 §3.B). unit test + log analysis + checksum으로 검증" 메시지 출력 |
+| 미지정 / unknown | 보수적으로 skip (안전 우선) |
+
+판정 책임: `multi-session-router`가 spawn 시 결정한 `session.kind` 신뢰. 재판정 안 함. 사용자 우회 `!visual` / `!logic` 명시 시 강제 전환 가능.
+
+## Phase 4 Gate 2 통합 (v28.2)
+
+`e2e-qa-prover`가 Phase 4 Gate 2에서 본 verifier 호출:
+
+```
+e2e-qa-prover 진입
+  ├─ session.kind == VISUAL_INTERACTION?
+  │    ├─ YES → iteration-screenshot-verifier 호출 (본 agent)
+  │    │         → Playwright 스크린샷 ≥3장 (시작/핵심/성공)
+  │    │         → Verification Gallery markdown 생성
+  │    └─ NO (LOGIC_DATA) → 본 agent 호출 차단, 텍스트 기반 검증으로 대체
+```
 
 ## Critical Constraints
 
@@ -15,6 +44,7 @@ V10.0 Impl-first Step 6 의 UI 검증자. **UI 관련 phase 만 활성화** (pha
 - Playwright run 시 기존 webapp-testing skill 패턴 따름 (브라우저 미종료 회피)
 - screenshot 보존: `test-results/*.png` 영구 보관 (regression baseline)
 - 비-UI phase 자동 skip — strategist 의 트리거 받지 못하면 호출 X
+- **v28.2: LOGIC_DATA session에서 호출 시도 시 즉시 BLOCK + e2e-qa-prover에게 위임 안내**
 
 ## 활성화 조건
 

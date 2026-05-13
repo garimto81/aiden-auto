@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 task_completed_trigger.py — PostToolUse(TaskUpdate) Hook
 Task 완료 시 다음 단계 알림 로그 생성 + Phase 전환 감지

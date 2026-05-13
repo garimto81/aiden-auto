@@ -4,7 +4,7 @@ description: >
   cc-auth-executor가 모호/위험 신호 감지 시 escalate되는 2차 advisor. opus 모델로
   5-질문 정가중 평가하여 verdict 4종(AUTO_REFRESH/PROMPT_USER/BLOCK/DEFER) 반환.
   READ-ONLY (판정만, 코드 변경 없음). Anthropic advisor-tool 패턴의 "Advisor" 역할.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob
 auto_invoke: on_executor_pending_flag
 ---

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 PostToolUse Hook — 코드 수정 시 Slack 자동 보고 (5분 쿨다운 배치)
 
@@ -12,8 +12,13 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-CHANGE_LOG = Path(r"C:\claude\.claude\logs\edit_changes.jsonl")
-COOLDOWN_FILE = Path(r"C:\claude\.claude\logs\edit_slack_last.txt")
+def _resolve_log_path(filename: str) -> Path:
+    project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    return Path(project_root) / ".claude" / "logs" / filename
+
+
+CHANGE_LOG = _resolve_log_path("edit_changes.jsonl")
+COOLDOWN_FILE = _resolve_log_path("edit_slack_last.txt")
 COOLDOWN_SEC = 300  # 5분
 SLACK_CHANNEL = "C0985UXQN6Q"
 MAX_FILES_DISPLAY = 10
@@ -78,7 +83,7 @@ def get_git_info() -> tuple[str, str]:
     """프로젝트명과 브랜치 반환."""
     project, branch = "unknown", "unknown"
     try:
-        cwd = os.environ.get("CLAUDE_PROJECT_DIR", r"C:\claude")
+        cwd = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             cwd=cwd, capture_output=True, text=True, timeout=5,
@@ -133,9 +138,10 @@ def send_slack(entries: list[dict]):
     )
 
     try:
+        project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
         subprocess.run(
             [sys.executable, "-c",
-             "import sys; sys.path.insert(0, r'C:\\claude'); "
+             f"import sys; sys.path.insert(0, r'{project_root}'); "
              "from lib.slack.client import SlackClient; "
              "SlackClient().send_message(sys.argv[1], sys.stdin.read())",
              SLACK_CHANNEL],

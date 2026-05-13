@@ -117,32 +117,36 @@ frameworks:
   # Core Philosophy #1 (외부 도구 그대로 유지, 참조만) 정합.
   - id: statusline-combined
     owner: host
-    path: "C:/Users/AidenKim/.claude/hud/statusline-combined.mjs"
-    check_method: "host-file-mtime"
+    path: "~/.claude/hud/statusline-combined.mjs"
+    check_method: "optional-host-file"
+    optional: true
     last_checked: "2026-05-13"
-    rationale: "Multi-line combinator (hybrid + model usage). aiden-auto의 statusline 진입점. GLOBAL settings.json statusLine으로 등록되어 매 세션 화면에 출력."
+    rationale: "Multi-line combinator (hybrid + model usage). aiden-auto의 statusline 진입점. GLOBAL settings.json statusLine으로 등록되어 매 세션 화면에 출력. 미존재 시 plugin/hud/ fallback."
 
   - id: hybrid-statusline
     owner: host
-    path: "C:/Users/AidenKim/.claude/hud/hybrid-statusline.mjs"
-    check_method: "host-file-mtime"
+    path: "~/.claude/hud/hybrid-statusline.mjs"
+    check_method: "optional-host-file"
+    optional: true
     last_checked: "2026-05-13"
-    rationale: "메인 statusline (디렉토리, git 브랜치, 사용 중 모델). 호스트 표준 출력 1줄."
+    rationale: "메인 statusline (디렉토리, git 브랜치, 사용 중 모델). 호스트 표준 출력 1줄. 미존재 시 plugin/hud/ fallback."
 
   - id: model-usage-line
     owner: host
-    path: "C:/Users/AidenKim/.claude/hud/model-usage-line.py"
-    check_method: "host-file-mtime"
+    path: "~/.claude/hud/model-usage-line.py"
+    check_method: "optional-host-file"
+    optional: true
     last_checked: "2026-05-13"
-    rationale: "3-tier visibility 모델별 토큰 사용량 + 비용 출력 (opus / sonnet / haiku 각 1줄, 총 3줄). transcript 파싱 + Anthropic 가격 적용."
+    rationale: "3-tier visibility 모델별 토큰 사용량 + 비용 출력 (opus / sonnet / haiku 각 1줄, 총 3줄). transcript 파싱 + Anthropic 가격 적용. 미존재 시 plugin/hud/ fallback."
 
   - id: aiden-auto-telemetry
     owner: host
-    path: "C:/Users/AidenKim/.claude/hud/aiden-auto-telemetry.mjs"
+    path: "~/.claude/hud/aiden-auto-telemetry.mjs"
     state_source: "~/.claude/state/telemetry.json"
-    check_method: "host-file-mtime"
+    check_method: "optional-host-file"
+    optional: true
     last_checked: "2026-05-13"
-    rationale: "Aiden-auto 한 줄 텔레메트리 (phase · agent · model · pdca · cost · breaker). 사용자가 '어디까지 했어?' 질문하지 않게 만드는 핵심 장치. 데이터 미존재 시 silent skip. 결정 횟수 0~2회 목표 정합."
+    rationale: "Aiden-auto 한 줄 텔레메트리 (phase · agent · model · pdca · cost · breaker). 사용자가 '어디까지 했어?' 질문하지 않게 만드는 핵심 장치. 데이터 미존재 시 silent skip. 결정 횟수 0~2회 목표 정합. 미존재 시 plugin/hud/ fallback."
 ```
 
 ## v28.2 내부 advisors (자가 등록)

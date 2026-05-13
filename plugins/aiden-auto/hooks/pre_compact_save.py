@@ -1,12 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """PreCompact hook: save team and task state before context compaction."""
 import glob
 import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-SNAPSHOT_FILE = "C:/claude/.claude/hooks/.pre_compact_snapshot.json"
+
+def _resolve_snapshot_file() -> str:
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root:
+        return str(Path(plugin_root) / "state" / "pre-compact-snapshot.json")
+    # Fallback: __file__ 기반 — hooks/ 의 부모 = plugin root
+    return str(Path(__file__).resolve().parent.parent / "state" / "pre-compact-snapshot.json")
+
+
+SNAPSHOT_FILE = _resolve_snapshot_file()
 HOME = os.path.expanduser("~")
 TEAMS_DIR = os.path.join(HOME, ".claude", "teams")
 TASKS_DIR = os.path.join(HOME, ".claude", "tasks")

@@ -1,6 +1,6 @@
 # Plan → Design 전환 게이트 (Mandatory)
 
-> **출처**: C:/claude v18.2 SKILL.md L526-571 (critic 분석 후 흡수, 2026-05-11)
+> **출처**: aiden-auto v18.2 SKILL.md L526-571 (critic 분석 후 흡수, 2026-05-11)
 > **5원칙 매핑**: #5 슈퍼앱 = 자율 검증 게이트가 풍부해야 한다.
 > **로드 시점**: Phase 2 (Build) 진입 직전 또는 Design 산출물 작성 직전.
 

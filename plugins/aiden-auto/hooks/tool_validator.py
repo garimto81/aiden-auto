@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 도구 사용 검증 Hook - 위험 명령 차단 및 민감 파일 보호
 

@@ -91,7 +91,7 @@ target: "not contains FAIL"  # 문자열 미포함
 ## 예시 1: ebs 프로젝트
 
 ```yaml
-# C:/claude/ebs/.claude/auto-config.yml
+# <project-root>/.claude/auto-config.yml
 version: 1.0
 
 project_profile: ebs_governance

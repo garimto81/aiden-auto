@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 세션 시작 Hook - 브랜치 확인, TODO 표시, Stale 상태 정리
 
@@ -16,13 +16,22 @@ PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 
 
 def _get_project_root() -> Path:
-    """플랫폼에 따라 루트 프로젝트 경로 반환"""
-    if os.name == "nt":
-        return Path("C:/claude")
+    """Resolve project root with env var priority:
+    1. CLAUDE_PROJECT_DIR (env)
+    2. PROJECT_DIR module variable (from CLAUDE_PROJECT_DIR or os.getcwd())
+    3. WSL legacy support — only if /mnt/c/claude actually exists
+    4. Fallback to current working directory
+    """
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env and Path(env).exists():
+        return Path(env)
+    if PROJECT_DIR and Path(PROJECT_DIR).exists():
+        return Path(PROJECT_DIR)
+    # WSL legacy support — only if /mnt/c/claude actually exists
     wsl_path = Path("/mnt/c/claude")
     if wsl_path.exists():
         return wsl_path
-    return Path(PROJECT_DIR)
+    return Path(os.getcwd())
 
 
 ROOT_PROJECT_DIR = _get_project_root()
@@ -660,19 +669,81 @@ def detect_server_network_binding() -> list[str]:
     return messages
 
 
+def bootstrap_statusline() -> None:
+    """SessionStart 시 settings.json 의 statusLine 키 부재 시 자동 주입.
+
+    우선순위:
+    1. host 의 ~/.claude/hud/statusline-combined.mjs 가 있으면 우선 사용
+    2. plugin 내장 hud/statusline-combined.mjs 로 fallback
+
+    비파괴: 기존 statusLine 키가 있으면 건드리지 않음.
+    """
+    import sys
+    settings_path = Path.home() / ".claude" / "settings.json"
+    if not settings_path.exists():
+        return
+
+    try:
+        with open(settings_path, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+    except Exception:
+        return
+
+    if "statusLine" in settings:
+        return  # 기존 설정 보존 — 비파괴
+
+    # host hud 우선
+    host_hud = Path.home() / ".claude" / "hud" / "statusline-combined.mjs"
+    plugin_hud = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", "")) or Path(__file__).resolve().parent.parent
+    if isinstance(plugin_hud, str) and plugin_hud:
+        plugin_hud = Path(plugin_hud) / "hud" / "statusline-combined.mjs"
+    else:
+        plugin_hud = Path(__file__).resolve().parent.parent / "hud" / "statusline-combined.mjs"
+
+    if host_hud.exists():
+        statusline_path = str(host_hud)
+    elif plugin_hud.exists():
+        statusline_path = str(plugin_hud)
+    else:
+        return  # 둘 다 없으면 주입 안 함
+
+    settings["statusLine"] = {
+        "type": "command",
+        "command": f'node "{statusline_path}"'
+    }
+
+    try:
+        with open(settings_path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        import sys
+        sys.stderr.write(f"[session_init] statusline bootstrap failed: {e}\n")
+
+
 def main():
     try:
-        # Circuit Breaker 상태 초기화 (새 세션이므로 CLOSED로 리셋)
-        cb_state_file = ROOT_PROJECT_DIR / ".claude" / "hooks" / ".circuit_breaker_state.json"
+        # Circuit Breaker: 24시간 경과 시에만 HALF_OPEN으로 전환 (세션 무조건 리셋 금지)
+        # 누적 실패 횟수를 보존해야 Rule 17이 의미를 가진다.
+        import time as _time
+        _plugin_root = Path(__file__).resolve().parent.parent
+        _plugin_state_dir = _plugin_root / "state"
+        cb_state_file = _plugin_state_dir / "circuit-breaker.json"
         if cb_state_file.exists():
             try:
-                with open(cb_state_file, "w", encoding="utf-8") as f:
-                    json.dump({"state": "CLOSED", "failures": 0, "last_failure": 0, "backoff": 1}, f)
+                with open(cb_state_file, "r", encoding="utf-8") as f:
+                    _cb = json.load(f)
+                _elapsed = _time.time() - _cb.get("last_failure", 0)
+                if _cb.get("state") == "OPEN" and _elapsed >= 86400:
+                    _cb["state"] = "HALF_OPEN"
+                    _tmp = str(cb_state_file) + ".tmp"
+                    with open(_tmp, "w", encoding="utf-8") as f:
+                        json.dump(_cb, f)
+                    os.replace(_tmp, str(cb_state_file))
             except Exception:
                 pass
 
         # Pre-compact 스냅샷 복구 경고
-        compact_snapshot = ROOT_PROJECT_DIR / ".claude" / "hooks" / ".pre_compact_snapshot.json"
+        compact_snapshot = _plugin_state_dir / "pre-compact-snapshot.json"
         if compact_snapshot.exists():
             try:
                 with open(compact_snapshot, "r", encoding="utf-8") as f:
@@ -764,6 +835,13 @@ def main():
             print(json.dumps({"continue": True, "message": f"📍 세션 시작\n\n{message}"}))
         else:
             print(json.dumps({"continue": True}))
+
+        # statusline bootstrap (비파괴 — 기존 설정 있으면 skip)
+        try:
+            bootstrap_statusline()
+        except Exception as e:
+            import sys
+            sys.stderr.write(f"[session_init] bootstrap_statusline error: {e}\n")
 
     except Exception as e:
         print(json.dumps({"continue": True, "error": str(e)}))

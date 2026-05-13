@@ -49,3 +49,22 @@ auto_select:
   ci_cd: eco-2
   prototype: eco-3
   low_resource: eco-3
+
+# v28.2 신규: Quota Advisor 자동 다운그레이드 임계값
+auto_downgrade_thresholds:
+  schema_version: "1.0"
+  # quota_pretool_gate.py가 평가 → 적용
+  rules:
+    - condition: "five_h_pct >= 70 AND active_eco_mode == default"
+      target_mode: "eco"
+      rationale: "5시간 쿼타 압박 진입"
+    - condition: "weekly_pct >= 85"
+      target_mode: "eco-2"
+      rationale: "주간 쿼타 압박, 비핵심 agents Haiku 강등"
+    - condition: "weekly_pct >= 95"
+      target_mode: "eco-3"
+      rationale: "주간 쿼타 위급, 프로토타이핑 모드 강제"
+  # Circuit Breaker
+  hard_limit:
+    quota_downgrade_per_session: 5
+    rationale: "thrash 방지. 5회 도달 시 자동 차단 + 사용자 에스컬"

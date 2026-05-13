@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Stop hook: block session end if tasks are still incomplete.
 
 NOTE: SDK block behavior unverified for Stop event.

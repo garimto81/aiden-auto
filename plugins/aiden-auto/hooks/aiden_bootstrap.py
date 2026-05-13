@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 aiden_bootstrap.py — SessionStart 부트스트랩
 

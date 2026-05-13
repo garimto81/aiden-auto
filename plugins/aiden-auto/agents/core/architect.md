@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Strategic Architecture & Debugging Advisor (Opus, READ-ONLY)
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash, WebSearch
 ---
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 subagent_zombie_detector.py — SubagentStop Hook
 teammate 프로세스 종료 감지, JSONL 기록, Lead 알림, 팀 레지스트리 정리

@@ -1,6 +1,6 @@
 # ML 보조 판단 (Adaptive Mode)
 
-> **출처**: C:/claude v18.2 SKILL.md L216-238 (critic 분석 후 흡수, 2026-05-11)
+> **출처**: aiden-auto v18.2 SKILL.md L216-238 (critic 분석 후 흡수, 2026-05-11)
 > **사용자 메모리 단서**: `project_ml_harness.md` — ML 자율 진화 라우팅, Shadow Mode 구현 완료
 > **5원칙 매핑**: #5 슈퍼앱 (자율 진화) + #2 자가개선 (ML이 점수 예측 정확도 자체를 학습)
 > **로드 시점**: 복잡도 산정(adaptive-phase-selection.md) 직후, ML 세션 활성 시만.

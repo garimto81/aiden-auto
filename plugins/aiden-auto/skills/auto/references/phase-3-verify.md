@@ -216,7 +216,7 @@ while cycle < max_cycles:
 
 ```python
 # Lead 직접 실행 (에이전트 위임 없음)
-import subprocess, json
+import subprocess, json, os
 from pathlib import Path
 
 # 1. 트리거 조건 확인
@@ -231,7 +231,7 @@ if mockups and has_css_change:
     # 2. 각 목업에 대해 밸런스 측정
     for mockup in mockups:
         result = subprocess.run(
-            ["python", "C:/claude/lib/mockup_hybrid/balance_checker.py", str(mockup)],
+            ["python", os.path.join(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()), "lib/mockup_hybrid/balance_checker.py"), str(mockup)],
             capture_output=True, text=True
         )
         metrics = json.loads(result.stdout)

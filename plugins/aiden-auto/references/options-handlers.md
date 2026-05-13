@@ -48,7 +48,10 @@
 ### Step 1: 라우팅 + 기본 HTML 생성 (Lead 직접 Python 호출)
 
 ```python
-import sys; sys.path.insert(0, 'C:/claude'); sys.path.insert(0, 'C:/claude/.claude')
+import sys, os
+_project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+sys.path.insert(0, _project_dir)
+sys.path.insert(0, os.path.join(_project_dir, ".claude"))
 from pathlib import Path
 from lib.mockup_hybrid import MockupOptions
 from skills.mockup_hybrid.core.router import MockupRouter
@@ -110,7 +113,7 @@ SendMessage(type="message", recipient="mockup-designer", content="스타일링 �
 
 ```bash
 python -c "
-import sys; sys.path.insert(0, 'C:/claude')
+import sys, os; _d = os.environ.get('CLAUDE_PROJECT_DIR', os.getcwd()); sys.path.insert(0, _d)
 from pathlib import Path
 from lib.mockup_hybrid.export_utils import capture_screenshot, get_output_paths
 html_path = Path('docs/mockups/{name}.html')
@@ -206,10 +209,10 @@ for screenshot in screenshots:
 
 ```bash
 # 단일 탭
-python C:/claude/ui_overlay/scripts/anno_workflow.py --screenshot C:/claude/ui_overlay/docs/03-analysis/{tab}_live.png
+python "${CLAUDE_PROJECT_DIR:-$(pwd)}/ui_overlay/scripts/anno_workflow.py" --screenshot "${CLAUDE_PROJECT_DIR:-$(pwd)}/ui_overlay/docs/03-analysis/{tab}_live.png"
 
 # 전체 6장
-python C:/claude/ui_overlay/scripts/anno_workflow.py --all
+python "${CLAUDE_PROJECT_DIR:-$(pwd)}/ui_overlay/scripts/anno_workflow.py" --all
 ```
 
 내부 동작:
@@ -606,15 +609,17 @@ SendMessage(type="message", recipient="gmail-analyst", content="Gmail 분석 요
 
 ```python
 # --con 감지 시 즉시 실행 (발행 로직 전)
-import subprocess
+import subprocess, os
+_project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+_gws_auth = os.path.join(_project_dir, "lib/gws/gws_auth.py")
 auth_result = subprocess.run(
-    ["python", "C:/claude/lib/gws/gws_auth.py", "status"],
+    ["python", _gws_auth, "status"],
     capture_output=True, text=True, timeout=10
 )
 if "expired" in auth_result.stdout.lower() or auth_result.returncode != 0:
     # 자동 갱신 시도
     refresh = subprocess.run(
-        ["python", "C:/claude/lib/gws/gws_auth.py", "refresh"],
+        ["python", _gws_auth, "refresh"],
         capture_output=True, text=True, timeout=15
     )
     if refresh.returncode != 0:

@@ -144,6 +144,35 @@ categories:
     typical_phase_path: ["-2", "0", "4"]
     skip_phases: ["1", "2", "3"]
 
+  HARNESS-OPS:
+    description: "쿼타 / 멀티세션 / 골 — 운영 자동화 흡수 (v28.2 신규)"
+    keywords:
+      - 쿼타
+      - quota
+      - 사용량
+      - statusline
+      - 멀티세션
+      - multi-session
+      - "/goal"
+      - 골
+      - 병렬세션
+      - agent-view
+      - 워크트리
+      - "goal로 돌려"
+      - "목표 달성"
+      - "완성될 때까지"
+    chapter: "chapter-quota-ops.md"
+    agent_team:
+      - quota-executor
+      - quota-advisor
+      - multi-session-router
+      - intake-interviewer
+      - perfect-output-validator
+      - e2e-qa-prover
+    typical_phase_path: ["-2", "-1.5", "0", "4"]
+    skip_phases: ["1", "2", "3"]
+    notes: "advisor-tool API beta 차용. /goal 및 agent-view는 reference만. Section 1-14 사양 참조."
+
 # ─────────────────────────────────────────────────────────────
 # 모호성 패턴 — Triage가 감지하면 명확화 질문
 # ─────────────────────────────────────────────────────────────

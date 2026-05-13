@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 세션 종료 Hook - 미완료 작업 저장, 세션 요약, 임시 파일 정리
 

@@ -18,7 +18,7 @@ description: |
   Triggers: iterate, auto-fix, improve, fix this, 반복 개선, 자동 수정, 고쳐줘, 개선해줘, 더 좋게
 
   Do NOT use for: initial development, research tasks, design document creation, or when user explicitly wants manual control.
-model: opus
+model: sonnet
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 

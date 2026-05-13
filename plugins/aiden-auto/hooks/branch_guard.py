@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 브랜치 보호 Hook - main 브랜치에서 코드 수정 차단
 

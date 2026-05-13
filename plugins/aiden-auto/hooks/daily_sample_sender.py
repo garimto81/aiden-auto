@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 PostToolUse Hook — /daily 관련 파일 수정 시 샘플 보고서 Slack 자동 전송
 

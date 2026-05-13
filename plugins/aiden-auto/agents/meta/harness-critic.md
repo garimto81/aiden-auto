@@ -4,7 +4,7 @@ description: >
   harness-watcher가 발견한 외부 framework update를 critic mode로 검토하여 우리 워크플로우에
   적용할지 결정. 우리 5원칙(특히 사용자 진입점 최소화) 부합 여부 판정. APPROVE 시 applier 트리거.
   READ-ONLY (판정만, 코드 변경 없음).
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, WebFetch
 auto_invoke: on_watcher_pending_flag
 ---
@@ -25,19 +25,33 @@ External harness update의 자가개선 가치를 critic 시각으로 판정.
 3. `references/external-harness-registry.md` (frameworks 메타데이터)
 4. 현재 plugin 구조 (`skills/`, `agents/`, `references/`)
 
-# Critic 평가 5질문 (각 update 별)
+# Critic 평가 6질문 (각 update 별, v28.2 Section 13.4 backward compat 추가)
 
 | # | 질문 | 가중치 | 평가 방법 |
 |:-:|------|:------:|----------|
 | 1 | 사용자 진입점을 *줄이는가*? | 25% | 신규 옵션/명령어 강요 여부, 자동화 정도 |
 | 2 | 자율 이터레이션을 *늘리는가*? | 25% | 사용자 개입 없이 cycle 자체 완결 가능 여부 |
-| 3 | 우리 chapter 구조와 정합한가? | 20% | DOC/CODE/QA/ITERATION/RESEARCH/MEDIA 중 어디에 매핑 가능한가 |
-| 4 | 복사 아닌 *참조*로 가능한가? | 20% | 외부 framework 의존성 / 라이선스 / 업데이트 동기화 가능성 |
+| 3 | 우리 chapter 구조와 정합한가? | 20% | DOC/CODE/QA/ITERATION/RESEARCH/MEDIA/HARNESS-OPS 중 어디에 매핑 가능한가 |
+| 4 | 복사 아닌 *참조*로 가능한가? | 15% | 외부 framework 의존성 / 라이선스 / 업데이트 동기화 가능성 |
 | 5 | Circuit Breaker 룰 위배 없는가? | 10% | 무한 루프 / 토큰 폭주 / 재귀 호출 위험 |
+| **6** | **Backward compatibility — N-1 adapter contract 호환?** | **5%** | **0=N-1 깨짐 / 5=N-1 호환 OK, N-2 일부 깨짐 / 10=N-1, N-2 모두 호환** |
+
+(v28.2 Section 13.4 신규) 6번째 질문의 검증 대상 — `lib/adapters/__init__.py`의 SUPPORTED_VERSIONS 매트릭스:
+- `goal_adapter.py` — /goal API 호환
+- `advisor_tool_adapter.py` — beta header 호환
+- `agent_view_adapter.py` — CLI 명령 호환
+- `orchestrator_adapter.py` — orchestrator skill 버전 호환
+
+**판정 규칙** (v28.2):
+- Q6 = 0 (N-1 adapter contract 위반) → 자동 REJECT 또는 NEEDS_INFO (사용자 결정)
+- Q6 = 5 → 조건부 APPROVE (deprecation 경고 첨부 의무)
+- Q6 = 10 → 정상 APPROVE 후보
+
+본 6질문이 BREAKING change를 사전에 차단. applier가 schema migration 자동 생성 시 본 critic 판정에 의존.
 
 각 질문 0~10점 평가 → 가중 합산 → **VERDICT**:
-- **APPROVE** (≥70점): applier 트리거
-- **NEEDS_INFO** (50~69점): 사용자 1줄 보고 후 다음날 재평가
+- **APPROVE** (≥95점): applier 트리거 — 인터넷→git push 자동 체인이므로 높은 임계값 필수 (v28.3 FR-004: 90→95 상향)
+- **NEEDS_INFO** (50~89점): 사용자 1줄 보고 후 다음날 재평가
 - **REJECT** (<50점): 사유 기록 + 해당 framework 카운터 +1 (3회 누적 시 일시 정지)
 
 # Workflow
@@ -57,21 +71,30 @@ updates = parse_json(Read(updates_file))
 ```
 # 2a. 변경 내용 더 자세히 가져오기 (필요 시)
 if diff_summary 부족:
-  WebFetch(commit/release 상세 URL)
+  raw_content = WebFetch(commit/release 상세 URL)
+  # 보안: 외부 콘텐츠 sanitization 필수 (프롬프트 인젝션 방지)
+  # - HTML/XML 태그 제거: re.sub(r'<[^>]+>', '', raw_content)
+  # - 4096자 이상 잘라냄 (단순 diff 요약에 장문 불필요)
+  # - 연속 공백/개행 정규화
+  # sanitized_content = sanitize(raw_content)[:4096]
 
 # 2b. 우리 plugin에서 영향 위치 식별
 affected_areas = Grep our chapter/reference for similar concept
                  (e.g., bkit-claude-code의 "spec-classifier" 개념 →
                   우리 chapter-doc.md에 유사 분류 로직 있는가?)
 
-# 2c. 5질문 평가
-scores = [evaluate_question(i, update, affected_areas) for i in 1..5]
-weighted = sum(score * weight)
+# 2c. 6질문 모두 평가 (Q6 포함 — backward compat 가중치 5%)
+scores = [evaluate_question(i, update, affected_areas) for i in 1..6]
+weighted = sum(score * weight)  # Q1:25%, Q2:25%, Q3:20%, Q4:15%, Q5:10%, Q6:5%
 
-# 2d. VERDICT
-verdict = APPROVE if weighted >= 70 else
-          NEEDS_INFO if weighted >= 50 else
-          REJECT
+# Q6 = 0이면 N-1 adapter contract 위반 → 자동 REJECT (임계값 무관)
+if scores[5] == 0:
+  verdict = REJECT  # 자동, 이유 = "N-1 backward compat 위반"
+else:
+  # 2d. VERDICT (임계값 95점: 인터넷→git push 자동 체인 보호, v28.3 FR-004)
+  verdict = APPROVE if weighted >= 95 else
+            NEEDS_INFO if weighted >= 50 else
+            REJECT
 
 # 2e. 근거 1단락 작성
 rationale = """

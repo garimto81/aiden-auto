@@ -387,34 +387,34 @@ Agent(subagent_type="executor-high", name="impl-manager", description="4조건 �
 
 ```bash
 # 1. worktree 생성
-git worktree add "C:/claude/wt/{feature}" -b "feat/{feature}" main
+git worktree add "${CLAUDE_PROJECT_DIR:-$(pwd)}/wt/{feature}" -b "feat/{feature}" main
 
 # 2. .claude junction 생성
-cmd /c "mklink /J \"C:\\claude\\wt\\{feature}\\.claude\" \"C:\\claude\\.claude\""
+cmd /c "mklink /J \"%CLAUDE_PROJECT_DIR%\wt\{feature}\.claude\" \"%CLAUDE_PROJECT_DIR%\.claude\""
 
 # 3. 검증
 git worktree list
-ls "C:/claude/wt/{feature}/.claude/commands"
+ls "${CLAUDE_PROJECT_DIR:-$(pwd)}/wt/{feature}/.claude/commands"
 ```
 
 모든 Phase의 파일 경로에 worktree prefix 적용:
-- `docs/01-plan/` → `C:\claude\wt\{feature}\docs\01-plan\`
+- `docs/01-plan/` → `{CLAUDE_PROJECT_DIR}/wt/{feature}/docs/01-plan/`
 
 ### Teammate Prompt 패턴 (`--worktree` 시)
 
 ```
-prompt="모든 파일은 C:\\claude\\wt\\{feature}\\ 하위에서 작업하세요.
-       C:\\claude\\wt\\{feature}\\docs\\01-plan\\{feature}.plan.md를 참조하여 설계 문서를 작성하세요."
+prompt="모든 파일은 {CLAUDE_PROJECT_DIR}/wt/{feature}/ 하위에서 작업하세요.
+       {CLAUDE_PROJECT_DIR}/wt/{feature}/docs/01-plan/{feature}.plan.md를 참조하여 설계 문서를 작성하세요."
 ```
 
 ### Phase 4 Worktree Cleanup
 
 ```bash
 # 1. junction 제거
-cmd /c "rmdir \"C:\\claude\\wt\\{feature}\\.claude\""
+cmd /c "rmdir \"%CLAUDE_PROJECT_DIR%\wt\{feature}\.claude\""
 
 # 2. worktree 제거
-git worktree remove "C:/claude/wt/{feature}"
+git worktree remove "${CLAUDE_PROJECT_DIR:-$(pwd)}/wt/{feature}"
 
 # 3. 정리
 git worktree prune
@@ -423,15 +423,15 @@ git worktree prune
 ### Agent Teams 병렬 격리 (HEAVY 모드)
 
 ```bash
-git worktree add "C:/claude/wt/{feature}-impl" "feat/{feature}"
-git worktree add "C:/claude/wt/{feature}-test" "feat/{feature}"
-cmd /c "mklink /J \"C:\\claude\\wt\\{feature}-impl\\.claude\" \"C:\\claude\\.claude\""
-cmd /c "mklink /J \"C:\\claude\\wt\\{feature}-test\\.claude\" \"C:\\claude\\.claude\""
+git worktree add "${CLAUDE_PROJECT_DIR:-$(pwd)}/wt/{feature}-impl" "feat/{feature}"
+git worktree add "${CLAUDE_PROJECT_DIR:-$(pwd)}/wt/{feature}-test" "feat/{feature}"
+cmd /c "mklink /J \"%CLAUDE_PROJECT_DIR%\wt\{feature}-impl\.claude\" \"%CLAUDE_PROJECT_DIR%\.claude\""
+cmd /c "mklink /J \"%CLAUDE_PROJECT_DIR%\wt\{feature}-test\.claude\" \"%CLAUDE_PROJECT_DIR%\.claude\""
 ```
 
 ```
-Agent(subagent_type="executor-high", name="impl", description="구현 실행", team_name="pdca-{feature}", prompt="C:\\claude\\wt\\{feature}-impl\\ 경로에서 구현. 다른 경로 수정 금지.")
-Agent(subagent_type="executor-high", name="tester", description="테스트 작성", team_name="pdca-{feature}", prompt="C:\\claude\\wt\\{feature}-test\\ 경로에서 테스트 작성. 다른 경로 수정 금지.")
+Agent(subagent_type="executor-high", name="impl", description="구현 실행", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-impl/ 경로에서 구현. 다른 경로 수정 금지.")
+Agent(subagent_type="executor-high", name="tester", description="테스트 작성", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-test/ 경로에서 테스트 작성. 다른 경로 수정 금지.")
 ```
 
 ---

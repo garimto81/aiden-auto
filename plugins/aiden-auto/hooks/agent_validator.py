@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 에이전트 정의 파일 YAML Frontmatter 검증기
 
@@ -29,12 +29,8 @@ VALID_TOOLS = {
 
 
 def _get_agents_dir() -> Path:
-    if os.name == "nt":
-        return Path("C:/claude/.claude/agents")
-    wsl = Path("/mnt/c/claude/.claude/agents")
-    if wsl.exists():
-        return wsl
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())) / ".claude" / "agents"
+    project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    return Path(project_root) / ".claude" / "agents"
 
 
 def parse_frontmatter(content: str) -> dict | None:

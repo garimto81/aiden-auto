@@ -1,7 +1,7 @@
 ---
 name: tracer
 description: Causal investigation specialist. Traces root causes through code paths, configs, environments, and assumptions. 3 parallel investigation lanes. READ-ONLY. Inspired by OMC tracer + deep-dive.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

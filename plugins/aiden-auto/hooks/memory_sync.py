@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Memory 자동화 Hook — MEMORY.md 인덱스 건강도 검증
 
