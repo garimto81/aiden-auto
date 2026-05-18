@@ -5,7 +5,7 @@ description: >
   Deep Interview, multi-session, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
   Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
   /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
-version: 28.2.0
+version: 28.3.0
 auto_trigger: true
 output_style: user_friendly  # v28.2 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
