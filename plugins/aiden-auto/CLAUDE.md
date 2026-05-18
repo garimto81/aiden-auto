@@ -1,4 +1,4 @@
-# aiden-auto v28.1 — Index Router
+# aiden-auto v28.3 — Index Router
 
 > **Core Philosophy**: 사용자 진입점 최소화 + 자율 이터레이션 최대화. 가장 완벽한 산출물을 만든다.
 
