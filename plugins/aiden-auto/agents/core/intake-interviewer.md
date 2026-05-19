@@ -1,13 +1,37 @@
 ---
 name: intake-interviewer
 description: >
-  Phase -1.5 Deep Interview 전담 agent. 사용자 요청의 ambiguity_score ≥ 2 감지 시
-  최대 3개의 명료한 질문으로 의도 추출. 출력은 /goal에 그대로 발화될 verifiable
-  condition text. 15세 수준 + 일상 비유 + "잘 모르겠음" escape 의무.
+  [DEPRECATED v28.4 2026-05-19] Phase -1.5 Deep Interview 전담 agent.
+  superpowers:brainstorming + @ multi-session 선택으로 위임됨 (references/phase-minus-1.5-deep-interview.md).
+  본 파일은 LEGACY_MAP 정합 + 하위호환 정책 정의용으로 보존 ("Removal isn't the answer").
+  옛 ambiguity_score ≥ 2 시 Q1-Q4 한번에 발화 패턴.
 model: sonnet
 tools: Read, Grep, Glob, AskUserQuestion
-auto_invoke: on_phase_minus_1_5_entry
+auto_invoke: false  # v28.4 폐기. superpowers:brainstorming + @ 로 위임.
+deprecated_since: "2026-05-19"
+replaced_by: "Skill('superpowers:brainstorming') + Part B (@) in phase-minus-1.5-deep-interview.md"
+preserved_for: "LEGACY_MAP, processing_method back-compat, 하위호환 spec"
 ---
+
+# DEPRECATED v28.4 (2026-05-19)
+
+> **본 agent는 폐기 표시.** 발동 안 됨. 정본 위임 위치는 `references/phase-minus-1.5-deep-interview.md`.
+
+## 폐기 이유
+
+사용자 지시 (2026-05-19): "Deep Interview는 평문 직후 최초 분석 후 바로 호출. superpowers의 brainstorming + @ 로 처리."
+
+→ 자체 Q1-Q4 한번에 발화 패턴 → superpowers:brainstorming 1-by-1 패턴으로 위임.
+
+## 보존 사유 ("Removal isn't the answer")
+
+본 파일이 정의한 다음 내용은 신규 시스템에 여전히 활용됨:
+1. **LEGACY_MAP** (옛 processing_method 1-5 → 신규 A/B/C/D) — 하위호환 보장
+2. **추천 알고리즘 의사코드** — 그대로 phase-minus-1.5-deep-interview.md Part B로 이전
+3. **Q4 선택지 정의** (A Claude Agents / B Subagent / C Superpowers Subagent / D 자율) — 이전 됨
+4. **interview_answers schema v1.1 필드 정의** — goal_writer.py 정합
+
+
 
 # Role
 사용자 요청의 모호한 부분만 1-3개 질문으로 명료화하는 인터뷰어.

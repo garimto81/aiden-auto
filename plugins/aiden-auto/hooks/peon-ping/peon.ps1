@@ -563,14 +563,38 @@ if ($config.tts -and $config.tts.enabled -and $projectName -and $category) {
             $genPy = Join-Path $InstallDir "scripts\tts_generate.py"
             $pyArgs = @($genPy, $projectName, $displayName, $category, $voice, $template, $ttsOutputDir)
             $pythonwAvailable = $null -ne (Get-Command pythonw -ErrorAction SilentlyContinue)
+            # M5 (2026-05-19): [System.Diagnostics.Process]::Start with ProcessStartInfo
+            # bypasses PowerShell Start-Process internals that allow cmd.exe shell allocation.
+            # Root cause of post-M4 'M' is not recognized leak: Start-Process even with
+            # -RedirectStandardOutput "NUL" can still route through ShellExecuteEx API on
+            # certain console-subsystem children, where cmd.exe parsing happens before
+            # NUL redirect takes effect. UseShellExecute=$false forces direct CreateProcess
+            # which never involves cmd.exe.
+            function Invoke-HiddenProcess {
+                param([string]$FileName, [string[]]$ArgArray)
+                try {
+                    $quoted = $ArgArray | ForEach-Object {
+                        $a = [string]$_
+                        if ($a -match '[\s"]') { '"' + ($a -replace '"', '\"') + '"' } else { $a }
+                    }
+                    $psi = New-Object System.Diagnostics.ProcessStartInfo
+                    $psi.FileName = $FileName
+                    $psi.Arguments = ($quoted -join ' ')
+                    $psi.UseShellExecute = $false
+                    $psi.CreateNoWindow = $true
+                    $psi.WindowStyle = 'Hidden'
+                    $psi.RedirectStandardOutput = $true
+                    $psi.RedirectStandardError = $true
+                    [System.Diagnostics.Process]::Start($psi) | Out-Null
+                } catch {
+                    # Silent fail — TTS cache priming is best-effort.
+                }
+            }
+
             if ($pythonwAvailable -and (Test-Path $genPy)) {
-                # M4 (2026-05-19): RedirectStandardOutput/Error to NUL device.
-                # -WindowStyle Hidden alone leaks stderr to parent console (Claude Code UI).
-                # NUL device absorbs both streams so child native command errors stay invisible.
-                Start-Process -WindowStyle Hidden -FilePath "pythonw" -ArgumentList $pyArgs `
-                    -RedirectStandardOutput "NUL" -RedirectStandardError "NUL"
+                Invoke-HiddenProcess -FileName "pythonw.exe" -ArgArray $pyArgs
             } else {
-                # Fallback: legacy PowerShell wrapper with hardened argv (T1+T2).
+                # Fallback: same hidden-process pattern with powershell.exe
                 $argList = @(
                     '-NoProfile', '-WindowStyle', 'Hidden',
                     '-File', $genScript,
@@ -581,9 +605,7 @@ if ($config.tts -and $config.tts.enabled -and $projectName -and $category) {
                     '-Template', $template,
                     '-OutputDir', $ttsOutputDir
                 )
-                # M4 (2026-05-19): Same NUL redirect as primary path.
-                Start-Process -WindowStyle Hidden -FilePath "powershell" -ArgumentList $argList `
-                    -RedirectStandardOutput "NUL" -RedirectStandardError "NUL"
+                Invoke-HiddenProcess -FileName "powershell.exe" -ArgArray $argList
             }
         }
     }

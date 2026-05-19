@@ -1,12 +1,12 @@
 ---
 name: auto
 description: >
-  Index Router (v28.3) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.3: /goal 기반 loop driver,
+  Index Router (v28.4) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.4: Phase -2/-1.5 통합 + brainstorming + @ multi-session + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스. v28.3 base: /goal 기반 loop driver,
   Deep Interview, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
   Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
   /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
   (multi-session 운영은 공식 `claude agents` CLI로 위임 — 2026-05-14 폐기)
-version: 28.3.0
+version: 28.4.0
 auto_trigger: true
 output_style: user_friendly  # v28.3 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
@@ -149,6 +149,58 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 
 상세 정책: 글로벌 CLAUDE.md § Dynamic Model Routing (Advisor Pattern v1) 참조.
 
+## Phase -2 + -1.5: Deep Interview (brainstorming + @, v28.4+)
+
+Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
+
+```
+   평문 입력
+        │
+        ▼
+   Phase -2 평문 1차 분석 (카테고리 + ambiguity)
+        │
+        ▼
+   ┌────────────────────────────────────────┐
+   │ Phase -1.5 (평문 직후 즉시 발동)        │
+   │                                        │
+   │ Part A: brainstorming (의도 명료화)      │
+   │   Skill("superpowers:brainstorming")    │
+   │   · 1 question at a time                │
+   │   · 2-3 approaches + 사용자 승인         │
+   │   · docs/superpowers/specs/*.md 산출    │
+   │                                        │
+   │ Part B: @ (multi-session 처리 방식 선택) │
+   │   · 추천 + 4 선택지 (A/B/C/D)            │
+   │   · multi_session_method 필드 저장      │
+   └─────────────────┬──────────────────────┘
+                     │
+                     ▼ (spec → active-goal.json 변환)
+   /goal 자율 iteration 시동
+```
+
+**Skip 조건**: `!quick` / `!just` / `!hotfix` Magic Word, /goal 명시 condition.
+
+**Part B 선택지**:
+- A. Claude Agents (별도 OS 세션) — 큰 task N개 / 1일+
+- B. Subagent (같은 세션) — 단발 위임 / 가장 가벼움
+- C. Superpowers Subagent — plan + 2-stage 자동 리뷰
+- D. Claude 자율 (기본값) — 추천 결과 그대로 적용
+
+상세: `references/phase-minus-1.5-deep-interview.md`.
+
+## /goal 자율 Iteration Loop (v28.4 본질 재정의)
+
+> **/goal = "자율 다음 단계 진행 + 자율 판단 다음 단계 처리 + 자율 처리할 게 없을 때 QA + 스크린샷 엄격 검증 + 모든 단계 통과 시 사용자 보고"**
+
+**3 멈춤 조건**:
+1. 자율 처리할 게 더 없음 → QA + 스크린샷 검증 진입
+2. 안전절 트립 (20 turns / 200k tokens / 5 fails) → 강제 멈춤 + 보고
+3. 진짜 막힘 (외부 정보 필요) → 사용자 결정 영역 1줄 보고
+
+**Phase 4 QA Gate (Visual 작업 시)**: 스크린샷 ≥ 3장 의무.
+
+상세: `references/goal-operation.md`.
+
 ## 카테고리 → Chapter 매핑
 
 | 카테고리 | Chapter 파일 | Phase 경로 | Agent Team |
@@ -197,6 +249,8 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 |------|------|
 | 진입 | `index.yml` + `communication-style.md` |
 | Phase -2 | `triage.md` (모호 시만) |
+| Phase -1.5 entry (v28.4+) | `phase-minus-1.5-deep-interview.md` + `Skill("superpowers:brainstorming")` |
+| /goal 자율 iteration 시동 | `goal-operation.md` |
 | Chapter 확정 | `chapter-{CAT}.md` (1개) |
 | Phase 진입 | `phase-{N}-*.md` (해당 phase 1개) |
 | Plan→Design 전환 | `plan-design-gate.md` (CODE/ITERATION chapter, 자동) |
@@ -205,7 +259,7 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 | critic 호출 시 (verdict 통일) | `critic-protocol-unified.md` (5 기존 critic + compaction-critic) |
 | HARNESS chapter (운영) | `chapter-harness.md` ("harness 상태" 평문 트리거) |
 | 옵션 사용 | `options-handlers.md` |
-| 외부 harness 추적 | `external-harness-registry.md` (harness-watcher 매일 자동) |
+| 외부 harness 추적 | `external-harness-registry.md` (harness-watcher 매일 자동, superpowers 12 skill 매트릭스 포함) |
 
 ## 평문 트리거 (auto_trigger: true 작동 조건)
 
@@ -262,6 +316,8 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 
 | 버전 | 핵심 변경 |
 |------|----------|
+| v28.4 (2026-05-19) | Phase -2 + -1.5 통합 (brainstorming + @ multi-session) + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스 |
+| v28.3 (2026-05-14) | Step 0.4 user-friendly-reporter 게이트 + Step 0.5 model-router 필수화 |
 | v28.1 (2026-05-11) | SKILL.md 311→120줄 정제 + 5원칙 명시 + 외부 harness 자가개선 사이클 추가 |
 | v28.0 (2026-05-11) | aiden-auto v18.0 + aiden-auto v27.2 통합 (alpha) |
 | v27.2 (2026-05-04) | XML chapter + Multi-perspective + Pipeline + Cleanup + 4 specialist agents |
