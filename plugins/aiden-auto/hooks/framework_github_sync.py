@@ -153,10 +153,12 @@ def main() -> int:
         return 0
     log(f"SAFETY: {drift_reason}")
 
-    # v5: 두 git repo 모두 sync
+    # v5.1 (2026-05-19): main-repo (C:/claude/) 자동 sync 제거.
+    # 사유: main-repo는 사용자 작업 영역. 자동 commit 시 사용자 작업 중 파일까지
+    # 같이 commit될 위험. 사용자 명시 /commit 슬래시로만 처리.
+    # marketplaces (별도 git repo, plugin install 경로) 만 자율 sync.
     results = []
     for repo_dir, repo_name, prefix in [
-        (PLUGIN_DIR, "main-repo", "framework-sync"),
         (MARKETPLACES_DIR, "aiden-auto-marketplace", "marketplace-sync"),
     ]:
         if not repo_dir.is_dir():
