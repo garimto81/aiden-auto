@@ -1,8 +1,9 @@
-# Chapter: HARNESS (C 영역 진입점)
+# Chapter: HARNESS (C 영역 진입점) — v28.4 갱신 2026-05-19
 
 > **5원칙 매핑**: #2 자가개선 매일 사이클 + #4 Intent→Chapter 라우팅
 > **트리거**: 평문 "harness 상태" / "harness 체크" / "외부 framework 업데이트" / "watcher"
 > **외부 차용**: superpowers HARD-GATE + Red Flag
+> **v28.4 (2026-05-19)**: superpowers 12 skill 매트릭스 통합. `references/external-harness-registry.md` "v28.4 신규: superpowers 12 skill 매트릭스" 섹션 참조. Deep Interview brainstorming 위임 정합.
 
 ## 1. 진입 흐름
 
@@ -55,6 +56,7 @@
 ```
 Agent(
   subagent_type="harness-watcher",
+  model=plan["harness-watcher"],
   description="외부 6 framework update 체크",
   prompt="effort.level={감지된 신호}, 모든 framework 1회 체크"
 )

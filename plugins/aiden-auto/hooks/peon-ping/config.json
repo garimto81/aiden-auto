@@ -1,0 +1,49 @@
+﻿{
+    "active_pack": "en_female",
+    "pack_rotation": [],
+    "enabled": false,
+    "pack_rotation_mode": "random",
+    "silent_window_seconds": 30,
+    "annoyed_threshold": 3,
+    "desktop_notifications": true,
+    "categories": {
+        "task.acknowledge": false,
+        "session.start": false,
+        "input.required": true,
+        "task.error": false,
+        "resource.limit": false,
+        "task.complete": false,
+        "user.spam": false
+    },
+    "annoyed_window_seconds": 10,
+    "volume": 0.5,
+    "tts": {
+        "enabled": true,
+        "voice": "en-US-AriaNeural",
+        "volume": 0.7,
+        "templates": {
+            "task.complete": "{project} project task completed",
+            "input.required": "{project} project is waiting for your input",
+            "session.start": "Starting {project} project session",
+            "task.error": "An error occurred in {project} project"
+        },
+        "project_aliases": {
+            "ebs": "EBS",
+            "wsoptv_ott": "WSOPTV OTT",
+            "figma": "Figma",
+            "claude": "Claude Main"
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+

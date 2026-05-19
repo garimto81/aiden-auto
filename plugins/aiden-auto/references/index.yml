@@ -28,6 +28,8 @@ categories:
       - writer
       - critic
       - architect
+      - document-specialist  # v28.3+ chapter-doc.md 요구 흡수
+      - reader-experience    # v28.3+ chapter-doc.md 요구 흡수
     typical_phase_path: ["-2", "-1", "0", "1", "4"]
     skip_phases: ["2", "3"]
 
@@ -145,19 +147,14 @@ categories:
     skip_phases: ["1", "2", "3"]
 
   HARNESS-OPS:
-    description: "쿼타 / 멀티세션 / 골 — 운영 자동화 흡수 (v28.2 신규)"
+    description: "쿼타 / 골 — 운영 자동화 흡수 (v28.2). 멀티세션은 공식 `claude agents` CLI로 위임 (2026-05-14 폐기)"
     keywords:
       - 쿼타
       - quota
       - 사용량
       - statusline
-      - 멀티세션
-      - multi-session
       - "/goal"
       - 골
-      - 병렬세션
-      - agent-view
-      - 워크트리
       - "goal로 돌려"
       - "목표 달성"
       - "완성될 때까지"
@@ -165,13 +162,12 @@ categories:
     agent_team:
       - quota-executor
       - quota-advisor
-      - multi-session-router
       - intake-interviewer
       - perfect-output-validator
       - e2e-qa-prover
     typical_phase_path: ["-2", "-1.5", "0", "4"]
     skip_phases: ["1", "2", "3"]
-    notes: "advisor-tool API beta 차용. /goal 및 agent-view는 reference만. Section 1-14 사양 참조."
+    notes: "advisor-tool API beta 차용. /goal reference. Section 1-14 사양 참조. (agent-view/multi-session은 2026-05-14 폐기 — 공식 `claude agents` CLI로 위임)"
 
 # ─────────────────────────────────────────────────────────────
 # 모호성 패턴 — Triage가 감지하면 명확화 질문
@@ -205,8 +201,8 @@ ambiguity_patterns:
 
 phase_references:
   "-2": "triage.md"  # NEW v27.0 — Requirement Triage
+  "-1.5": "phase-minus-1.5-deep-interview.md"  # v28.4: brainstorming + @ 위임
   "-1": "phase-minus-1-context-detect.md"
-  "-1.5": "self-evaluation-gate.md"
   "0": "common.md"
   "1": "phase-1-plan.md"
   "2": "phase-2-build.md"

@@ -224,6 +224,128 @@ def write_goal_from_explicit(
     return path
 
 
+def write_goal_from_brainstorming_spec(
+    session_id: str,
+    spec_path: str | Path,
+    multi_session_method: str = "D",
+    task_signals: dict | None = None,
+    raw_user_request: str = "",
+) -> Path:
+    """v28.4 신규: superpowers:brainstorming 산출 spec.md → active-goal.json 변환.
+
+    Phase -1.5 Deep Interview 신규 흐름 (사용자 지시 2026-05-19):
+    - Part A: brainstorming → docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md
+    - Part B: @ → multi_session_method 선택
+    - 본 함수: 두 산출물 통합 → active-goal-{session_id}.json
+
+    Args:
+        session_id: parent session ID
+        spec_path: brainstorming spec 파일 (docs/superpowers/specs/*.md)
+        multi_session_method: "A"/"B"/"C"/"D" (Part B 결과)
+        task_signals: D 선택 시 추천 알고리즘에 전달
+        raw_user_request: 원문 평문
+
+    Returns:
+        Path to active-goal-{session_id}.json
+    """
+    spec_path = Path(spec_path)
+    spec_text = spec_path.read_text(encoding="utf-8") if spec_path.is_file() else ""
+
+    # spec 에서 acceptance criteria 추출 (간단 휴리스틱)
+    # brainstorming spec 구조: # 제목 / ## 설명 / ## architecture / ## components / ## testing
+    # acceptance criteria는 spec 본문 자체로 간주.
+    # 간단화: spec 의 첫 문장 + Production-ready boilerplate
+    lines = [line.strip() for line in spec_text.splitlines() if line.strip()]
+    description_lines = [
+        line for line in lines[:20]
+        if line and not line.startswith("#") and not line.startswith("---")
+    ]
+    description = description_lines[0] if description_lines else "(brainstorming spec)"
+
+    condition = (
+        f"{description}. spec={spec_path.name}. "
+        f"모든 unit test PASS, console error 0건."
+    )
+    condition_with_safety = append_safety_clauses(condition)
+
+    # multi_session_method resolve (v1.1 정합)
+    if multi_session_method == "D":
+        if task_signals:
+            resolved, _ = recommend_multi_session(task_signals)
+        else:
+            resolved = "B"
+    elif multi_session_method in ("A", "B", "C"):
+        resolved = multi_session_method
+    else:
+        resolved = LEGACY_PROCESSING_METHOD_MAP.get(str(multi_session_method), "B")
+
+    goal_id = _goal_id(session_id, condition_with_safety)
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "id": goal_id,
+        "session_id": session_id,
+        "condition": condition_with_safety,
+        "raw_user_request": raw_user_request,
+        "brainstorming_spec_path": str(spec_path),
+        "interview_answers": {
+            "domain": description,
+            "acceptance": "brainstorming spec acceptance criteria",
+            "approach": "brainstorming spec architecture",
+            "multi_session_method": multi_session_method,
+        },
+        "multi_session_method_resolved": resolved,
+        "safety_clauses_applied": DEFAULT_SAFETY_CLAUSES,
+        "created_at": _now_iso(),
+        "achieved": False,
+        "achieved_at": None,
+        "autonomous_complete": False,
+        "qa_gate_passed": False,
+        "screenshot_count": 0,
+        "turn_count": 0,
+        "tokens_consumed": 0,
+        "perfect_output_fails": 0,
+    }
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    _atomic_write(path, payload)
+    return path
+
+
+def mark_autonomous_complete(session_id: str) -> bool:
+    """v28.4 신규: 자율 처리 완료 신호 (멈춤 조건 1).
+
+    goal_stop_evaluator 가 transcript 에서 "all phases complete" 등 감지 시 호출.
+    QA 게이트 진입 신호.
+    """
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    data["autonomous_complete"] = True
+    _atomic_write(path, data)
+    return True
+
+
+def mark_qa_gate_passed(session_id: str, screenshot_count: int = 0) -> bool:
+    """v28.4 신규: QA 게이트 통과 신호 (Phase 4 Gate 1+2 완료).
+
+    Visual 작업 시 screenshot_count ≥ 3 의무.
+    """
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    data["qa_gate_passed"] = True
+    data["screenshot_count"] = screenshot_count
+    _atomic_write(path, data)
+    return True
+
+
 def mark_achieved(session_id: str) -> bool:
     """When /goal evaluator confirms condition met."""
     path = STATE_DIR / f"active-goal-{session_id}.json"
