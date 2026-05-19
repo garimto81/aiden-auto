@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""goal_stop_evaluator.py — v28.2 prompt-based Stop hook for /auto's /goal mechanism
+"""goal_stop_evaluator.py — v28.3 prompt-based Stop hook for /auto's /goal mechanism
 
 CC 공식 prompt-based Stop hook 패턴 (`/en/hooks#prompt-based-hooks`).
 /goal command가 wrapping하는 동일한 메커니즘을 우리가 직접 등록.
@@ -30,7 +30,34 @@ def _resolve_plugin_root() -> Path:
 
 
 PLUGIN_ROOT = _resolve_plugin_root()
-STATE_DIR = PLUGIN_ROOT / "state"
+
+# Multi-path STATE_DIR 검색 (정본 호출 / plugin cache 호출 양쪽 지원)
+# Root cause (2026-05-19): 정본 ~/.claude/hooks/ 에서 호출 시 PLUGIN_ROOT fallback
+# 이 ~/.claude/ 로 도출 → ~/.claude/state/ 검색 → active-goal 미존재.
+# 실제 active-goal 은 plugin cache state 에 있음.
+# v2 정정 (W4): plugin 버전 번호 하드코딩 제거 → glob 패턴 으로 동적 해소.
+def _discover_plugin_state_dirs() -> list[Path]:
+    """plugin cache 의 모든 버전 디렉토리 동적 검색."""
+    base = Path.home() / ".claude" / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
+    if not base.is_dir():
+        return []
+    # 각 버전 디렉토리의 state/ 폴더 수집 (예: 28.3.0/state, 28.4.0/state, ...)
+    return [v / "state" for v in base.iterdir() if v.is_dir()]
+
+STATE_DIR_CANDIDATES = [
+    PLUGIN_ROOT / "state",  # plugin cache 또는 명시 PLUGIN_ROOT (1순위)
+    *_discover_plugin_state_dirs(),  # 동적 plugin 버전 모두 (2순위)
+    Path.home() / ".claude" / "state",  # 정본 fallback (3순위)
+]
+
+def _find_state_dir() -> Path:
+    """active-goal-*.json 이 존재하는 첫 디렉토리 반환. 없으면 첫 후보."""
+    for d in STATE_DIR_CANDIDATES:
+        if d.is_dir() and any(d.glob("active-goal-*.json")):
+            return d
+    return STATE_DIR_CANDIDATES[0]
+
+STATE_DIR = _find_state_dir()
 
 try:
     sys.path.insert(0, str(PLUGIN_ROOT))
@@ -114,8 +141,9 @@ def main() -> int:
 
     goal_path, goal_data = _find_active_goal(session_id)
     if goal_data is None:
-        # No active goal → don't loop (let CC default Stop behavior apply)
-        print(json.dumps({"continue": False, "reason": "no active goal"}))
+        # No active goal → silent (CC 기본 종료 동작, prevent continuation 신호 X)
+        # Root cause fix (2026-05-19): 이전엔 continue=false 출력 → CC가 "block"으로 해석.
+        # 이제 stdout 비워서 CC가 자연 종료하도록.
         return 0
 
     # Increment turn counter
