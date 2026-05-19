@@ -1,13 +1,14 @@
 ---
 name: auto
 description: >
-  Index Router (v28.2) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.2: /goal 기반 loop driver,
-  Deep Interview, multi-session, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
+  Index Router (v28.3) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.3: /goal 기반 loop driver,
+  Deep Interview, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
   Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
   /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
+  (multi-session 운영은 공식 `claude agents` CLI로 위임 — 2026-05-14 폐기)
 version: 28.3.0
 auto_trigger: true
-output_style: user_friendly  # v28.2 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
+output_style: user_friendly  # v28.3 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
   keywords:
     - "/auto"
@@ -21,11 +22,9 @@ triggers:
     - "목표"
     - "쿼타"
     - "quota"
-    - "멀티세션"
-    - "multi-session"
 ---
 
-# /auto — Index Router (v28.1)
+# /auto — Index Router (v28.3)
 
 > **안내 데스크 역할**. 본인은 작고, 가리키는 책장은 큽니다. 도서관이 클수록 안내 데스크는 작아야 합니다.
 
@@ -51,6 +50,13 @@ triggers:
    │ Step 0: Index Lookup      │  ← references/index.yml 만 로드
    │  Read(index.yml)          │
    │  Read(communication-style)│
+   └─────────────┬─────────────┘
+                 │
+                 ▼
+   ┌───────────────────────────┐
+   │ Step 0.5: Model Router    │  ← Agent(model-router, model=haiku)
+   │  → JSON model_plan        │     advisor pattern 강제
+   │  → 후속 Agent() model 주입│
    └─────────────┬─────────────┘
                  │
                  ▼
@@ -81,6 +87,67 @@ Read("references/communication-style.md")
 
 `index.yml` = 도서관 카탈로그 (카테고리/chapter/Agent/Phase 매핑 + 평문 트리거 화이트리스트).
 `communication-style.md` = 15세 기준 응답 룰 (비유/다이어그램/표 우선, A/B/C 옵션 나열 금지).
+
+## Step 0.4: User-Friendly Reporter 사전 게이트 (MANDATORY, v28.3+)
+
+Step 0 직후, 사용자 향 모든 응답 작성 직전에 본 agent 통과 의무:
+
+```
+Agent(
+  subagent_type="user-friendly-reporter",
+  model="haiku",
+  description="응답 친절 변환",
+  prompt="원본_보고=<Claude 응답 초안>"
+)
+→ 친절 변환된 텍스트
+```
+
+**자동 발동 조건** (어느 하나라도):
+- 응답에 전문용어 (skill / agent / hook / subagent / critic / refactor / API / schema) 등장
+- "어떻게 할까요?" / "진행할까요?" / "확인 부탁드립니다" 패턴
+- 응답 50줄 초과
+- A/B/C 옵션 나열
+- 약어 (NTFS/HVAC/SSOT 등) 첫 등장 풀이 누락
+
+**위반 시 처리**: 응답 작성 중단 → 본 agent 재호출 → 친절 변환된 출력 사용.
+
+## Step 0.5: Model Router 호출 (MANDATORY, HARD ENFORCE — v28.3+)
+
+Step 0 직후, Phase -2 진입 전에 **반드시**:
+
+```
+Agent(
+  subagent_type="model-router",
+  model="haiku",
+  description="model_plan 산출",
+  prompt="task=<사용자 원문>\ncategory=<index.yml 매핑 결과 or unknown>\ncontext=<직전 1-2줄>"
+)
+→ JSON model_plan 응답 (31 keys, 하이픈 표기)
+```
+
+**응답 처리**:
+
+| 케이스 | 처리 |
+|--------|------|
+| 파싱 성공 | `plan` 객체 저장. 후속 모든 Agent() 호출에 `model=plan["<role>"]` 명시 주입 |
+| 파싱 실패 | 전체 sonnet 폴백 + **사용자 명시 알림 필수** (architect/security-reviewer 등 고복잡도 역할이 sonnet으로 실행됨 경고) |
+| 재호출 | 1회 시도. 재실패 시 sonnet 폴백 유지 + 알림 |
+
+**Tier 접미사 (`-high` / `-low`) 처리**:
+- `executor-high` → `plan["executor"]`의 한 단계 상향 (sonnet → opus)
+- `executor-low` → `plan["executor"]`의 한 단계 하향 (sonnet → haiku)
+
+scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router 재호출.
+
+**기본 동작** (안내, v28.3 정책 critic audit P2-7 완화):
+
+| 상황 | 자동 처리 |
+|------|----------|
+| Step 0.5 미실행 | advisor pattern 미작동 → 다음 Agent() 호출 직전 자동 재호출 |
+| model 미주입 | agent frontmatter의 model 사용 (대부분 sonnet fallback) |
+| router 응답 파싱 실패 | 전체 sonnet 자동 폴백 → Phase 4 보고서 푸터에 기록 (즉시 사용자 인터럽트 없음) |
+
+상세 정책: 글로벌 CLAUDE.md § Dynamic Model Routing (Advisor Pattern v1) 참조.
 
 ## 카테고리 → Chapter 매핑
 
