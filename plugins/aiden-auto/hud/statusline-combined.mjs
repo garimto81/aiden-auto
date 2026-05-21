@@ -22,6 +22,7 @@ const __dirname = dirname(__filename);
 const HUD_TELEMETRY = join(__dirname, "aiden-auto-telemetry.mjs");
 const HUD_NODE      = join(__dirname, "hybrid-statusline.mjs");
 const HUD_PY        = join(__dirname, "model-usage-line.py");
+const HUD_ATLASSIAN = join(__dirname, "atlassian-auth-line.mjs");
 const CHILD_TIMEOUT_MS = 7000;
 
 function readStdin() {
@@ -64,15 +65,17 @@ function callChild(cmd, args, input) {
 
 async function main() {
   const stdin = await readStdin();
-  const [telemetryOut, hudOut, modelsOut] = await Promise.all([
+  const [telemetryOut, hudOut, modelsOut, atlassianOut] = await Promise.all([
     callChild("node",   [HUD_TELEMETRY], stdin),
     callChild("node",   [HUD_NODE],      stdin),
     callChild("python", [HUD_PY],        stdin),
+    callChild("node",   [HUD_ATLASSIAN], stdin),
   ]);
   const lines = [];
   if (telemetryOut) lines.push(telemetryOut.replace(/\s+$/g, ""));
   if (hudOut)       lines.push(hudOut.replace(/\s+$/g, ""));
   if (modelsOut)    lines.push(modelsOut.replace(/\s+$/g, ""));
+  if (atlassianOut) lines.push(atlassianOut.replace(/\s+$/g, ""));
   if (lines.length) process.stdout.write(lines.join("\n") + "\n");
 }
 

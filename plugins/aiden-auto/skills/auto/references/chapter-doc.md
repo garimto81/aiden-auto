@@ -161,7 +161,28 @@ writer는 다음 4종을 사전 설계한 뒤에야 본문 작성 권한을 얻�
 - 중형 (100~300줄): Write skeleton + Edit 섹션별
 - 대형 (300줄+): Map-Reduce 청킹
 
-### Step 1.3: Multi-perspective Validation (병렬 4시각)
+### Step 1.3: Executive Summary 작성 (NEW v28.5 — **v28.6 Phase -1.5 자율 판단 기반**)
+
+**Trigger Logic (v28.6)**: Phase -1.5 Part D 결과로 `active-goal.json.executive_summary.enabled == true` 자동 설정 시 본 단계 발동. `false` (또는 부재) 시 자동 skip → Step 1.4 직행.
+
+### 자율 판단 결과별 동작
+
+| executive_summary.enabled | mode | 동작 |
+|--------------------------|------|------|
+| true | inline | 본문 첫 섹션 `## Executive Summary` 자동 생성 |
+| true | separate | 별도 파일 `docs/00-prd/{slug}.exec-summary.md` 자동 생성 |
+| false / 부재 | — | Step 1.3 skip → Step 1.4 직행 |
+
+### 양식
+
+- 구조 (≤50줄): Hook + Thesis + 3 다이어그램 + 5 결정 + 3 Action + 한 줄 결론
+- 양식 + 검증 룰: `references/executive-summary-template.md`
+- 자율 판단 휴리스틱: `references/phase-minus-1.5-deep-interview.md` Part D
+- 검증: 다음 Step 1.4 의 4 시각이 본문 + Executive Summary 모두 검증
+
+목적: 사용자가 본문 안 읽고도 1 페이지로 전체 파악 (Core Philosophy 정합 + 자율 판단으로 진입점 최소화).
+
+### Step 1.4: Multi-perspective Validation (병렬 4시각)
 
 ```
 4개 agent 동시 호출:
@@ -188,13 +209,14 @@ reader-experience REJECT 트리거:
   · P7-E 위반 → Act 누락 / 평탄 구조
 ```
 
-## Phase 4 — 저장 + 커밋
+## Phase 4 — 저장 + 커밋 + Confluence Sync (NEW v28.5)
 
 | 단계 | 동작 |
 |------|------|
 | 4.0 | 파일 저장 위치 확정 (docs/00-prd/, docs/01-plan/) |
 | 4.1 | git commit: `docs(prd): {feature} 요구사항 반영` |
-| 4.2 | 사용자 보고: 경로, 줄수, 다이어그램 N개 |
+| 4.2 | **Confluence sync (NEW v28.5 + trigger logic 강화 v28.5.2)**. Trigger: Phase -1.5 Part C 답변 결과로 `active-goal.json.confluence_sync.enabled == true` 자동 설정. 본 Phase 4.2 진입 시 자동 호출 (사용자 확인 Q 없음). `python C:/claude/lib/confluence/md2confluence.py <md_file> <page_id>` 자동 호출. Executive Summary 가 별도 파일이면 child 페이지로 sync. 상세: `references/confluence-sync-flow.md` |
+| 4.3 | 사용자 보고: 경로 + 줄수 + 다이어그램 N개 + (sync 시) Confluence URL |
 
 ## Phase Cleanup — NEW v27.2
 

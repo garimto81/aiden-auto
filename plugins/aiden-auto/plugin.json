@@ -1,14 +1,46 @@
 {
   "name": "aiden-auto",
-  "version": "28.3.0",
+  "version": "28.7.0",
   "description": "Index Router + /goal-based loop driver + Deep Interview + Multi-Session + Perfect Output Gate + Adaptive Framework + Progress Hooks. v28.3: v28.2 RCA 5-flaw fix + FR-004 (95% threshold + Draft PR) + FR-005 (manual reset-breaker) + phase-1 modularization. Minimum Input → Maximum Output Engine.",
-  "author": { "name": "garimto81", "email": "garimto1981@gmail.com" },
+  "author": {
+    "name": "garimto81",
+    "email": "garimto1981@gmail.com"
+  },
   "repository": "https://github.com/garimto81/aiden-auto",
   "license": "MIT",
-  "keywords": ["claude-code", "pdca", "orchestrator", "multi-agent", "iteration", "auto-workflow", "self-improvement", "harness-tracking", "goal-loop", "advisor-tool", "agent-view", "adaptive-framework"],
-  "claude_code": { "min_version": "2.1.139", "plugin_spec": "1.0" },
-  "components": { "skills": 22, "agents": 44, "hooks": 36, "rules": 8, "references": 48, "commands": 22, "lib": 16, "config": 5 },
-  "core_philosophy": { "user_entry_points": "minimize", "autonomous_iteration": "maximize", "user_decision_per_session": "0-2" },
+  "keywords": [
+    "claude-code",
+    "pdca",
+    "orchestrator",
+    "multi-agent",
+    "iteration",
+    "auto-workflow",
+    "self-improvement",
+    "harness-tracking",
+    "goal-loop",
+    "advisor-tool",
+    "agent-view",
+    "adaptive-framework"
+  ],
+  "claude_code": {
+    "min_version": "2.1.139",
+    "plugin_spec": "1.0"
+  },
+  "components": {
+    "skills": 22,
+    "agents": 44,
+    "hooks": 36,
+    "rules": 8,
+    "references": 48,
+    "commands": 22,
+    "lib": 16,
+    "config": 5
+  },
+  "core_philosophy": {
+    "user_entry_points": "minimize",
+    "autonomous_iteration": "maximize",
+    "user_decision_per_session": "0-2"
+  },
   "five_principles": [
     "외부 harness framework 그대로 유지 (참조만, 복사 안 함)",
     "외부 update 자동 critic → 자가개선 (harness-watcher/critic/applier)",

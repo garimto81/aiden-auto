@@ -33,5 +33,6 @@
       ],
       "source": "./plugins/aiden-auto"
     }
-  ]
+  ],
+  "version": "28.7.0"
 }

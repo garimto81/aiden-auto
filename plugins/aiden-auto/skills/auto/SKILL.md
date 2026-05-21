@@ -1,12 +1,11 @@
 ---
 name: auto
 description: >
-  Index Router (v28.4) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.4: Phase -2/-1.5 통합 + brainstorming + @ multi-session + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스. v28.3 base: /goal 기반 loop driver,
-  Deep Interview, Perfect Output Gate, advisor-tool quota, adaptive framework, progress hooks.
+  Index Router (v28.7) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.7: Phase -1.5 Part E 신규 (Atlassian MCP 인증 자율 점검 — Atlassian 키워드/Part C 활성화/atlassian skill 호출 감지 시만 호출, 미감지 시 호출 자체 없음). v28.6 base: Part D Executive Summary 자율 판단. v28.5 base: Confluence sync (Part C). v28.4 base: Phase -2/-1.5 통합 + brainstorming + @ multi-session + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스.
   Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
   /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
   (multi-session 운영은 공식 `claude agents` CLI로 위임 — 2026-05-14 폐기)
-version: 28.4.0
+version: 28.7.0
 auto_trigger: true
 output_style: user_friendly  # v28.3 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
@@ -172,6 +171,19 @@ Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
    │ Part B: @ (multi-session 처리 방식 선택) │
    │   · 추천 + 4 선택지 (A/B/C/D)            │
    │   · multi_session_method 필드 저장      │
+   │                                        │
+   │ Part C: Confluence sync (DOC 전용)       │
+   │   · YES update / YES new / NO           │
+   │                                        │
+   │ Part D: Executive Summary (v28.6 신규)  │
+   │   · DOC + 휴리스틱 충족 시만 질문 추가   │
+   │   · 미충족 시 자동 skip (질문 X)         │
+   │   · executive_summary 필드 저장          │
+   │                                        │
+   │ Part E: Atlassian 인증 점검 (v28.7 신규)│
+   │   · Atlassian 키워드/skill/Part C 감지   │
+   │   · 미감지 시 호출 자체 없음 (부하 0)    │
+   │   · atlassian_auth.py executor 호출      │
    └─────────────────┬──────────────────────┘
                      │
                      ▼ (spec → active-goal.json 변환)
@@ -250,7 +262,11 @@ Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
 | 진입 | `index.yml` + `communication-style.md` |
 | Phase -2 | `triage.md` (모호 시만) |
 | Phase -1.5 entry (v28.4+) | `phase-minus-1.5-deep-interview.md` + `Skill("superpowers:brainstorming")` |
+| Phase -1.5 Part C (v28.5+, DOC만) | `confluence-sync-flow.md` (Confluence sync 선택 시) |
+| Phase -1.5 Part D (v28.6+, DOC만, 자율 판단 충족 시) | `executive-summary-template.md` (자율 판단 휴리스틱 + 양식) |
+| Phase -1.5 Part E (v28.7+, Atlassian 사용 감지 시만) | `~/.claude/hooks/atlassian_auth.py` (executor wrapper) + `agents/meta/atlassian-auth-{executor,advisor}.md` |
 | /goal 자율 iteration 시동 | `goal-operation.md` |
+| Phase 1.3 (DOC, v28.6+, `executive_summary.enabled=true` 시) | `executive-summary-template.md` (Executive Summary 양식 + 검증 룰) |
 | Chapter 확정 | `chapter-{CAT}.md` (1개) |
 | Phase 진입 | `phase-{N}-*.md` (해당 phase 1개) |
 | Plan→Design 전환 | `plan-design-gate.md` (CODE/ITERATION chapter, 자동) |
@@ -316,6 +332,11 @@ Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
 
 | 버전 | 핵심 변경 |
 |------|----------|
+| v28.7 (2026-05-22) | Phase -1.5 Part E 신규 (Atlassian MCP 인증 자율 점검). 이전 SessionStart 자동 발동 폐기 — Atlassian 미사용 프로젝트 부하 차단. 키워드/Part C/skill 호출 감지 시만 `atlassian_auth.py` executor 호출. registry/SessionStart/atlassian-auth.json → `_disabled/` 격리 (deregistration). 사용자 피드백 정정 |
+| v28.6 (2026-05-22) | Phase -1.5 Part D 신규 (Executive Summary 자율 판단). v28.5.1 "default 무조건" 폐기 → DOC 카테고리 + 키워드/길이/이해관계자 휴리스틱 충족 시만 인터뷰 질문 추가, 미충족 시 자동 skip. chapter-doc Step 1.3 trigger 를 `active-goal.json.executive_summary.enabled` 기반으로 전환. Core Philosophy "사용자 진입점 최소화 + 자율 영역 확대" 정합 |
+| v28.5.2 (2026-05-19) | critic 4 결정 자율 정정: plugin.json version 28.3.0 → 28.5.1 bump (2 mirror) + chapter-doc Step 1.3 / Phase 4.2 trigger logic 강조 (R3 운영 검증 강화) + R7 Context 누적 우려 폐기 (시작 직후라 무의미) + R10 Confluence Q 진입점 정당화 (Sync 위해 정보 필요) + R12 "permanent close" 표현 폐기 → "deferred" (GG NETWORK 자료 확보 시 재개 가능) |
+| v28.5.1 (2026-05-19) | 방송 도메인 비유 폐기 (communication-style.md 도메인 중립화 — 글로벌 정책 정합) + Executive Summary default 무조건 (200줄 조건 제거, !quick/!just 만 skip) + GG NETWORK STYLE 복원 작업 deferred (Task 2 deferred — v28.5.2 표현 갱신). Confluence sync 는 Deep Interview Part C 유지 |
+| v28.5 (2026-05-19) | Phase -1.5 Part C (Confluence sync 선택, DOC 전용) + chapter-doc Step 1.3 Executive Summary 1-page 양식 + Phase 4.2 Confluence 자동 sync (md2confluence.py 연동) + 신규 reference 3종 (phase-minus-1.5-deep-interview / executive-summary-template / confluence-sync-flow) |
 | v28.4 (2026-05-19) | Phase -2 + -1.5 통합 (brainstorming + @ multi-session) + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스 |
 | v28.3 (2026-05-14) | Step 0.4 user-friendly-reporter 게이트 + Step 0.5 model-router 필수화 |
 | v28.1 (2026-05-11) | SKILL.md 311→120줄 정제 + 5원칙 명시 + 외부 harness 자가개선 사이클 추가 |
