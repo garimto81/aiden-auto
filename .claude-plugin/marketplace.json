@@ -11,7 +11,7 @@
     {
       "name": "aiden-auto",
       "description": "Index Router — Intent 분석 후 chapter 1개만 lazy load. 5원칙: (1) 외부 harness 그대로 유지 (2) 매일 critic 자가개선 (3) SKILL.md 최소화 (4) Intent→chapter 라우팅 (5) 스킬/커맨드 = 슈퍼앱. v28.3 = RCA 5-flaw fix + FR-004 Draft PR + FR-005 manual reset-breaker + phase-1 modularization.",
-      "version": "28.3.0",
+      "version": "28.7.0",
       "author": {
         "name": "garimto81",
         "url": "https://github.com/garimto81"
