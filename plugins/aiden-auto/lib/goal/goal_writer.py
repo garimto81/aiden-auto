@@ -1,4 +1,4 @@
-"""goal_writer.py — v28.2 /goal condition 생성 + 안전절 자동 첨가 + active-goal.json 저장
+"""goal_writer.py — v28.3 /goal condition 생성 + 안전절 자동 첨가 + active-goal.json 저장
 
 Schema: v1.0 (Section 13.1 정합)
 
@@ -15,7 +15,45 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+
+# Q4 (multi-session 선택) 추천 알고리즘 (intake-interviewer.md 정본 의사코드와 정합)
+def recommend_multi_session(task_signals: dict) -> tuple[str, str]:
+    """프로젝트 분석 기반 multi-session 단일 추천안 산출.
+
+    Signal 우선순위 (HARD RULE): 1 > 2 > 3 > default. `elif` chain short-circuit.
+
+    Args:
+        task_signals: triage가 산출한 dict. 부재 필드는 보수 default(B).
+            estimated_lines: int
+            has_plan: bool
+            independent_tasks_count: int
+            long_running_streams: int
+            estimated_hours: int|float
+
+    Returns:
+        (option_letter, rationale_one_line)
+    """
+    if task_signals.get("estimated_lines", float("inf")) < 100:
+        return ("B", "작업 작음 → 단발 위임")
+    elif (task_signals.get("has_plan")
+          and task_signals.get("independent_tasks_count", 0) >= 3):
+        return ("C", "plan + 독립 task 다수 → 2-stage 리뷰")
+    elif (task_signals.get("long_running_streams", 0) >= 3
+          and task_signals.get("estimated_hours", 0) >= 8):
+        return ("A", "큰 stream 다수 → 진짜 병렬 필요")
+    else:
+        return ("B", "scope 불확실 → 가장 가벼움")
+
+
+# 옛 processing_method 숫자 → 신규 A/B/C/D 매핑 (intake-interviewer.md "LEGACY_MAP" 정합)
+LEGACY_PROCESSING_METHOD_MAP = {
+    "1": "D",  # Claude 자율 → D
+    "2": "B",  # Parallel Agent in-session → B
+    "3": "A",  # claude agents → A
+    "4": "B",  # Background subagent → B (보수 fallback)
+    "5": "B",  # Sequential → B (multi-session 아님, 보수 fallback)
+}
 
 def _resolve_plugin_root() -> Path:
     """PLUGIN_ROOT 결정: env var → __file__ 기반 fallback.
@@ -67,30 +105,55 @@ def write_goal_from_interview(
     session_id: str,
     interview_answers: dict,
     raw_user_request: str = "",
+    task_signals: dict | None = None,
 ) -> Path:
     """Construct goal condition from Deep Interview answers and persist to active-goal-{session_id}.json.
 
+    Schema v1.1 (2026-05-19): adds Q4 multi_session_method + multi_session_method_resolved.
+    Q3 field renamed: "style" → "approach" (back-compat: both keys read).
+
     Args:
         session_id: parent session ID
-        interview_answers: dict like {"domain": "...", "acceptance": "...", "style": "..."}
+        interview_answers: dict with keys:
+            - domain (Q1): required
+            - acceptance (Q2): required
+            - approach (Q3): optional, falls back to "style" for back-compat
+            - multi_session_method (Q4): "A"/"B"/"C"/"D", default "D"
         raw_user_request: original user plaintext (for traceability)
+        task_signals: optional dict for Q4 recommendation (estimated_lines, has_plan, ...)
+            Used when multi_session_method == "D" to compute resolved option.
 
     Returns:
         Path to active-goal-{session_id}.json
     """
-    # Compose verifiable condition text
+    # Compose verifiable condition text (v1.1: includes approach)
     parts = []
     if domain := interview_answers.get("domain"):
         parts.append(domain)
     if acceptance := interview_answers.get("acceptance"):
         parts.append(acceptance)
-    if style := interview_answers.get("style"):
-        parts.append(f"스타일: {style}")
+    # Q3: "approach" (v1.1) with "style" (v1.0) back-compat
+    approach_value = interview_answers.get("approach") or interview_answers.get("style")
+    if approach_value:
+        parts.append(f"접근: {approach_value}")
     # Production-ready boilerplate
     parts.append("모든 unit test PASS, console error 0건")
 
     condition = ". ".join(parts) + "."
     condition_with_safety = append_safety_clauses(condition)
+
+    # Q4: resolve multi_session_method (D → run recommendation)
+    method = interview_answers.get("multi_session_method", "D")
+    if method == "D":
+        if task_signals:
+            resolved, _ = recommend_multi_session(task_signals)
+        else:
+            resolved = "B"  # 보수 default
+    elif method in ("A", "B", "C"):
+        resolved = method
+    else:
+        # 옛 숫자 (1-5) LEGACY_MAP 변환
+        resolved = LEGACY_PROCESSING_METHOD_MAP.get(str(method), "B")
 
     goal_id = _goal_id(session_id, condition_with_safety)
     payload = {
@@ -100,6 +163,7 @@ def write_goal_from_interview(
         "condition": condition_with_safety,
         "raw_user_request": raw_user_request,
         "interview_answers": interview_answers,
+        "multi_session_method_resolved": resolved,
         "safety_clauses_applied": DEFAULT_SAFETY_CLAUSES,
         "created_at": _now_iso(),
         "achieved": False,
@@ -118,9 +182,26 @@ def write_goal_from_explicit(
     session_id: str,
     explicit_condition: str,
     raw_user_request: str = "",
+    multi_session_method: str = "D",
+    task_signals: dict | None = None,
 ) -> Path:
-    """User typed `/goal 'condition'` directly. Skip Deep Interview. Append safety clauses."""
+    """User typed `/goal 'condition'` directly. Skip Deep Interview. Append safety clauses.
+
+    Schema v1.1 (2026-05-19): adds multi_session_method_resolved (D → recommend).
+    """
     condition_with_safety = append_safety_clauses(explicit_condition)
+
+    # Resolve multi_session_method (Q4 spec 정합)
+    if multi_session_method == "D":
+        if task_signals:
+            resolved, _ = recommend_multi_session(task_signals)
+        else:
+            resolved = "B"
+    elif multi_session_method in ("A", "B", "C"):
+        resolved = multi_session_method
+    else:
+        resolved = LEGACY_PROCESSING_METHOD_MAP.get(str(multi_session_method), "B")
+
     goal_id = _goal_id(session_id, condition_with_safety)
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -129,6 +210,7 @@ def write_goal_from_explicit(
         "condition": condition_with_safety,
         "raw_user_request": raw_user_request,
         "interview_answers": None,
+        "multi_session_method_resolved": resolved,
         "safety_clauses_applied": DEFAULT_SAFETY_CLAUSES,
         "created_at": _now_iso(),
         "achieved": False,
@@ -140,6 +222,128 @@ def write_goal_from_explicit(
     path = STATE_DIR / f"active-goal-{session_id}.json"
     _atomic_write(path, payload)
     return path
+
+
+def write_goal_from_brainstorming_spec(
+    session_id: str,
+    spec_path: str | Path,
+    multi_session_method: str = "D",
+    task_signals: dict | None = None,
+    raw_user_request: str = "",
+) -> Path:
+    """v28.4 신규: superpowers:brainstorming 산출 spec.md → active-goal.json 변환.
+
+    Phase -1.5 Deep Interview 신규 흐름 (사용자 지시 2026-05-19):
+    - Part A: brainstorming → docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md
+    - Part B: @ → multi_session_method 선택
+    - 본 함수: 두 산출물 통합 → active-goal-{session_id}.json
+
+    Args:
+        session_id: parent session ID
+        spec_path: brainstorming spec 파일 (docs/superpowers/specs/*.md)
+        multi_session_method: "A"/"B"/"C"/"D" (Part B 결과)
+        task_signals: D 선택 시 추천 알고리즘에 전달
+        raw_user_request: 원문 평문
+
+    Returns:
+        Path to active-goal-{session_id}.json
+    """
+    spec_path = Path(spec_path)
+    spec_text = spec_path.read_text(encoding="utf-8") if spec_path.is_file() else ""
+
+    # spec 에서 acceptance criteria 추출 (간단 휴리스틱)
+    # brainstorming spec 구조: # 제목 / ## 설명 / ## architecture / ## components / ## testing
+    # acceptance criteria는 spec 본문 자체로 간주.
+    # 간단화: spec 의 첫 문장 + Production-ready boilerplate
+    lines = [line.strip() for line in spec_text.splitlines() if line.strip()]
+    description_lines = [
+        line for line in lines[:20]
+        if line and not line.startswith("#") and not line.startswith("---")
+    ]
+    description = description_lines[0] if description_lines else "(brainstorming spec)"
+
+    condition = (
+        f"{description}. spec={spec_path.name}. "
+        f"모든 unit test PASS, console error 0건."
+    )
+    condition_with_safety = append_safety_clauses(condition)
+
+    # multi_session_method resolve (v1.1 정합)
+    if multi_session_method == "D":
+        if task_signals:
+            resolved, _ = recommend_multi_session(task_signals)
+        else:
+            resolved = "B"
+    elif multi_session_method in ("A", "B", "C"):
+        resolved = multi_session_method
+    else:
+        resolved = LEGACY_PROCESSING_METHOD_MAP.get(str(multi_session_method), "B")
+
+    goal_id = _goal_id(session_id, condition_with_safety)
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "id": goal_id,
+        "session_id": session_id,
+        "condition": condition_with_safety,
+        "raw_user_request": raw_user_request,
+        "brainstorming_spec_path": str(spec_path),
+        "interview_answers": {
+            "domain": description,
+            "acceptance": "brainstorming spec acceptance criteria",
+            "approach": "brainstorming spec architecture",
+            "multi_session_method": multi_session_method,
+        },
+        "multi_session_method_resolved": resolved,
+        "safety_clauses_applied": DEFAULT_SAFETY_CLAUSES,
+        "created_at": _now_iso(),
+        "achieved": False,
+        "achieved_at": None,
+        "autonomous_complete": False,
+        "qa_gate_passed": False,
+        "screenshot_count": 0,
+        "turn_count": 0,
+        "tokens_consumed": 0,
+        "perfect_output_fails": 0,
+    }
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    _atomic_write(path, payload)
+    return path
+
+
+def mark_autonomous_complete(session_id: str) -> bool:
+    """v28.4 신규: 자율 처리 완료 신호 (멈춤 조건 1).
+
+    goal_stop_evaluator 가 transcript 에서 "all phases complete" 등 감지 시 호출.
+    QA 게이트 진입 신호.
+    """
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    data["autonomous_complete"] = True
+    _atomic_write(path, data)
+    return True
+
+
+def mark_qa_gate_passed(session_id: str, screenshot_count: int = 0) -> bool:
+    """v28.4 신규: QA 게이트 통과 신호 (Phase 4 Gate 1+2 완료).
+
+    Visual 작업 시 screenshot_count ≥ 3 의무.
+    """
+    path = STATE_DIR / f"active-goal-{session_id}.json"
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    data["qa_gate_passed"] = True
+    data["screenshot_count"] = screenshot_count
+    _atomic_write(path, data)
+    return True
 
 
 def mark_achieved(session_id: str) -> bool:

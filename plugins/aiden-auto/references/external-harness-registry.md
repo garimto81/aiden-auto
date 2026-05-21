@@ -100,18 +100,6 @@ frameworks:
     last_checked: "2026-05-13"
     rationale: "advisor-tool API beta. header 회전 시 quota-advisor fallback."
 
-  - id: agent-view-cli
-    owner: anthropics
-    repo: claude-code
-    check_method: "releases"
-    min_version: "v2.1.139"
-    last_known_version: "v2.1.138"
-    last_checked: "2026-05-13"
-    interesting_paths:
-      - "docs/agent-view*"
-      - "docs/worktrees*"
-    rationale: "멀티세션 CLI surface (claude --bg, claude agents). v2.1.139+ 필요."
-
   # === Host statusline tools (v28.2 Section 15 정정) ===
   # aiden-auto의 statusline은 자체 구현이 아니라 호스트의 hud/* 도구 그대로 채택.
   # Core Philosophy #1 (외부 도구 그대로 유지, 참조만) 정합.
@@ -157,11 +145,6 @@ internal_advisors:
     trigger: "PreToolUse(Task) AND quota_signal"
     verdicts: [PROCEED, DOWNGRADE_ECO, DEFER, BLOCK]
     rationale: "Section 3 quota 운영"
-
-  - id: multi-session-router
-    trigger: "Phase 0 plan complete AND splittable_signal"
-    verdicts: [SINGLE, RECOMMEND_AUTO_LAUNCH]
-    rationale: "Section 4 멀티세션 판정"
 
   - id: perfect-output-validator
     trigger: "Phase 4 entry"
@@ -257,6 +240,99 @@ watcher가 daily 실행 시 `state/cc-auth-decisions-{date}.json` 7일치를 읽
   - `releases`: GitHub releases API (release notes 포함)
   - `commits`: default branch HEAD commit sha (tag 없는 repo)
   - `subdir-commits`: monorepo의 하위 디렉토리 commit (path 필터)
+
+## v28.4 신규: superpowers 12 skill 매트릭스 (Deep Interview brainstorming 위임 정합)
+
+> **Why**: 사용자 지시 2026-05-19 — "Deep Interview는 superpowers의 brainstorming + @ 로 처리".
+> 본 매트릭스는 superpowers 의 12 skill 이 우리 phase 의 어느 단계에서 위임되는지 명시.
+> 5원칙 #1 정합 — 참조만, 복사 X.
+
+```yaml
+superpowers_skill_matrix:
+  - skill: brainstorming
+    our_phase: "Phase -1.5 Part A"
+    role: "의도 명료화 (Deep Interview)"
+    invocation: "Skill('superpowers:brainstorming')"
+    output: "docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md"
+
+  - skill: writing-plans
+    our_phase: "Phase 1 (Design)"
+    role: "구체 구현 plan 작성"
+    invocation: "Skill('superpowers:writing-plans')"
+    output: "plans/<feature>.md"
+
+  - skill: executing-plans
+    our_phase: "Phase 2 (Build)"
+    role: "plan 실행"
+    invocation: "Skill('superpowers:executing-plans')"
+
+  - skill: subagent-driven-development
+    our_phase: "Phase 2 (multi_session_method == C)"
+    role: "작업당 fresh subagent + 2-stage 리뷰"
+    invocation: "Skill('superpowers:subagent-driven-development')"
+    trigger: "@ Q4 = C 선택 시"
+
+  - skill: test-driven-development
+    our_phase: "Phase 2 (CODE chapter)"
+    role: "TDD Red→Green→Refactor"
+    invocation: "Skill('superpowers:test-driven-development')"
+    trigger: "CODE / ITERATION chapter 코드 작성 시"
+
+  - skill: systematic-debugging
+    our_phase: "Phase 3 (실패 시)"
+    role: "가설-검증 디버깅"
+    invocation: "Skill('superpowers:systematic-debugging')"
+    trigger: "test fail / unexpected behavior"
+
+  - skill: verification-before-completion
+    our_phase: "Phase 4 Gate 1"
+    role: "완료 선언 전 증거 검증"
+    invocation: "Skill('superpowers:verification-before-completion')"
+
+  - skill: finishing-a-development-branch
+    our_phase: "Phase 4 close"
+    role: "merge / PR / cleanup 결정"
+    invocation: "Skill('superpowers:finishing-a-development-branch')"
+
+  - skill: using-git-worktrees
+    our_phase: "Phase 2 (격리 필요 시)"
+    role: "git worktree 격리 작업"
+    invocation: "Skill('superpowers:using-git-worktrees')"
+
+  - skill: dispatching-parallel-agents
+    our_phase: "Phase 2 (multi_session_method == B 변형)"
+    role: "다중 agent 병렬 발동"
+    invocation: "Skill('superpowers:dispatching-parallel-agents')"
+    trigger: "@ Q4 = B 선택 + 다중 task"
+
+  - skill: requesting-code-review
+    our_phase: "Phase 3"
+    role: "code review 요청 template"
+    invocation: "Skill('superpowers:requesting-code-review')"
+
+  - skill: receiving-code-review
+    our_phase: "Phase 3"
+    role: "code review 응답"
+    invocation: "Skill('superpowers:receiving-code-review')"
+```
+
+### 추가 외부 framework 참조 워크플로우 (보강, 사용자 지시 2026-05-19 — "다른 하네스 프레임워크 참조 누락")
+
+| Framework | 활용 chapter / phase | 역할 |
+|-----------|----------------------|------|
+| **bkit-claude-code** | 전체 SKILL 영감 | PDCA + chapter routing 패턴 원조 |
+| **claude-code** | hook spec / MCP / skills 표준 | CC CLI 본체 추적 |
+| **claude-code-goal** | /goal 본질 정의 | CC 빌트인 /goal — 자율 iteration 원조 |
+| **react-best-practices** | CODE chapter (React 작업) | Vercel 70 rules 자동 참조 |
+| **frontend-design** | MEDIA chapter | Typography/Color/Motion 디자인 시스템 |
+| **oh-my-claudecode** | multi_session method A 영감 | Teams-first 멀티 에이전트 패턴 |
+| **advisor-tool-beta** | model-router / quota-advisor / cc-auth-advisor | advisor 2-tier 패턴 |
+| **statusline-combined** | 시각화 진입점 | host hud/ 직접 사용 (5원칙 #1) |
+| **hybrid-statusline** | 메인 statusline 1줄 | host hud/ 직접 사용 |
+| **model-usage-line** | 3-tier model usage | host hud/ 직접 사용 |
+| **aiden-auto-telemetry** | 텔레메트리 1줄 | host hud/ 직접 사용 |
+
+각 framework 의 update 추적은 daily harness-watcher 가 처리 (위 cycle 참조).
 
 ## v28.3 신규: auto_discover_subdir + cc-researcher chain
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""goal_stop_evaluator.py — v28.2 prompt-based Stop hook for /auto's /goal mechanism
+"""goal_stop_evaluator.py — v28.3 prompt-based Stop hook for /auto's /goal mechanism
 
 CC 공식 prompt-based Stop hook 패턴 (`/en/hooks#prompt-based-hooks`).
 /goal command가 wrapping하는 동일한 메커니즘을 우리가 직접 등록.
@@ -30,7 +30,34 @@ def _resolve_plugin_root() -> Path:
 
 
 PLUGIN_ROOT = _resolve_plugin_root()
-STATE_DIR = PLUGIN_ROOT / "state"
+
+# Multi-path STATE_DIR 검색 (정본 호출 / plugin cache 호출 양쪽 지원)
+# Root cause (2026-05-19): 정본 ~/.claude/hooks/ 에서 호출 시 PLUGIN_ROOT fallback
+# 이 ~/.claude/ 로 도출 → ~/.claude/state/ 검색 → active-goal 미존재.
+# 실제 active-goal 은 plugin cache state 에 있음.
+# v2 정정 (W4): plugin 버전 번호 하드코딩 제거 → glob 패턴 으로 동적 해소.
+def _discover_plugin_state_dirs() -> list[Path]:
+    """plugin cache 의 모든 버전 디렉토리 동적 검색."""
+    base = Path.home() / ".claude" / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
+    if not base.is_dir():
+        return []
+    # 각 버전 디렉토리의 state/ 폴더 수집 (예: 28.3.0/state, 28.4.0/state, ...)
+    return [v / "state" for v in base.iterdir() if v.is_dir()]
+
+STATE_DIR_CANDIDATES = [
+    PLUGIN_ROOT / "state",  # plugin cache 또는 명시 PLUGIN_ROOT (1순위)
+    *_discover_plugin_state_dirs(),  # 동적 plugin 버전 모두 (2순위)
+    Path.home() / ".claude" / "state",  # 정본 fallback (3순위)
+]
+
+def _find_state_dir() -> Path:
+    """active-goal-*.json 이 존재하는 첫 디렉토리 반환. 없으면 첫 후보."""
+    for d in STATE_DIR_CANDIDATES:
+        if d.is_dir() and any(d.glob("active-goal-*.json")):
+            return d
+    return STATE_DIR_CANDIDATES[0]
+
+STATE_DIR = _find_state_dir()
 
 try:
     sys.path.insert(0, str(PLUGIN_ROOT))
@@ -68,16 +95,37 @@ def _find_active_goal(session_id: str | None) -> tuple[Path | None, dict | None]
 def _evaluate_condition(condition: str, transcript_excerpt: str) -> tuple[bool, str]:
     """Lightweight transcript matching. For full eval, defer to /goal's built-in evaluator.
 
-    This hook does NOT replace /goal's Haiku evaluator — it complements it as
-    a safety net: tripping safety clauses + tracking turn count.
+    v28.4 (2026-05-19): 3 멈춤 조건 분리
+    - Stop 1: 자율 처리 완료 (autonomous_complete_markers)
+    - Stop 2: 안전절 트립 (check_safety_limits 별도)
+    - Stop 3: 진짜 막힘 (truly_blocked_markers)
 
     Heuristics:
-    - "Validation Statement" 문장 검출 → likely achieved
-    - "STAGE CLEAR" or explicit success markers
-    - "FAIL" / "ERROR" markers → not achieved
+    - 자율 처리 완료 markers → QA 게이트 진입 (achieved=False, continue=False)
+    - 진짜 막힘 markers → 사용자 결정 보고 (achieved=False, continue=False)
+    - 성공 markers (Validation Statement) → achieved=True
+    - FAIL markers → continue iteration
     """
-    # Cheap heuristic
     transcript_excerpt_lower = transcript_excerpt.lower()
+
+    # v28.4 신규: 자율 처리 완료 markers (멈춤 조건 1)
+    autonomous_complete_markers = [
+        "all phases complete",
+        "phase 4 close",
+        "implementation finished",
+        "all tasks completed",
+        "no more autonomous steps",
+        "autonomous iteration complete",
+    ]
+
+    # v28.4 신규: 진짜 막힘 markers (멈춤 조건 3)
+    truly_blocked_markers = [
+        "user input required",
+        "external information needed",
+        "company-specific data",
+        "permission denied",
+    ]
+
     success_markers = [
         "validation statement",
         "all pass",
@@ -92,9 +140,20 @@ def _evaluate_condition(condition: str, transcript_excerpt: str) -> tuple[bool, 
         "blocked",
     ]
 
+    has_autonomous_complete = any(
+        m in transcript_excerpt_lower for m in autonomous_complete_markers
+    )
+    has_truly_blocked = any(
+        m in transcript_excerpt_lower for m in truly_blocked_markers
+    )
     has_success = any(m in transcript_excerpt_lower for m in success_markers)
     has_fail = any(m in transcript_excerpt_lower for m in fail_markers)
 
+    # v28.4 멈춤 조건 분기
+    if has_autonomous_complete and not has_fail:
+        return (True, "autonomous_complete detected — enter QA gate (Stop 1)")
+    if has_truly_blocked:
+        return (False, "truly_blocked detected — user decision needed (Stop 3)")
     if has_success and not has_fail:
         return (True, "transcript contains success markers + Validation Statement")
     if has_fail:
@@ -114,8 +173,9 @@ def main() -> int:
 
     goal_path, goal_data = _find_active_goal(session_id)
     if goal_data is None:
-        # No active goal → don't loop (let CC default Stop behavior apply)
-        print(json.dumps({"continue": False, "reason": "no active goal"}))
+        # No active goal → silent (CC 기본 종료 동작, prevent continuation 신호 X)
+        # Root cause fix (2026-05-19): 이전엔 continue=false 출력 → CC가 "block"으로 해석.
+        # 이제 stdout 비워서 CC가 자연 종료하도록.
         return 0
 
     # Increment turn counter
