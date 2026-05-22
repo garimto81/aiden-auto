@@ -26,21 +26,16 @@ from typing import Optional
 
 
 def resolve_plugin_source() -> Optional[Path]:
-    """aiden-auto plugin source 디렉토리.
+    """aiden-auto plugin source 디렉토리 (v3.1 — 명시 의도 우선).
 
     우선순위:
-      1. env AIDEN_AUTO_PLUGIN_SOURCE
-      2. cwd/plugins/aiden-auto (project-local)
-      3. cwd/../plugins/aiden-auto (parent 위치)
-      4. ~/src/aiden-auto/plugins/aiden-auto (dev 통상)
-      5. C:\\claude\\plugins\\aiden-auto (backward compat — 본 framework 정본 PC)
-
-    Returns:
-        Path 객체 또는 None (모든 candidate 부재 — graceful skip)
+      1. env AIDEN_AUTO_PLUGIN_SOURCE — 설정 시 그 값만 (무효 시 graceful None)
+      2. (env 부재 시) cwd/plugins, parent/plugins, ~/src/aiden-auto, C:\\claude\\plugins (backward compat)
     """
     env_path = os.getenv("AIDEN_AUTO_PLUGIN_SOURCE")
-    if env_path and Path(env_path).is_dir():
-        return Path(env_path)
+    if env_path:
+        p = Path(env_path)
+        return p if p.is_dir() else None
     candidates = [
         Path.cwd() / "plugins" / "aiden-auto",
         Path.cwd().parent / "plugins" / "aiden-auto",
@@ -84,11 +79,9 @@ def resolve_project_claude() -> Optional[Path]:
 def resolve_aiden_auto_repo() -> Optional[Path]:
     """aiden-auto GitHub repo 클론 위치 (framework_github_sync 대상).
 
-    우선순위:
-      1. env AIDEN_AUTO_REPO
-      2. ~/aiden-auto-repo
-      3. ~/src/aiden-auto (dev 통상)
-      4. C:\\aiden-auto-repo (backward compat)
+    우선순위 (v3.1 — 명시 의도 우선):
+      1. env AIDEN_AUTO_REPO — 설정되어 있으면 그 값만 사용 (무효해도 fallback X)
+      2. (env 부재 시) ~/aiden-auto-repo, ~/src/aiden-auto, C:\\aiden-auto-repo (backward compat)
 
     .git 디렉토리 존재 확인 (실제 git repo 만).
 
@@ -96,8 +89,13 @@ def resolve_aiden_auto_repo() -> Optional[Path]:
         Path 객체 또는 None
     """
     env_path = os.getenv("AIDEN_AUTO_REPO")
-    if env_path and Path(env_path).is_dir() and (Path(env_path) / ".git").is_dir():
-        return Path(env_path)
+    if env_path:
+        # env 명시 — 그 값만 사용 (무효 시 graceful None, fallback X)
+        p = Path(env_path)
+        if p.is_dir() and (p / ".git").is_dir():
+            return p
+        return None
+    # env 부재 시만 candidates 순회
     candidates = [
         Path.home() / "aiden-auto-repo",
         Path.home() / "src" / "aiden-auto",
