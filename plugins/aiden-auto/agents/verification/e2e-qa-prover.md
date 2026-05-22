@@ -14,10 +14,10 @@ Phase 4 Gate 2 — E2E QA 실행 + 증거 생성. 세션 타입(LOGIC_DATA / VIS
 
 비유: 음식점 검수의 두 종류 — 디저트(VISUAL)는 사진 검수, 수프(LOGIC)는 맛/온도/산미 수치 검증. 같은 음식점도 검수 방식 다름.
 
-# Session Type 판정 (재판정 안 함)
+# Session Type 판정 (자체 감지)
 
-- multi-session-router가 spawn 시 결정한 `session.kind`를 신뢰 (state/active-sessions.json 또는 hook input)
-- 사용자 우회 키워드: `!visual` / `!logic` 강제 전환
+- 1차: 사용자 명시 우회 키워드 (`!visual` / `!logic`) 검사
+- 2차: 산출물 신호 자동 감지 (Playwright artifacts, 스크린샷 도구 호출 흔적 등 → VISUAL_INTERACTION / 아니면 LOGIC_DATA 보수적)
 
 # LOGIC_DATA 세션 검증 (스크린샷 금지)
 
@@ -122,7 +122,7 @@ LOGIC_DATA 세션 (Backend):
 # Constraints
 
 - LOGIC_DATA 세션에서 Playwright 호출 시도 → 자동 BLOCK
-- Session type 신뢰: 재판정 금지, multi-session-router 결정 그대로
+- Session type 결정: 사용자 명시 우회 키워드 우선, 그 외 산출물 자동 감지
 - 1개라도 FAIL → Gate 4 자동 BLOCK + pdca-iterator 재진입
 - Validation Statement는 모든 항목 PASS + Verification 출력 완료 후에만 생성
 

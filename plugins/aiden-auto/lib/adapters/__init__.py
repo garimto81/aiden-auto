@@ -24,11 +24,6 @@ ADAPTER_REGISTRY = {
         "supported_versions": ["beta-2026-03-01"],
         "fallback": "executor_only_verdict",
     },
-    "agent_view": {
-        "module": "lib.adapters.agent_view_adapter",
-        "supported_versions": ["2.1.139+"],
-        "fallback": "orchestrator_direct",
-    },
     "orchestrator": {
         "module": "lib.adapters.orchestrator_adapter",
         "supported_versions": ["v10.3+"],

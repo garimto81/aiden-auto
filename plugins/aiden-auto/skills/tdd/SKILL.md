@@ -61,10 +61,8 @@ TeamDelete()
 ## 인과관계 (CRITICAL - 절대 보존)
 
 ```
-/auto Tier 5 AUTONOMOUS
+/auto (ADAPTIVE CONDUCTOR full mode)
     └── /tdd <feature> (테스트 없는 코드 감지 시)
-
-/work --loop Tier 3
     └── /tdd <feature> (새 기능 구현 요청 시)
 ```
 

@@ -1,35 +1,75 @@
 #!/usr/bin/env python
 """
-hooks/telemetry_update.py — statusline telemetry 동적 채움
+hooks/telemetry_update.py — line 1 process chain (v4.2).
 
-Owner: aiden-auto plugin (Core Philosophy 흡수)
-Trigger:
-  PreToolUse  + matcher Task|Agent   → subagent_type / model 추출
-  PostToolUse + matcher Task|Agent   → updated_at touch (전환 표시)
-  SessionStart                       → circuit-breaker 동기화
+v4.2 additions over v4.1:
+  - Background detection: run_in_background=true → suffix '⟳' on tag
+  - SubagentStop: marks most-recent 'Agent:*⟳' as 'Agent:*✓' in-place
+  - Dedup: same tag pushed within 500ms is skipped (avoids double-fire
+    when both plugin hook + user-settings hook trigger for Task|Agent)
 
-State file (host SSOT):
-  read+write   ~/.claude/state/telemetry.json
-  read         ~/.claude/state/circuit-breaker.json (있으면)
+Per-session isolation: ~/.claude/state/telemetry-{session_id}.json
+
+Trigger (combined plugin + user-settings registration):
+  PreToolUse   → classify tool_name → push process tag (⟳ if bg)
+  PostToolUse  → push 'Deliberating' (if last != 'Deliberating')
+  SubagentStop → mark most-recent 'Agent:*⟳' → 'Agent:*✓';
+                 if last tag is 'Awaiting' and no ⟳ remain, transition to 'Idle'
+  Stop         → if any ⟳ in queue → 'Awaiting' (bg still running),
+                 else → 'Idle' (truly idle)
+  SessionStart → no-op
 
 Silent on any failure — statusline must never crash CC.
 """
 import json
 import os
+import re
 import sys
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 
 HOME = Path.home()
 STATE_DIR = HOME / ".claude" / "state"
-TELEMETRY_PATH = STATE_DIR / "telemetry.json"
-BREAKER_PATH = STATE_DIR / "circuit-breaker.json"
 
-BREAKER_LIMITS = {
-    "architect_reject":  3,
-    "pdca_iterator":     5,
-    "continuation_loop": 3,
-    "auto_recursion":    1,
+QUEUE_MAX = 6
+DEDUP_WINDOW_MS = 500
+SESSION_SAFE = re.compile(r"[^A-Za-z0-9_-]")
+
+PROCESS_TAGS = {
+    "Read": "Reading",
+    "Edit": "Editing",
+    "Write": "Editing",
+    "MultiEdit": "Editing",
+    "NotebookEdit": "Editing",
+    "NotebookRead": "Reading",
+    "Grep": "Searching",
+    "Glob": "Searching",
+    "Bash": "Bash",
+    "PowerShell": "Bash",
+    "BashOutput": "BashOutput",
+    "KillShell": "KillShell",
+    "Monitor": "Monitor",
+    "TodoWrite": "Todo",
+    "TaskCreate": "Todo",
+    "TaskUpdate": "Todo",
+    "TaskList": "Todo",
+    "TaskGet": "Todo",
+    "TaskOutput": "Todo",
+    "TaskStop": "Todo",
+    "WebFetch": "Web",
+    "WebSearch": "Web",
+    "ExitPlanMode": "Plan",
+    "EnterPlanMode": "Plan",
+    "EnterWorktree": "Worktree",
+    "ExitWorktree": "Worktree",
+    "ToolSearch": "ToolSearch",
+    "Skill": "Skill",
+    "AskUserQuestion": "Asking",
+    "ScheduleWakeup": "Schedule",
+    "PushNotification": "Notify",
+    "RemoteTrigger": "Remote",
+    "SendMessage": "Send",
 }
 
 
@@ -61,63 +101,100 @@ def read_stdin():
         return {}
 
 
-def sync_breaker(state):
-    """circuit-breaker.json → telemetry breaker_i/n + pdca_i/n"""
-    breaker = read_json(BREAKER_PATH)
-    if not breaker:
-        return state
-
-    worst_i, worst_n = 0, 1
-    for key, lim in BREAKER_LIMITS.items():
-        try:
-            cur = int(breaker.get(key, 0) or 0)
-        except Exception:
-            cur = 0
-        if lim > 0 and (cur / lim) > (worst_i / worst_n):
-            worst_i, worst_n = cur, lim
-    state["breaker_i"] = worst_i
-    state["breaker_n"] = worst_n
-
-    try:
-        state["pdca_i"] = int(breaker.get("pdca_iterator", 0) or 0)
-        state["pdca_n"] = BREAKER_LIMITS["pdca_iterator"]
-    except Exception:
-        pass
-
-    return state
-
-
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def now_ms():
+    return int(time.time() * 1000)
+
+
+def safe_session(session_id):
+    if not session_id:
+        return "default"
+    cleaned = SESSION_SAFE.sub("_", str(session_id))
+    return cleaned or "default"
+
+
+def session_path(session_id):
+    return STATE_DIR / f"telemetry-{safe_session(session_id)}.json"
+
+
+def classify_tool(tool_name, tool_input):
+    if tool_name in ("Task", "Agent"):
+        sub = (tool_input or {}).get("subagent_type", "agent")
+        return f"Agent:{sub}"
+    if tool_name and tool_name.startswith("mcp__"):
+        return "MCP"
+    return PROCESS_TAGS.get(tool_name, tool_name.lower() if tool_name else "tool")
+
+
+def mark_most_recent_bg_done(queue):
+    """Find the most-recent 'Agent:*⟳' tag and mark as completed (✓)."""
+    for i in range(len(queue) - 1, -1, -1):
+        tag = queue[i]
+        if tag.endswith("⟳") and tag.startswith("Agent"):
+            queue[i] = tag[:-1] + "✓"
+            return True
+    return False
 
 
 def main():
     event = read_stdin()
     hook = event.get("hook_event_name", "")
-    state = read_json(TELEMETRY_PATH)
+    session_id = event.get("session_id", "")
+    path = session_path(session_id)
+    state = read_json(path)
+    queue = list(state.get("processes", []))
+
+    new_tag = None
 
     if hook == "PreToolUse":
-        tool = event.get("tool_name", "")
-        if tool in ("Task", "Agent"):
-            ti = event.get("tool_input", {}) or {}
-            agent = ti.get("subagent_type")
-            model = ti.get("model")
-            if agent:
-                state["agent"] = agent
-            if model:
-                state["model"] = model
-
+        tool_name = event.get("tool_name", "")
+        tool_input = event.get("tool_input") or {}
+        bg = bool(tool_input.get("run_in_background"))
+        tag = classify_tool(tool_name, tool_input)
+        if bg:
+            tag = f"{tag}⟳"
+        new_tag = tag
     elif hook == "PostToolUse":
-        # 전환 표시만 — agent 유지 (display continuity)
-        pass
+        if not queue or queue[-1] != "Deliberating":
+            new_tag = "Deliberating"
+    elif hook == "SubagentStop":
+        # Mark most recent Agent:*⟳ as ✓
+        mark_most_recent_bg_done(queue)
+        # If trailing tag is 'Awaiting' and no more ⟳ in queue → auto-transition to Idle
+        if queue and queue[-1] == "Awaiting":
+            if not any(t.endswith("⟳") for t in queue):
+                queue[-1] = "Idle"
+    elif hook == "Stop":
+        # Claude response finished. If background work still running → 'Awaiting',
+        # otherwise truly idle waiting for user input → 'Idle'.
+        has_bg = any(t.endswith("⟳") for t in queue)
+        target = "Awaiting" if has_bg else "Idle"
+        if queue and queue[-1] == "Deliberating":
+            queue[-1] = target
+        elif not queue or queue[-1] != target:
+            new_tag = target
+    # SessionStart and others: no-op
 
-    elif hook == "SessionStart":
-        # 첫 진입 시 breaker 동기화만
-        pass
+    # Dedup: same tag pushed within DEDUP_WINDOW_MS is skipped
+    skip = False
+    if new_tag:
+        last_ms = state.get("last_push_at_ms", 0)
+        last_tag = queue[-1] if queue else None
+        if last_tag == new_tag and (now_ms() - last_ms) < DEDUP_WINDOW_MS:
+            skip = True
 
-    state = sync_breaker(state)
+    if new_tag and not skip:
+        queue.append(new_tag)
+        queue = queue[-QUEUE_MAX:]
+        state["last_push_at_ms"] = now_ms()
+
+    state["processes"] = queue
+    state["session_id"] = session_id or "default"
     state["updated_at"] = now_iso()
-    write_atomic(TELEMETRY_PATH, state)
+    write_atomic(path, state)
 
 
 if __name__ == "__main__":

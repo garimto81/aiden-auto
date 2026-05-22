@@ -1,0 +1,8 @@
+{
+  "name": "atlassian-auth",
+  "command": "python C:/Users/AidenKim/.claude/hooks/atlassian_auth.py",
+  "timeout": 5,
+  "blocking": false,
+  "priority": 60,
+  "owner": "global"
+}

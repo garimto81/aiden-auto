@@ -5,7 +5,7 @@ description: >
   active-goal.json condition 충족 + architect APPROVE + security NO_HIGH +
   code-reviewer ≤ MEDIUM + qa-tester PASS + verifier fresh evidence +
   production-ready checklist. 미통과 시 pdca-iterator 자동 재진입 (CB 5회).
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 auto_invoke: on_phase_4_entry
 ---

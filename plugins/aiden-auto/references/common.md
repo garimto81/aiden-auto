@@ -154,7 +154,7 @@ Mermaid 다이어그램 규칙 (MANDATORY):
 4. Tier 2도 실패 시 에러 보고 후 중단
 
 ```
-Agent(subagent_type="executor-high", ...) → 에러 발생
+Agent(subagent_type="executor-high", model=plan["executor"], ...) → 에러 발생
   └─ "Agent type not found" 감지
   └─ 아래 매핑에서 대체 에이전트 선택
   └─ Agent(subagent_type="general-purpose", model="opus", ...) 재호출
@@ -235,7 +235,7 @@ Agent(subagent_type="executor-high", ...) → 에러 발생
 ### 팀 라이프사이클
 
 1. **Phase 0**: `TeamCreate(team_name="pdca-{feature}")` — PDCA 시작 시 1회
-2. **Phase 1-4**: `Agent(subagent_type="에이전트", name="역할", description="설명", team_name="pdca-{feature}")` → `SendMessage` → 완료 대기 → `shutdown_request`
+2. **Phase 1-4**: `Agent(subagent_type="에이전트", model=plan["에이전트"], name="역할", description="설명", team_name="pdca-{feature}")` → `SendMessage` → 완료 대기 → `shutdown_request`
 3. **Phase 4**: 보고서 생성 후 Safe Cleanup (아래 절차)
 
 ### Phase 4 Safe Cleanup 절차 (v22.2)
@@ -362,10 +362,10 @@ ls ~/.claude/tasks/ | grep pdca
 
 ```
 # ❌ hang 위험 — description 누락
-Agent(subagent_type="executor-high", name="impl-manager", team_name="pdca-{feature}", prompt="...")
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-manager", team_name="pdca-{feature}", prompt="...")
 
 # ✅ 올바른 패턴 (description 필수)
-Agent(subagent_type="executor-high", name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}", prompt="...")
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}", prompt="...")
 ```
 
 **5분 Heartbeat Timeout:**
@@ -430,8 +430,8 @@ cmd /c "mklink /J \"%CLAUDE_PROJECT_DIR%\\wt\\{feature}-test\\.claude\" \"%CLAUD
 ```
 
 ```
-Agent(subagent_type="executor-high", name="impl", description="구현 실행", team_name="pdca-{feature}", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-impl/ 경로에서 구현. 다른 경로 수정 금지.")
-Agent(subagent_type="executor-high", name="tester", description="테스트 작성", team_name="pdca-{feature}", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-test/ 경로에서 테스트 작성. 다른 경로 수정 금지.")
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl", description="구현 실행", team_name="pdca-{feature}", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-impl/ 경로에서 구현. 다른 경로 수정 금지.")
+Agent(subagent_type="executor-high", model=plan["executor"], name="tester", description="테스트 작성", team_name="pdca-{feature}", prompt="{CLAUDE_PROJECT_DIR}/wt/{feature}-test/ 경로에서 테스트 작성. 다른 경로 수정 금지.")
 ```
 
 ---

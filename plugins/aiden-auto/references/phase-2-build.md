@@ -106,7 +106,7 @@ Lead가 현재 대화 길이를 기준으로 판단합니다. 명시적 `/contex
 
 **LIGHT 모드: Executor teammate (opus) 단일 실행**
 ```
-Agent(subagent_type="executor-high", name="executor", description="구현 실행", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="executor", description="구현 실행", team_name="pdca-{feature}",
      prompt="docs/01-plan/{feature}.plan.md 기반 구현 (설계 문서 없음). TDD 필수.")
 SendMessage(type="message", recipient="executor", content="구현 시작. 완료 후 TaskUpdate로 completed 처리.")
 # 완료 대기 → shutdown_request
@@ -116,7 +116,7 @@ SendMessage(type="message", recipient="executor", content="구현 시작. 완료
 
 **STANDARD 모드: impl-manager teammate (opus) — 4조건 자체 루프**
 ```
-Agent(subagent_type="executor-high", name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}",
      prompt="{impl-manager prompt 전문 — 아래 'impl-manager Prompt 전문' 섹션 참조}")
 SendMessage(type="message", recipient="impl-manager", content="4조건 구현 루프 시작.")
 # Lead는 IMPLEMENTATION_COMPLETED 또는 IMPLEMENTATION_FAILED 메시지만 수신
@@ -124,7 +124,7 @@ SendMessage(type="message", recipient="impl-manager", content="4조건 구현 �
 
 **HEAVY 모드: impl-manager teammate (opus) — 4조건 자체 루프 + 병렬 가능**
 ```
-Agent(subagent_type="executor-high", name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-manager", description="4조건 자체 루프 구현 관리", team_name="pdca-{feature}",
      prompt="{impl-manager prompt 전문 — 아래 'impl-manager Prompt 전문' 섹션 참조}")
 SendMessage(type="message", recipient="impl-manager", content="4조건 구현 루프 시작.")
 # Lead는 IMPLEMENTATION_COMPLETED 또는 IMPLEMENTATION_FAILED 메시지만 수신
@@ -133,11 +133,11 @@ SendMessage(type="message", recipient="impl-manager", content="4조건 구현 �
 **HEAVY 병렬 실행 (독립 작업 2개 이상 시):**
 ```
 # Lead가 설계 문서 분석 → 독립 작업 분할
-Agent(subagent_type="executor-high", name="impl-api", description="API 구현 담당",
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-api", description="API 구현 담당",
      team_name="pdca-{feature}", isolation="worktree",
      prompt="[Phase 2 HEAVY 병렬] API 구현 담당. {impl-manager 전체 prompt}.
              담당 범위: src/api/ 하위 파일만. 다른 경로 수정 금지.")
-Agent(subagent_type="executor-high", name="impl-ui", description="UI 구현 담당",
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-ui", description="UI 구현 담당",
      team_name="pdca-{feature}", isolation="worktree",
      prompt="[Phase 2 HEAVY 병렬] UI 구현 담당. {impl-manager 전체 prompt}.
              담당 범위: src/components/ 하위 파일만. 다른 경로 수정 금지.")
@@ -165,10 +165,10 @@ Architect는 최종 Gate만 담당 (Step 2.3 유지).
 
 ```python
 # Builder-Validator 쌍 (HEAVY만)
-Agent(subagent_type="executor-high", name="impl-manager", description="4조건 자체 루프 구현 관리",
+Agent(subagent_type="executor-high", model=plan["executor"], name="impl-manager", description="4조건 자체 루프 구현 관리",
      team_name="pdca-{feature}",
      prompt="{impl-manager prompt 전문}")
-Agent(subagent_type="qa-tester", name="live-qa", description="실시간 품질 검증",
+Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="live-qa", description="실시간 품질 검증",
      team_name="pdca-{feature}",
      prompt="[Phase 2 Live QA] impl-manager 구현 결과를 실시간 검증.
              테스트 실행, lint 체크, 빌드 확인을 수행하고
@@ -210,7 +210,7 @@ if has_nextjs or has_react:
 else:
     reviewer_prompt = "구현 코드의 품질, 보안, 성능 이슈 분석."
 
-Agent(subagent_type="code-reviewer", name="code-reviewer", description="코드 리뷰", team_name="pdca-{feature}",
+Agent(subagent_type="code-reviewer", model=plan["code-reviewer"], name="code-reviewer", description="코드 리뷰", team_name="pdca-{feature}",
      prompt=reviewer_prompt)
 SendMessage(type="message", recipient="code-reviewer", content="코드 품질 리뷰 시작. APPROVE 또는 REVISE + 수정 목록 제공.")
 # code-reviewer 완료 대기 → shutdown_request
@@ -244,7 +244,7 @@ impl-manager가 IMPLEMENTATION_COMPLETED를 보고한 후, 독립 Architect가 �
 rejection_count = 0  # Lead 메모리에서 관리
 
 # Architect 외부 검증
-Agent(subagent_type="architect", name="impl-verifier", description="구현 검증", team_name="pdca-{feature}",
+Agent(subagent_type="architect", model=plan["architect"], name="impl-verifier", description="구현 검증", team_name="pdca-{feature}",
      prompt="[Phase 2 Architect Gate] 구현 외부 검증.
              Plan: docs/01-plan/{feature}.plan.md
              Design: docs/02-design/{feature}.design.md (있으면)
@@ -313,7 +313,7 @@ Architect 정성 검증 통과 후, gap-detector로 설계-구현 정량 비교.
 
 ```
 # Gap Analysis — 7개 항목 정량 비교
-Agent(subagent_type="gap-detector", name="gap-checker", description="설계-구현 정량 비교",
+Agent(subagent_type="gap-detector", model=plan["gap-detector"], name="gap-checker", description="설계-구현 정량 비교",
      team_name="pdca-{feature}",
      prompt="[Phase 2 Gap Analysis] 설계-구현 정량 비교.
              Plan: docs/01-plan/{feature}.plan.md
@@ -348,7 +348,7 @@ Architect REJECT 시 DOMAIN 값에 따라 전문 에이전트에게 수정 위�
 
 ```
 # Domain-Smart Fix
-Agent(subagent_type="{domain_agent}", name="domain-fixer", description="도메인별 수정",
+Agent(subagent_type="{domain_agent}", model=plan["{domain_agent}"], name="domain-fixer", description="도메인별 수정",
      team_name="pdca-{feature}",
      prompt="[Phase 2 Domain Fix] Architect 거부 사유 해결.
              거부 사유: {rejection_reason}
@@ -394,7 +394,7 @@ Phase 2에서 impl-manager teammate에 전달하는 complete prompt:
 
 10줄 초과 코드 변경은 반드시 에이전트에 위임하세요:
   - 10줄 이하: 직접 Edit/Write 허용
-  - 11줄 이상: Agent(subagent_type="executor", ...) 또는 별도 teammate로 위임
+  - 11줄 이상: Agent(subagent_type="executor", model=plan["executor"], ...) 또는 별도 teammate로 위임
   - 다중 파일 변경: 항상 위임 (파일 수 무관)
   - 위반 시: code-reviewer가 REVISE 판정에서 delegation violation 지적
 

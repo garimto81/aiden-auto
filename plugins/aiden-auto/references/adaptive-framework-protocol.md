@@ -11,7 +11,6 @@
 | State 파일 | 현재 schema |
 |-----------|-------------|
 | `state/active-goal-{sid}.json` | v1.0 |
-| `state/active-sessions.json` | v1.0 |
 | `state/quota-decisions-{date}.json` | v1.0 |
 | `state/circuit-breaker.json` | v1.0 |
 | `state/cc-auth-decisions-{date}.json` | v1.0 |

@@ -35,6 +35,35 @@ EventStatus = Literal["INITIATED", "IN_PROGRESS", "COMPLETED", "ERROR"]
 
 
 @dataclass
+class SessionCreatedBy:
+    """세션 생성자 메타데이터 — 멀티 CC 환경에서 어느 인스턴스가 만들었는지 추적."""
+    user: str = ""          # 사용자 이메일 or 식별자
+    email: str = ""         # 선택적 이메일 (email != user 인 경우)
+    timestamp: str = ""     # ISO8601 생성 시각
+
+
+@dataclass
+class SessionMeta:
+    """Phase 5A — 표준화된 세션 메타데이터 확장 필드.
+
+    기존 Session dataclass (session_registry.py) 를 보완.
+    이 필드들은 events.jsonl 의 INITIATED 이벤트 payload.data 에 포함된다.
+    """
+    created_by: dict = field(default_factory=dict)          # SessionCreatedBy.to_dict()
+    scope: str = ""                                         # 도메인 범위 (예: "frontend", "backend")
+    goal_title: str = ""                                    # 사용자 목표 요약 제목
+    estimated_effort_days: float = 0.0                      # 예상 소요 일수
+
+    def to_dict(self) -> dict:
+        return {
+            "created_by": self.created_by,
+            "scope": self.scope,
+            "goal_title": self.goal_title,
+            "estimated_effort_days": self.estimated_effort_days,
+        }
+
+
+@dataclass
 class ProgressMeta:
     current_step: int = 0
     total_steps: int = 1

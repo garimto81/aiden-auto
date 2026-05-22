@@ -7,23 +7,55 @@
     ]
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/auto_trigger.py",
+            "async": true
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_capture.py",
+            "async": true
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/loop_detector.py\"",
-            "statusMessage": "Checking for tool call loops..."
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/agent_teams_guard.py",
+            "statusMessage": "Validating Agent Teams protocol..."
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/loop_detector.py",
+            "statusMessage": "Running loop detector..."
           }
         ]
       },
       {
-        "matcher": "Task|Agent",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_update.py\"",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_capture.py",
+            "async": true
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/read_dedup.py",
+            "async": true
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/context_pressure_alert.py",
             "async": true
           }
         ]
@@ -35,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/circuit_breaker.py\"",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/circuit_breaker.py",
             "statusMessage": "Checking circuit breaker..."
           }
         ]
@@ -55,7 +87,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/task_completed_trigger.py\"",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/task_completed_trigger.py",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_capture.py",
             "async": true
           }
         ]
@@ -67,16 +109,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py\""
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/auto_install_statusline.py"
           },
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/cc_auth_check.py\"",
-            "statusMessage": "Checking Claude Code OAuth (advisor-tool)..."
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/session_init.py"
           },
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_update.py\"",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/super_drift_watch.py",
             "async": true
           }
         ]
@@ -88,11 +129,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/auto_deploy.py\""
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/auto_deploy.py"
           },
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/post_commit_quality.py\""
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/post_commit_quality.py"
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry_capture.py",
+            "async": true
           }
         ]
       }

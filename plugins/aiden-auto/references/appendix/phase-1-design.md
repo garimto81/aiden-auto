@@ -70,7 +70,7 @@
 
 **STANDARD 모드: Executor opus teammate**
 ```
-Agent(subagent_type="executor-high", name="design-writer", description="설계 문서 작성", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="design-writer", description="설계 문서 작성", team_name="pdca-{feature}",
      prompt="docs/01-plan/{feature}.plan.md를 참조하여 설계 문서를 작성하세요.
      필수 포함: 구현 대상 파일 목록, 인터페이스 설계, 데이터 흐름, 테스트 전략.
      출력: docs/02-design/{feature}.design.md")
@@ -80,7 +80,7 @@ SendMessage(type="message", recipient="design-writer", content="설계 문서 �
 
 **HEAVY 모드: Executor-high opus teammate**
 ```
-Agent(subagent_type="executor-high", name="design-writer", description="설계 문서 작성", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="design-writer", description="설계 문서 작성", team_name="pdca-{feature}",
      prompt="docs/01-plan/{feature}.plan.md를 참조하여 설계 문서를 작성하세요.
      필수 포함: 구현 대상 파일 목록, 인터페이스 설계, 데이터 흐름, 테스트 전략, 예상 위험 요소.
      출력: docs/02-design/{feature}.design.md")

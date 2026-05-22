@@ -1,0 +1,30 @@
+{
+  "name": "code-atlas",
+  "version": "2.0.0",
+  "private": true,
+  "description": "AI 코딩 환각을 로컬에서 시각적으로 검증하는 Claude Code skill",
+  "type": "module",
+  "bin": {
+    "code-atlas": "scripts/cli.ts"
+  },
+  "scripts": {
+    "start": "node --import tsx scripts/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "open": "^10.1.0",
+    "ts-morph": "^27.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

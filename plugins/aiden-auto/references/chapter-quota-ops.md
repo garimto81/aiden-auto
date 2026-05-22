@@ -1,11 +1,11 @@
 # chapter-quota-ops — HARNESS-OPS 카테고리 (v28.2 신규)
 
-> **목적**: 쿼타 / 멀티세션 / 골 운영 흡수. /goal 메커니즘 기반 + advisor-tool API beta + agent-view 멀티세션 + Perfect Output Gate.
+> **목적**: 쿼타 / 골 운영 흡수. /goal 메커니즘 기반 + advisor-tool API beta + Perfect Output Gate. (멀티세션 운영은 공식 `claude agents` CLI로 위임 — 2026-05-14 폐기)
 
 ## Use_When
 
-- 사용자가 쿼타 상태 확인 / 강제 eco 모드 / 멀티세션 분할 / goal 발화 / 진행률 조회 등 운영 의도 표명
-- /auto 평문 트리거 중 plain_text_triggers에 매칭 (`쿼타 확인`, `멀티세션`, `병렬 세션`, `goal로 돌려`, `완성될 때까지` 등)
+- 사용자가 쿼타 상태 확인 / 강제 eco 모드 / goal 발화 / 진행률 조회 등 운영 의도 표명
+- /auto 평문 트리거 중 plain_text_triggers에 매칭 (`쿼타 확인`, `goal로 돌려`, `완성될 때까지` 등)
 
 ## Do_Not_Use_When
 
@@ -26,23 +26,19 @@
 |------|-------|------|
 | 1차 쿼타 게이트 | `quota-executor` (haiku) | 3-질문 |
 | 2차 쿼타 advisor | `quota-advisor` (sonnet + advisor-tool sub-inference opus 4.7) | 5-질문 정가중 |
-| 멀티세션 판정 | `multi-session-router` (haiku) | splittable + session type |
 
 ## 통합 흐름 (Section 4 / Section 5 / Section 14 참조)
 
 1. statusline 항상 표시 (cache 기반)
 2. PreToolUse(Task) 시 quota-executor → 필요 시 quota-advisor 에스컬
-3. Phase 0 종료 시 splittable 감지 → multi-session 자동 launch
-4. 매 phase 전이 시 event_dispatcher가 events.jsonl append
-5. Phase 4 close 시 Perfect Output Gate 4단 검증
+3. 매 phase 전이 시 event_dispatcher가 events.jsonl append
+4. Phase 4 close 시 Perfect Output Gate 4단 검증
 
 ## Lazy Load Sub-References
 
 작업 진행 시 필요한 phase에서만 1개씩 로드:
 - `references/quota-advisor-protocol.md` (Phase 0 quota 결정 시)
-- `references/multi-session-bridge.md` (Phase 0 splittable 판정 시)
 - `references/perfect-deliverable-protocol.md` (Phase 4 close 게이트)
-- `references/multi-session-events-protocol.md` (event 발화 필요 시)
 - `references/adaptive-framework-protocol.md` (adapter 호출 시)
 
 ## Statusline 토큰 설명

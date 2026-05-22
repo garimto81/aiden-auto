@@ -1,0 +1,52 @@
+{
+  "cesp_version": "1.0",
+  "name": "en_female",
+  "display_name": "English Female (Custom)",
+  "version": "1.0.0",
+  "author": {
+    "name": "AidenKim",
+    "github": "garimto81"
+  },
+  "license": "CC-BY-NC-4.0",
+  "language": "en",
+  "categories": {
+    "task.complete": {
+      "sounds": [
+        {
+          "file": "sounds/TaskComplete1.mp3",
+          "label": "The first task has been processed",
+          "sha256": "4c18eda03a88e062b8944e57238e18c63f9c52c5788a707de0e487c55a03dea3"
+        },
+        {
+          "file": "sounds/TaskComplete2.mp3",
+          "label": "Your first task is complete",
+          "sha256": "4bd57339ce99ead5e0334dc0078f4ad3f2a790c807506b3de9941a4fca124f3d"
+        },
+        {
+          "file": "sounds/TaskComplete3.mp3",
+          "label": "Initial task handled successfully",
+          "sha256": "ae6e8fd1d6cefac88afa3a4321783d8204a652fe856c5979e3a080e1156d98b8"
+        }
+      ]
+    },
+    "input.required": {
+      "sounds": [
+        {
+          "file": "sounds/InputRequired1.mp3",
+          "label": "I need your input",
+          "sha256": "0dca4fe24249f60be8f304370bd35dec43f01826a80570f62030c89aae2ba524"
+        },
+        {
+          "file": "sounds/InputRequired2.mp3",
+          "label": "Waiting for your response",
+          "sha256": "affd32a68d2f928f8ce86d54912d4de05c9924492e4f966c6b020aafc6777b69"
+        },
+        {
+          "file": "sounds/InputRequired3.mp3",
+          "label": "Your attention please",
+          "sha256": "12b7106ac2ce36cc0c9aa51798f1909a38a94bb84dcf4c395a14de0bde93a99c"
+        }
+      ]
+    }
+  }
+}

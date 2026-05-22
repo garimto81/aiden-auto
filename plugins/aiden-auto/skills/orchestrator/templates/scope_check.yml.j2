@@ -1,0 +1,28 @@
+name: scope_check
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - run: pip install pyyaml
+
+      - name: Verify scope
+        run: |
+          BRANCH="${{ '{{' }} github.head_ref {{ '}}' }}"
+          STREAM=$(echo "$BRANCH" | grep -oP 'work/\K(s\d+)' | tr '[:lower:]' '[:upper:]')
+          [ -z "$STREAM" ] && exit 0
+          FILES=$(git diff --name-only origin/main...HEAD | tr '\n' ',')
+          python tools/orchestrator/phase_gate_validator.py \
+            --config="{{ config_path }}" \
+            --stream=$STREAM \
+            --phase=AUTO \
+            --files="$FILES"

@@ -69,7 +69,7 @@ if cumulative_iteration_count >= MAX_CUMULATIVE_ITERATIONS:
 ### Step 4.0: Case 1 — gap < 90%
 
 ```
-Agent(subagent_type="executor-high", name="iterator", description="반복 수정", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="iterator", description="반복 수정", team_name="pdca-{feature}",
      prompt="[Gap Improvement] 설계-구현 갭을 90% 이상으로 개선하세요. gap-checker 결과에서 미구현/불일치 항목을 식별하고 순차적으로 수정하세요. 최대 5회 반복.")
 SendMessage(type="message", recipient="iterator", content="갭 자동 개선 시작.")
 # 완료 대기 → shutdown_request → Phase 3 재실행
@@ -81,7 +81,7 @@ SendMessage(type="message", recipient="iterator", content="갭 자동 개선 시
 
 ```
 # 보고서: LIGHT->writer(haiku), STANDARD/HEAVY->executor-high(opus)
-Agent(subagent_type="writer", name="reporter", description="보고서 작성", team_name="pdca-{feature}",
+Agent(subagent_type="writer", model=plan["writer"], name="reporter", description="보고서 작성", team_name="pdca-{feature}",
      prompt="PDCA 사이클 완료 보고서를 생성하세요.
      포함: Plan 요약, Design 요약, 구현 결과, Check 결과, 교훈
 
@@ -148,7 +148,7 @@ if pr_open or deploy_pending:
 ### Step 4.2: Case 3 — Architect REJECT
 
 ```
-Agent(subagent_type="executor-high", name="fixer", description="수정 실행", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="fixer", description="수정 실행", team_name="pdca-{feature}",
      prompt="Architect 거부 사유를 해결하세요: {rejection_reason}")
 SendMessage(type="message", recipient="fixer", content="피드백 반영 시작.")
 # 완료 대기 → shutdown_request → Phase 3 재실행

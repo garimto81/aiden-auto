@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Code Atlas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="/styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">🗺 <b>Code Atlas</b> — AI 코딩 결과 검증</div>
+  <div class="run-meta" id="run-meta"></div>
+</header>
+<nav class="legend">
+  <span class="leg-item"><span class="dot dot-normal"></span> 정상</span>
+  <span class="leg-item"><span class="dot dot-phantom"></span> 없는 파일</span>
+  <span class="leg-item"><span class="dot dot-hollow"></span> 빈 껍데기</span>
+  <span class="leg-item"><span class="dot dot-duplicate"></span> 중복</span>
+  <span class="leg-item"><span class="dot dot-dangling"></span> DB 안 감</span>
+  <span class="leg-spacer"></span>
+  <span class="leg-item">━━▶ 정상 연결</span>
+  <span class="leg-item">━╳▶ 끊어짐</span>
+  <span class="leg-item">╌╌▶ 선언만</span>
+</nav>
+<main id="app">
+  <section class="pane pane-graph" id="atlas-graph">
+    <div id="graph-status" class="loading">다이어그램 그리는 중…</div>
+    <div id="mermaid-wrapper"><pre class="mermaid" id="mermaid-target"></pre></div>
+  </section>
+  <aside class="pane pane-evidence" id="evidence-panel">
+    <h3>🔍 세부 정보</h3>
+    <div class="empty">빨강·회색·주황·파랑 박스를 클릭하면 무엇이 문제인지, AI 에게 어떻게 다시 시킬지 여기 나옵니다.</div>
+  </aside>
+</main>
+<footer id="action-dock" class="action-dock hidden">
+  <button id="btn-prompt" class="btn">📋 AI 에게 시킬 지시서 복사</button>
+  <button id="btn-issue" class="btn">🐛 GitHub 이슈 등록</button>
+  <button id="btn-fp" class="btn btn-secondary">✅ 문제 아니에요</button>
+  <span id="action-status" class="status"></span>
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>

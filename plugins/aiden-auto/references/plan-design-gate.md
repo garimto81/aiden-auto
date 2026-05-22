@@ -36,6 +36,7 @@ if missing:
   # 1회 자동 보완 (executor sonnet)
   Agent(
     subagent_type="executor",
+    model=plan["executor"],
     description=f"Plan 누락 섹션 보완 ({len(missing)}개)",
     prompt=f"Plan 문서 {plan_path}에 누락 섹션을 보완하세요: {missing}. 기존 내용 보존 + 누락만 추가."
   )

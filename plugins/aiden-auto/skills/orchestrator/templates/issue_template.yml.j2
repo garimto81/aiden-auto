@@ -1,0 +1,36 @@
+name: Stream Work Declaration
+description: Declare start of work in a multi-session Stream
+title: "[SX] <work title>"
+labels: ["status:in-progress"]
+body:
+  - type: dropdown
+    id: stream
+    attributes:
+      label: Stream
+      options:
+        {%- for sid, s in streams.items() %}
+        - "{{ sid }} {{ s.name }}"
+        {%- endfor %}
+        {%- for sid, s in future_streams.items() %}
+        - "{{ sid }} {{ s.name }} (future)"
+        {%- endfor %}
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Files in scope
+      placeholder: Paste from .team scope_owns
+    validations:
+      required: true
+
+  - type: textarea
+    id: deps
+    attributes:
+      label: Blocked by (other Streams)
+
+  - type: input
+    id: eta
+    attributes:
+      label: Expected completion

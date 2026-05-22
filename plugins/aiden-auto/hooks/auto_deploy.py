@@ -14,15 +14,11 @@ import subprocess
 import sys
 import time
 
-
 def _load_deploy_config():
-    """프로젝트별 .claude/deploy-config.json 을 로드.
+    """프로젝트별 .claude/deploy-config.json 로드. 없으면 None.
 
-    반복 프롬프트 분석(2026-03-25): Docker 재빌드 6회 반복 해소.
-    각 프로젝트에 .claude/deploy-config.json을 두면 자동 배포 대상이 됨.
-
-    deploy-config.json 이 없으면 None 반환 — 호출자가 즉시 noop 종료.
-    범용 plugin 으로서 특정 프로젝트 기본값을 제공하지 않음.
+    이 hook은 opt-in: deploy-config.json이 있는 프로젝트만 자동배포 대상이다.
+    config 부재 시 None을 반환하여 main()이 silent skip 하도록 한다.
     """
     cwd = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     config_path = os.path.join(cwd, ".claude", "deploy-config.json")
@@ -31,17 +27,18 @@ def _load_deploy_config():
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
-    except Exception as e:
-        sys.stderr.write(f"[auto_deploy] failed to parse {config_path}: {e}\n")
+    except Exception:
+        return None
+    project = cfg.get("project", cwd)
+    if not os.path.isdir(project):
         return None
     return {
-        "project": cwd,
-        "watch_paths": cfg.get("watch_paths", ["server/", "src/"]),
+        "project": project,
+        "watch_paths": cfg.get("watch_paths", []),
         "docker_compose": cfg.get("docker_compose", "docker-compose.yml"),
         "health_check": cfg.get("health_check", ""),
         "flutter_dir": cfg.get("flutter_dir", ""),
         "web_build": cfg.get("web_build", ""),
-        "flutter_prefix": cfg.get("flutter_prefix", ""),  # e.g. "my_app_flutter"
     }
 
 
@@ -93,12 +90,15 @@ def main():
         except (json.JSONDecodeError, KeyError):
             pass
 
-    # 설정 로드 — deploy-config.json 없으면 silent noop
+    # opt-in 검증: deploy-config.json 없는 프로젝트는 silent skip
     cfg = _load_deploy_config()
     if cfg is None:
-        return  # 범용 환경: deploy-config.json 미존재 → 아무것도 하지 않음
+        return
+
     PROJECT = cfg["project"]
     WATCH_PATHS = cfg["watch_paths"]
+    if not WATCH_PATHS:
+        return
     FLAG = _get_flag_path(PROJECT)
 
     # 1. 변경 파일 확인

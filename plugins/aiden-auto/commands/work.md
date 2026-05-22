@@ -9,6 +9,9 @@ audit_exclude: true
 
 # /work -> /auto 리다이렉트
 
+<!-- QA-S1 2026-05-15: Plan B bidirectional sync test — Global → Project + Plugin -->
+<!-- QA-S2 2026-05-15: Plan B reverse sync test — Project → Global + Plugin -->
+
 > `/work`는 v19.0에서 `/auto`로 통합되었습니다. 모든 기능이 `/auto`에서 실행됩니다.
 
 ## 매핑 테이블

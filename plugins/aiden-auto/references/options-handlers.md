@@ -83,7 +83,7 @@ target_doc = options.get("mockup")
 
 ```
 if options.style == "quasar-white":
-    Agent(subagent_type="designer", name="mockup-designer", description="Quasar White 목업 디자인", team_name="pdca-{feature}",
+    Agent(subagent_type="designer", model=plan["designer"], name="mockup-designer", description="Quasar White 목업 디자인", team_name="pdca-{feature}",
          prompt="[Mockup Quasar White] docs/mockups/{name}.html을 Quasar White Tone Minimal로 스타일링.
                  Quasar UMD 컴포넌트: q-toolbar, q-card flat bordered, q-input outlined, q-btn color='grey-8'.
                  self-closing 태그 금지 (<q-input /> → <q-input></q-input>).
@@ -92,14 +92,14 @@ if options.style == "quasar-white":
                  max-width: 720px, max-height: 1280px.
                  designer.md의 Quasar White Tone Minimal 섹션 참조.")
 elif options.style == "quasar":
-    Agent(subagent_type="designer", name="mockup-designer", description="Quasar 목업 디자인", team_name="pdca-{feature}",
+    Agent(subagent_type="designer", model=plan["designer"], name="mockup-designer", description="Quasar 목업 디자인", team_name="pdca-{feature}",
          prompt="[Mockup Quasar] docs/mockups/{name}.html을 Quasar Material Design으로 스타일링.
                  Quasar UMD 컴포넌트: q-toolbar, q-card, q-input outlined, q-btn, q-table.
                  self-closing 태그 금지. Roboto 300/400/500/700.
                  max-width: 720px, max-height: 1280px.
                  designer.md의 Quasar Material Design 섹션 참조.")
 else:
-    Agent(subagent_type="designer", name="mockup-designer", description="목업 디자인", team_name="pdca-{feature}",
+    Agent(subagent_type="designer", model=plan["designer"], name="mockup-designer", description="목업 디자인", team_name="pdca-{feature}",
          prompt="[Mockup B&W] docs/mockups/{name}.html을 Refined Minimal B&W 스타일로 스타일링.
                  팔레트: #222326, #555555, #8a8a8a, #767676, #e5e5e5, #F4F5F8, #fff만.
                  emoji/SVG/icon font 금지. Inter 400/500/600 단일 서체.
@@ -165,7 +165,7 @@ sources_live.png, outputs_live.png, system_live.png
 ### Step 2: designer HTML 생성
 
 ```python
-Agent(subagent_type="designer", name="anno-designer", description="Anno HTML 생성", team_name="pdca-{feature}",
+Agent(subagent_type="designer", model=plan["designer"], name="anno-designer", description="Anno HTML 생성", team_name="pdca-{feature}",
      prompt="""[Anno HTML] {tab_name}_live.png 스크린샷을 참조하여 구조 중심 HTML 생성.
 
      필수 규칙:
@@ -238,7 +238,7 @@ python "${CLAUDE_PROJECT_DIR:-$(pwd)}/ui_overlay/scripts/anno_workflow.py" --all
 ### Phase A: Critic 분석
 
 ```
-Agent(subagent_type="critic", name="critic-analyst", description="약점/문제점 adversarial 분석", team_name="pdca-{feature}",
+Agent(subagent_type="critic", model=plan["critic"], name="critic-analyst", description="약점/문제점 adversarial 분석", team_name="pdca-{feature}",
      prompt="[Critic Mode] 아래 대상을 adversarial하게 분석하여 약점과 문제점을 찾아라.
              대상: {사용자가 지정한 문서/코드/설계 경로 또는 내용}
 
@@ -267,7 +267,7 @@ SendMessage(type="message", recipient="critic-analyst", content="Critic 분석 �
 ### Phase B: 웹 리서치
 
 ```
-Agent(subagent_type="researcher", name="solution-researcher", description="약점별 웹 솔루션 리서치", team_name="pdca-{feature}",
+Agent(subagent_type="researcher", model=plan["researcher"], name="solution-researcher", description="약점별 웹 솔루션 리서치", team_name="pdca-{feature}",
      prompt="[Solution Research] critic 분석에서 발견된 약점별로 웹 리서치를 수행하라.
              ## Critic 분석 결과:
              {Phase A critic-analyst의 결과 전문}
@@ -315,19 +315,19 @@ SendMessage(type="message", recipient="solution-researcher", content="웹 리서
 # Phase 1: 3-Agent 병렬 분석
 TeamCreate(team_name="debate-{topic}")
 
-Agent(subagent_type="architect", name="perspective-structure",
+Agent(subagent_type="architect", model=plan["architect"], name="perspective-structure",
       description="구조적 관점 분석", team_name="debate-{topic}",
       prompt="[관점: 아키텍처/구조] {사용자 요청 내용}을 구조적 관점에서 분석.
               분석: 아키텍처 적합성, 확장성, 의존성 리스크, 유지보수 비용.
               출력: ## 구조적 분석 → 결론/근거/리스크/추천 형식.")
 
-Agent(subagent_type="code-reviewer", name="perspective-quality",
+Agent(subagent_type="code-reviewer", model=plan["code-reviewer"], name="perspective-quality",
       description="품질/보안 관점 분석", team_name="debate-{topic}",
       prompt="[관점: 품질/보안] {사용자 요청 내용}을 품질 관점에서 분석.
               분석: 코드 품질 영향, 보안 리스크, 에러 핸들링, 기술 부채.
               출력: ## 품질/보안 분석 → 결론/근거/리스크/추천 형식.")
 
-Agent(subagent_type="researcher", name="perspective-external",
+Agent(subagent_type="researcher", model=plan["researcher"], name="perspective-external",
       description="외부 사례/패턴 분석", team_name="debate-{topic}",
       prompt="[관점: 외부 사례] {사용자 요청 내용}을 외부 관점에서 분석.
               분석: 베스트 프랙티스, 오픈소스 접근 방식, 대안 비교.
@@ -351,7 +351,7 @@ TeamDelete()
 ## `--research` — 코드베이스/외부 리서치
 
 ```
-Agent(subagent_type="researcher", name="researcher", description="리서치 실행", team_name="pdca-{feature}",
+Agent(subagent_type="researcher", model=plan["researcher"], name="researcher", description="리서치 실행", team_name="pdca-{feature}",
      prompt="[Research] {사용자 요청} 관련 리서치 수행.
              서브커맨드: code (코드 분석) | web (외부 검색) | plan (구현 계획) | review (코드 리뷰)
              결과 요약을 5줄 이내로 보고.")
@@ -364,7 +364,7 @@ SendMessage(type="message", recipient="researcher", content="리서치 시작.")
 ## `--gdocs` — Google Docs PRD 동기화
 
 ```
-Agent(subagent_type="executor-high", name="prd-syncer", description="PRD 동기화", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="prd-syncer", description="PRD 동기화", team_name="pdca-{feature}",
      prompt="[PRD Sync] .claude/commands/prd-sync.md 워크플로우 실행.
              Google Docs의 PRD를 docs/00-prd/ 로컬에 동기화.
              google-workspace 스킬의 OAuth 2.0 인증 사용.")
@@ -377,7 +377,7 @@ SendMessage(type="message", recipient="prd-syncer", content="PRD 동기화 시�
 ## `--daily` — 일일 대시보드 (9-Phase Pipeline)
 
 ```
-Agent(subagent_type="executor-high", name="daily-runner", description="일일 대시보드 생성", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="daily-runner", description="일일 대시보드 생성", team_name="pdca-{feature}",
      prompt="[Daily] daily 스킬의 9-Phase Pipeline 전체 실행 (Phase 0-8 순차).
              Design Reference: docs/02-design/daily-redesign.design.md
              3소스: Gmail/Slack/GitHub 증분 수집 → AI 크로스소스 분석 → 액션 추천.
@@ -395,7 +395,7 @@ SendMessage(type="message", recipient="daily-runner", content="Daily 파이프�
 jira_command = options.get("jira_command")
 jira_target = options.get("jira_target")
 
-Agent(subagent_type="executor", name="jira-runner", description="Jira 조회 실행", team_name="pdca-{feature}",
+Agent(subagent_type="executor", model=plan["executor"], name="jira-runner", description="Jira 조회 실행", team_name="pdca-{feature}",
      prompt="[Jira] --jira {jira_command} {jira_target} 실행.
              실행: cd C:\\claude && python lib/jira/jira_client.py {jira_command} {jira_target}
              결과를 구조화된 분석으로 보고.
@@ -442,7 +442,7 @@ else:
 ### implement 모드 (기본)
 
 ```
-Agent(subagent_type="designer", name="figma-designer", description="Figma 디자인 구현", team_name="pdca-{feature}",
+Agent(subagent_type="designer", model=plan["designer"], name="figma-designer", description="Figma 디자인 구현", team_name="pdca-{feature}",
      prompt="[Figma] implement 모드 실행.
              URL: {figma_url} | file_key={file_key}, node_id={node_id}, url_type={url_type}
 
@@ -460,7 +460,7 @@ SendMessage(type="message", recipient="figma-designer", content="Figma 디자인
 ### connect 모드
 
 ```
-Agent(subagent_type="executor-high", name="figma-connector", description="Figma 컴포넌트 연결", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="figma-connector", description="Figma 컴포넌트 연결", team_name="pdca-{feature}",
      prompt="[Figma] connect 모드.
              1. 인증 확인 (seat=Full 필수)
              2. 기존 매핑 확인: get_code_connect_map(fileKey, nodeId)
@@ -472,7 +472,7 @@ Agent(subagent_type="executor-high", name="figma-connector", description="Figma 
 ### rules 모드
 
 ```
-Agent(subagent_type="executor", name="figma-rules", description="디자인 시스템 규칙 생성", team_name="pdca-{feature}",
+Agent(subagent_type="executor", model=plan["executor"], name="figma-rules", description="디자인 시스템 규칙 생성", team_name="pdca-{feature}",
      prompt="[Figma] rules 모드.
              1. 인증 확인
              2. 프로젝트 프레임워크 감지 (package.json, tsconfig)
@@ -514,7 +514,7 @@ python -m lib.slack history "<채널ID>" --limit 100 --json
 
 **Step 3: 메시지 분석 (Analyst Teammate)**
 ```
-Agent(subagent_type="analyst", name="slack-analyst", description="Slack 분석", team_name="pdca-{feature}",
+Agent(subagent_type="analyst", model=plan["analyst"], name="slack-analyst", description="Slack 분석", team_name="pdca-{feature}",
      prompt="SLACK CHANNEL ANALYSIS
      채널: <채널ID>
      분석 항목: 주요 토픽, 핵심 결정사항, 공유 문서 링크, 참여자 역할, 미해결 이슈, 기술 스택
@@ -555,7 +555,7 @@ cd C:\claude && python -m lib.gmail status --json
 
 **Step 3: 메일 분석 (Analyst Teammate)**
 ```
-Agent(subagent_type="analyst", name="gmail-analyst", description="Gmail 분석", team_name="pdca-{feature}",
+Agent(subagent_type="analyst", model=plan["analyst"], name="gmail-analyst", description="Gmail 분석", team_name="pdca-{feature}",
      prompt="GMAIL ANALYSIS
      분석 항목: 요청사항/할일 추출, 발신자 우선순위, 회신 필요 메일, 첨부파일, 키워드 연관성, 리스크
      출력: 구조화된 이메일 분석 문서 (마크다운)")

@@ -8,33 +8,23 @@ SessionStart 이벤트에서 실행됩니다.
 import json
 import subprocess
 import os
+import sys
 import shutil
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+# Cross-platform path resolution via aiden-auto SSOT helper.
+# Adds plugins/aiden-auto/lib to sys.path so we can import super.paths
+# regardless of how this hook is invoked.
+_LIB_DIR = Path(__file__).resolve().parent.parent / "lib"
+if str(_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(_LIB_DIR))
+
+from super.paths import find_project_root, create_directory_link  # noqa: E402
+
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 
-
-def _get_project_root() -> Path:
-    """Resolve project root with env var priority:
-    1. CLAUDE_PROJECT_DIR (env)
-    2. PROJECT_DIR module variable (from CLAUDE_PROJECT_DIR or os.getcwd())
-    3. WSL legacy support — only if /mnt/c/claude actually exists
-    4. Fallback to current working directory
-    """
-    env = os.environ.get("CLAUDE_PROJECT_DIR")
-    if env and Path(env).exists():
-        return Path(env)
-    if PROJECT_DIR and Path(PROJECT_DIR).exists():
-        return Path(PROJECT_DIR)
-    # WSL legacy support — only if /mnt/c/claude actually exists
-    wsl_path = Path("/mnt/c/claude")
-    if wsl_path.exists():
-        return wsl_path
-    return Path(os.getcwd())
-
-
-ROOT_PROJECT_DIR = _get_project_root()
+ROOT_PROJECT_DIR = find_project_root()
 ROOT_COMMANDS_DIR = ROOT_PROJECT_DIR / ".claude" / "commands"
 
 
@@ -67,8 +57,15 @@ def get_uncommitted_changes() -> int:
 
 
 def setup_commands_junction() -> tuple[bool, str]:
-    """서브 프로젝트에 커맨드 Junction 자동 설정"""
-    project_path = Path(PROJECT_DIR)
+    """서브 프로젝트에 커맨드 Junction/Symlink 자동 설정 (cross-platform).
+
+    OS별 동작:
+        - Mac/Linux: os.symlink (target_is_directory=True)
+        - Windows + Developer Mode: os.symlink
+        - Windows w/o admin: cmd.exe mklink /J (junction fallback)
+        - 실패 시: graceful skip (에러 throw 안 함)
+    """
+    project_path = Path(PROJECT_DIR).resolve()
 
     if project_path == ROOT_PROJECT_DIR:
         return False, ""
@@ -88,32 +85,27 @@ def setup_commands_junction() -> tuple[bool, str]:
     if commands_dir.exists():
         return False, ""
 
-    try:
-        result = subprocess.run(
-            ["cmd.exe", "/c", "mklink", "/J", str(commands_dir), str(ROOT_COMMANDS_DIR)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 or commands_dir.exists():
-            gitignore_path = project_path / ".gitignore"
-            gitignore_entry = ".claude/commands/"
-
-            if gitignore_path.exists():
-                content = gitignore_path.read_text(encoding="utf-8")
-                if gitignore_entry not in content:
-                    with open(gitignore_path, "a", encoding="utf-8") as f:
-                        f.write(f"\n# Claude commands (Junction to root)\n{gitignore_entry}\n")
-            else:
-                gitignore_path.write_text(
-                    f"# Claude commands (Junction to root)\n{gitignore_entry}\n",
-                    encoding="utf-8"
-                )
-
-            return True, f"✨ 커맨드 Junction 자동 설정됨 → {ROOT_COMMANDS_DIR}"
-        else:
-            return False, ""
-    except Exception:
+    success, message = create_directory_link(ROOT_COMMANDS_DIR, commands_dir)
+    if not success:
         return False, ""
+
+    gitignore_path = project_path / ".gitignore"
+    gitignore_entry = ".claude/commands/"
+    try:
+        if gitignore_path.exists():
+            content = gitignore_path.read_text(encoding="utf-8")
+            if gitignore_entry not in content:
+                with open(gitignore_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Claude commands (link to root)\n{gitignore_entry}\n")
+        else:
+            gitignore_path.write_text(
+                f"# Claude commands (link to root)\n{gitignore_entry}\n",
+                encoding="utf-8"
+            )
+    except OSError:
+        pass
+
+    return True, f"✨ 커맨드 link 자동 설정됨 → {ROOT_COMMANDS_DIR}"
 
 
 def _deactivate_state_file(path: Path, now: datetime) -> str | None:
@@ -694,9 +686,10 @@ def bootstrap_statusline() -> None:
 
     # host hud 우선
     host_hud = Path.home() / ".claude" / "hud" / "statusline-combined.mjs"
-    plugin_hud = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", "")) or Path(__file__).resolve().parent.parent
-    if isinstance(plugin_hud, str) and plugin_hud:
-        plugin_hud = Path(plugin_hud) / "hud" / "statusline-combined.mjs"
+    # plugin root: env var 우선, 없으면 __file__ 기반 (hooks/ 의 parent = plugin root)
+    _plugin_root_env = os.environ.get("CLAUDE_PLUGIN_ROOT", "").strip()
+    if _plugin_root_env:
+        plugin_hud = Path(_plugin_root_env) / "hud" / "statusline-combined.mjs"
     else:
         plugin_hud = Path(__file__).resolve().parent.parent / "hud" / "statusline-combined.mjs"
 

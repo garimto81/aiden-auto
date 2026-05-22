@@ -1,0 +1,8 @@
+{
+  "name": "telemetry_update",
+  "command": "python \"C:/Users/AidenKim/.claude/hooks/telemetry_update.py\"",
+  "timeout": 5,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

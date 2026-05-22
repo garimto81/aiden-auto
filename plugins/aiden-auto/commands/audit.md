@@ -934,9 +934,139 @@ Sources:
 
 ---
 
+## /audit super-sync — Super skill 외부 source 동기화 (v25.0)
+
+aiden-auto의 12개 super skill이 흡수한 외부 플러그인 SKILL.md의 변경(드리프트)을 감지하고 tier 분류에 따라 처리한다.
+
+### 사용법
+
+```bash
+/audit super-sync                       # drift 감지 + 보고 (변경 없음)
+/audit super-sync --apply               # LOW tier 자동 적용 + commit
+/audit super-sync <category>            # 단일 카테고리만
+/audit super-sync --re-evaluate <cat>   # winner 재평가 (backbone 교체 검토)
+/audit super-sync --review <cat>        # MEDIUM tier draft 검토 후 적용
+/audit super-rollback <cat>             # 마지막 체크포인트 복원
+/audit super-rollback <cat> <date>      # 특정 시각 복원
+/audit super-evolution                  # daily/weekly/monthly evolution 보고서
+/audit super-evolution --period weekly  # 기간 지정 보고서
+```
+
+### Tier 분류 정책
+
+`rules/19-super-sync-policy.md` 참조:
+
+| Tier | 변경 폭 | 처리 |
+|------|--------|------|
+| **LOW** | description 미세 변경, body word diff < 50, 새 H2/H3 = 0 | 자동 통합 + commit |
+| **MEDIUM** | 새 옵션·H2/H3 1~3개 추가 | draft 생성 → 사람 승인 |
+| **HIGH** | 핵심 protocol 변경 | 자동 변경 0 + GitHub PR |
+
+### 흐름
+
+```
+/audit super-sync run
+    │
+    ├─ plugin_marketplace_probe.list_installed_plugins()
+    │       ↓ 외부 플러그인 캐시 디렉터리 인식
+    │
+    ├─ sync_engine.detect_drift_all()
+    │       ↓ sources/<cat>.yaml의 version_hash와 현재 hash 비교
+    │
+    ├─ tier_classifier.classify(before, after)
+    │       ↓ LOW / MEDIUM / HIGH 분류
+    │
+    ├─ guard_check (--apply 시)
+    │       ├─ circuit_breaker_super.can_evolve(cat)  # 하루 5회 제한
+    │       ├─ checkpoint_manager.create(cat)         # 백업
+    │       └─ smoke_tester.test(cat)                 # 무결성 검사
+    │
+    ├─ evolve (tier별 분기)
+    │       ├─ LOW    → compiler.compile + write_super → commit
+    │       ├─ MEDIUM → compiler.compile(draft) → SKILL.md.draft
+    │       └─ HIGH   → 알림만 (PR은 GitHub Actions에서)
+    │
+    └─ report → audit/super-evolution.ndjson + 출력
+```
+
+### Bootstrap (초기 컴파일)
+
+미컴파일 카테고리(version_hash가 비어있는 카테고리) 전체 초기 컴파일:
+
+```bash
+/audit super-sync --bootstrap        # dry-run
+/audit super-sync --bootstrap --apply  # 실제 적용
+```
+
+또는 동등하게 `/evolve --bootstrap`.
+
+### Re-evaluation (winner 재평가)
+
+월간 또는 사용자 명시 호출 시 critic 룰을 재실행하여 신규 winner 후보 발견:
+
+```bash
+/audit super-sync --re-evaluate tdd
+```
+
+backbone 교체는 항상 HIGH tier (자동 변경 금지, PR 생성).
+
+### 출력 예시
+
+```
+🔄 Super Skill Sync Report — 2026-05-10
+
+[Drift 감지]
+  - tdd: 1 source 변경 (LOW) — superpowers:test-driven-development
+  - commit: 2 source 변경 (MEDIUM) — commit-commands:commit
+  - debug: 1 source 변경 (LOW) — superpowers:systematic-debugging
+
+[Tier 분포]
+  LOW: 2 (auto-applied)
+  MEDIUM: 1 (draft 생성: skills/commit/SKILL.md.draft)
+  HIGH: 0
+
+[적용 결과]
+  ✅ tdd: super SKILL.md 갱신 + smoke 통과 + commit a3f4b21
+  ✅ debug: super SKILL.md 갱신 + smoke 통과 + commit 9c8d2e3
+  📝 commit: draft 생성 — `/audit super-sync --review commit`로 검토
+
+[Audit Log]
+  audit/super-evolution.ndjson +5 entries
+```
+
+### Circuit Breaker
+
+| 임계 | 동작 |
+|------|------|
+| 하루 동일 카테고리 5회 초과 | halt + 다음 날까지 대기 |
+| 누적 LOW 적용 ≥ 100건 | "consolidation 필요" 알림 |
+| smoke test 실패 | 즉시 rollback |
+
+상태 파일: `aiden-auto/audit/circuit-breaker-super.json`
+
+### 보고 채널
+
+| 채널 | 용도 |
+|------|------|
+| stdout | 즉시 출력 |
+| `aiden-auto/audit/super-evolution.ndjson` | 영속 NDJSON 로그 |
+| `/audit super-evolution [--period <p>]` | 누적 보고서 (daily/weekly/monthly) |
+| GitHub Actions PR | MEDIUM/HIGH tier 자동 |
+
+### 관련
+
+- `/evolve` — 직접 진화 트리거 (super-sync와 동일 엔진 호출)
+- `rules/18-super-routing.md` — super skill 라우팅
+- `rules/19-super-sync-policy.md` — tier 정책
+- `rules/20-evolution-cadence.md` — cadence 룰
+- `.github/workflows/super-evolution.yml` — CI cron
+
+---
+
 ## Related
 
-- `/check` - 코드 품질 검사
-- `/research web` - 웹 리서치
-- `/session compact` - 세션 관리
-- `docs/DAILY_IMPROVEMENT_SYSTEM.md` - 자동화 시스템 상세
+- `/check` - Code quality checks
+- `/research web` - Web research
+- `/session compact` - Session management
+- `/evolve` - Super skill 자가 진화 수동 트리거
+- `docs/DAILY_IMPROVEMENT_SYSTEM.md` - Automation system details

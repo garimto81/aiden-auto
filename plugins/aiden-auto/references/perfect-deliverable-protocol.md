@@ -97,6 +97,5 @@ evaluator가 transcript에서 위 condition 충족 확인 → goal achieved → 
 
 - `agents/verification/perfect-output-validator.md` — Gate 1
 - `agents/verification/e2e-qa-prover.md` — Gate 2
-- `references/multi-session-bridge.md` — session type 정의
 - `lib/goal/goal_writer.py` — condition 생성
 - Plan Section 5 — 전체 사양

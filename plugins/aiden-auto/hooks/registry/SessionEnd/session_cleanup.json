@@ -1,0 +1,8 @@
+{
+  "name": "session_cleanup",
+  "command": "python \"C:/Users/AidenKim/.claude/hooks/session_cleanup.py\"",
+  "timeout": 30,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

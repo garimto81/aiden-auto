@@ -16,12 +16,12 @@
 
 ```
 # 병렬 spawn (독립 작업)
-Agent(subagent_type="explore", name="doc-analyst", description="문서 탐색 분석", team_name="pdca-{feature}", prompt="docs/, .claude/ 내 관련 문서 탐색. 중복 범위 감지 필수. 결과를 5줄 이내로 요약.")
+Agent(subagent_type="explore", model=plan["explore"], name="doc-analyst", description="문서 탐색 분석", team_name="pdca-{feature}", prompt="docs/, .claude/ 내 관련 문서 탐색. 중복 범위 감지 필수. 결과를 5줄 이내로 요약.")
 
-Agent(subagent_type="explore", name="issue-analyst", description="이슈 탐색 분석", team_name="pdca-{feature}", prompt="gh issue list 실행하여 유사 이슈 탐색. 연관 이슈 태깅 필요. 결과를 5줄 이내로 요약.")
+Agent(subagent_type="explore", model=plan["explore"], name="issue-analyst", description="이슈 탐색 분석", team_name="pdca-{feature}", prompt="gh issue list 실행하여 유사 이슈 탐색. 연관 이슈 태깅 필요. 결과를 5줄 이내로 요약.")
 
 # [Intent Inference] analyst(sonnet) — 사용자 의도 심층 분석
-Agent(subagent_type="analyst", name="intent-analyst", description="사용자 의도 심층 분석", team_name="pdca-{feature}",
+Agent(subagent_type="analyst", model=plan["analyst"], name="intent-analyst", description="사용자 의도 심층 분석", team_name="pdca-{feature}",
      prompt="[Phase 1 Intent Analysis] 사용자 요청의 의도를 심층 분석하세요.
              사용자 요청: {user_request}
              분석 항목:
@@ -134,7 +134,7 @@ impl-manager, QA Runner, Architect Gate prompt에 아래를 추가:
 
 **LIGHT (0-1점): Planner sonnet teammate**
 ```
-Agent(subagent_type="planner", name="planner", description="계획 수립", team_name="pdca-{feature}", prompt="... (복잡도: LIGHT {score}/6, 단일 파일 수정 예상).
+Agent(subagent_type="planner", model=plan["planner"], name="planner", description="계획 수립", team_name="pdca-{feature}", prompt="... (복잡도: LIGHT {score}/6, 단일 파일 수정 예상).
      PRD 참조: docs/00-prd/{feature}.prd.md (있으면 반드시 기반으로 계획 수립).
      PRD의 요구사항 번호(FR-xxx)를 Plan 항목에 매핑하세요.
      사용자 확인/인터뷰 단계를 건너뛰세요. 바로 계획 문서를 작성하세요.
@@ -150,7 +150,7 @@ SendMessage(type="message", recipient="planner", content="계획 수립 시작. 
 
 **STANDARD (2-3점): Planner opus teammate**
 ```
-Agent(subagent_type="planner", name="planner", description="계획 수립", team_name="pdca-{feature}", prompt="... (복잡도: STANDARD {score}/6, 판단 근거 포함).
+Agent(subagent_type="planner", model=plan["planner"], name="planner", description="계획 수립", team_name="pdca-{feature}", prompt="... (복잡도: STANDARD {score}/6, 판단 근거 포함).
      PRD 참조: docs/00-prd/{feature}.prd.md (있으면 반드시 기반으로 계획 수립).
      PRD의 요구사항 번호(FR-xxx)를 Plan 항목에 매핑하세요.
      사용자 확인/인터뷰 단계를 건너뛰세요. 바로 계획 문서를 작성하세요.
@@ -174,7 +174,7 @@ Loop (max 5 iterations):
   iteration_count += 1
 
   # Step A: Planner Teammate
-  Agent(subagent_type="planner", name="planner-{iteration_count}", description="계획 수립 반복",
+  Agent(subagent_type="planner", model=plan["planner"], name="planner-{iteration_count}", description="계획 수립 반복",
        team_name="pdca-{feature}",
        prompt="[Phase 1 HEAVY] 계획 수립 (Iteration {iteration_count}/5).
                작업: {user_request}
@@ -193,7 +193,7 @@ Loop (max 5 iterations):
   # 결과 수신 대기 → shutdown_request
 
   # Step B: Architect Teammate
-  Agent(subagent_type="architect", name="arch-{iteration_count}", description="기술적 타당성 검증",
+  Agent(subagent_type="architect", model=plan["architect"], name="arch-{iteration_count}", description="기술적 타당성 검증",
        team_name="pdca-{feature}",
        prompt="[Phase 1 HEAVY] 기술적 타당성 검증.
                Plan 파일: docs/01-plan/{feature}.plan.md
@@ -203,7 +203,7 @@ Loop (max 5 iterations):
   # 결과 수신 대기 → shutdown_request
 
   # Step C: Critic Teammate (Adversarial Weakness Analyzer)
-  Agent(subagent_type="critic", name="critic-{iteration_count}", description="adversarial 약점 분석",
+  Agent(subagent_type="critic", model=plan["critic"], name="critic-{iteration_count}", description="adversarial 약점 분석",
        team_name="pdca-{feature}",
        prompt="[Phase 1 HEAVY] Adversarial Plan 공격 (Iteration {iteration_count}/5).
                Plan 파일: docs/01-plan/{feature}.plan.md
@@ -291,7 +291,7 @@ if no file path pattern (e.g., "src/", ".py", ".ts", ".md") found:
 STANDARD(2-3점) 모드에서 Planner(opus) 완료 후 Critic-Lite 1회 검토:
 
 ```
-Agent(subagent_type="critic", name="critic-lite", description="Critic-Lite 단일 약점 공격", team_name="pdca-{feature}",
+Agent(subagent_type="critic", model=plan["critic"], name="critic-lite", description="Critic-Lite 단일 약점 공격", team_name="pdca-{feature}",
      prompt="[Phase 1 STANDARD Critic-Lite] Adversarial Plan 공격 (1회).
              Plan 파일: docs/01-plan/{feature}.plan.md
 

@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Specialized security review for code changes. Detects OWASP Top 10 vulnerabilities, authentication flaws, authorization gaps, secret leakage, injection attacks, and trust boundary violations. READ-ONLY analysis. Inspired by OMC security-reviewer.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

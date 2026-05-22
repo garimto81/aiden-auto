@@ -831,6 +831,53 @@ SendMessage(type="message", recipient="design-writer", content="설계 문서 �
 
 ---
 
+### Step 1.55: Multi-Session Router (RESTORED 2026-05-15)
+
+Plan 종료 후 Phase 2 BUILD 진입 전, **`multi-session-router` agent auto-invoke**.
+
+**조건**: `state/active-goal-{session_id}.json` 의 `processing_method` 필드 확인 (Deep Interview 결정값).
+
+```python
+# Step 1.55: Multi-session 분할 판정
+goal = read_active_goal(session_id)
+processing_method = goal.get("processing_method", "auto")
+
+if processing_method in ["auto", "claude_agents"]:
+    Agent(
+        subagent_type="multi-session-router",
+        model="haiku",
+        description="Phase 0 plan splittable 판정",
+        prompt=f"plan={plan_path}\ngoal={goal_path}\nsession_id={session_id}"
+    )
+    # router 출력 (JSON):
+    #   splittable=true → 3+ stream + suggested_command 자동 dispatch (claude --bg)
+    #   splittable=false → single session 진행
+
+elif processing_method == "parallel_in_session":
+    # 한 세션 내 다중 Agent() 병렬 — Phase 2 진입 시 적용 (현재 cycle 기본 패턴)
+    pass
+
+elif processing_method == "background_subagent":
+    # Background subagent — Phase 2 시 run_in_background=true 사용
+    pass
+
+elif processing_method == "sequential":
+    # 단일 sequential — multi-session-router skip
+    pass
+```
+
+**워크플로우 통합** (RESTORED 2026-05-15):
+- Stop hook + SessionEnd hook (안전 종료) — `settings.json` 등록
+- ScheduleWakeup tool + `/loop` skill (작업 지속) — CC builtin
+- `claude respawn --all` (sleep 복구) — 공식 명령
+
+**관련 파일**:
+- `agents/meta/multi-session-router.md` — splittable 판정 + stream 분할
+- `references/multi-session-bridge.md` — 5 안전 조치 + Section 4.6
+- `agents/core/intake-interviewer.md` — Deep Interview 시 processing_method 결정
+
+---
+
 ### Step 1.6: Plan Approval Gate (HEAVY만)
 
 HEAVY 모드에서는 Phase 2 BUILD 진입 전 사용자에게 계획을 명시적으로 승인받습니다.

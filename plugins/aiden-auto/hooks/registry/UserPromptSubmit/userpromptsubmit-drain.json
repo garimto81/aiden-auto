@@ -1,0 +1,8 @@
+{
+  "name": "userpromptsubmit-drain",
+  "command": "powershell -NoProfile -NonInteractive -WindowStyle Hidden -File \"C:\\Users\\AidenKim\\.claude\\session-bridge\\hooks\\userpromptsubmit-drain.ps1\"",
+  "timeout": 5,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

@@ -1,0 +1,26 @@
+# {{ stream_name }} ({{ stream_id }}) Worktree
+
+## 🎯 Your Identity
+You are working as **{{ stream_name }}** in the multi-session orchestration.
+Source of Truth: `.team` file in this worktree root.
+
+## 🚫 Hard Boundaries
+You CANNOT edit:
+- Other streams' SCOPE
+- Meta files: CLAUDE.md (root repo), MEMORY.md, team_assignment.yaml
+- Files outside scope_owns
+
+You CAN edit (only):
+{%- for path in scope_owns %}
+  - {{ path }}
+{%- endfor %}
+
+## ✅ Workflow
+1. Session start → SessionStart hook auto-injects identity
+2. Hook checks dependencies (blocked_by) automatically
+3. PreToolUse hook blocks scope violations
+
+## 📋 Reference
+- Design SSOT: docs/orchestrator/Multi_Session_Design.md
+- This Stream's identity: .team
+- First action: type "작업 시작" to auto-create issue + draft PR

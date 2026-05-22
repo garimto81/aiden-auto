@@ -1,0 +1,39 @@
+name: dependency_check
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install pyyaml
+
+      - name: Check upstream merged
+        env:
+          GH_TOKEN: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+        run: |
+          BRANCH="${{ '{{' }} github.head_ref {{ '}}' }}"
+          STREAM=$(echo "$BRANCH" | grep -oP 'work/\K(s\d+)' | tr '[:lower:]' '[:upper:]')
+          [ -z "$STREAM" ] && exit 0
+
+          python <<'PYEOF'
+          import json, os, subprocess, sys, yaml
+          stream = os.environ['STREAM']
+          with open('{{ config_path }}') as f:
+              config = yaml.safe_load(f)
+          blocked_by = config['streams'].get(stream, {}).get('blocked_by', [])
+          if not blocked_by:
+              sys.exit(0)
+          for upstream in blocked_by:
+              r = subprocess.run(['gh', 'pr', 'list', '--label', f'stream:{upstream}',
+                                  '--state', 'all', '--limit', '5', '--json', 'state'],
+                                 capture_output=True, text=True)
+              prs = json.loads(r.stdout) if r.stdout else []
+              if not any(p['state'] == 'MERGED' for p in prs):
+                  print(f"::error::{stream} blocked by {upstream} (no merged PR)")
+                  sys.exit(1)
+          PYEOF

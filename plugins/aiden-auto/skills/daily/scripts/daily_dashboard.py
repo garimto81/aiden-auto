@@ -14,6 +14,13 @@ import sys
 
 from checklist_parser import ChecklistParser, ChecklistResult
 
+# Cross-platform project root via aiden-auto SSOT helper.
+# skills/daily/scripts/ → ../../../ (plugins/aiden-auto/) / "lib"
+_LIB_DIR = Path(__file__).resolve().parents[3] / "lib"
+if str(_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(_LIB_DIR))
+from super.paths import find_project_root  # noqa: E402
+
 
 @dataclass
 class SecretaryResult:
@@ -64,7 +71,7 @@ class DailyDashboard:
     SECRETARY_SCRIPT = Path(__file__).parent.parent.parent / "secretary" / "scripts" / "daily_report.py"
 
     def __init__(self, base_path: Path = None):
-        self.base_path = base_path or Path("C:/claude")
+        self.base_path = base_path or find_project_root()
         self.parser = ChecklistParser(self.base_path)
 
     def run(

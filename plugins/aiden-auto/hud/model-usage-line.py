@@ -2,13 +2,16 @@
 """Model-by-model token usage statusline component.
 
 Reads {transcript_path, session_id} from stdin JSON, parses transcript JSONL
-incrementally (byte-offset cache), aggregates tokens by model, applies
-Anthropic pricing, prints one line per model.
+incrementally (byte-offset cache), aggregates tokens by model, prints a SINGLE
+line with three tier groups separated by '|'. Model identity is encoded by
+color only (opus=white, sonnet=pink, haiku=green). Cost is omitted.
 
-Output format:
-  claude-haiku-4-5:  166.1k input, 6.2k output, 0 cache read, 0 cache write, 6 web search ($0.2572)
-  claude-opus-4-7:   4.3k input, 336.8k output, 50.1m cache read, 1.9m cache write ($45.20)
+Output format (one line):
+  4.3k 336.8k 50.1m 1.9m|43.8k 676.0k 276.3m 6.2m|166.1k 6.2k 0 0
+  ^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^
+   opus (white)          sonnet (pink)            haiku (green)
 
+Numbers (per group): input, output, cache_read, cache_write
 Cache: ~/.claude/.model-usage-cache/<session_id>.json
 """
 import os
@@ -28,20 +31,21 @@ WEB_SEARCH_COST_USD = 0.01  # $10 per 1000 queries
 
 # Always-display tier order (aiden-auto v28.1 3-tier visibility)
 TIER_ORDER = ["opus", "sonnet", "haiku"]
-TIER_FALLBACK_NAME = {
-    "opus":   "claude-opus-4-7",
-    "sonnet": "claude-sonnet-4-6",
-    "haiku":  "claude-haiku-4-5",
-}
 
 CACHE_DIR = Path.home() / ".claude" / ".model-usage-cache"
 
-# ANSI colors
-DIM    = "\x1b[2m"
-CYAN   = "\x1b[36m"
-WHITE  = "\x1b[97m"
-YELLOW = "\x1b[93m"
+# ANSI colors (256-color for accurate pink)
+WHITE  = "\x1b[97m"          # opus
+PINK   = "\x1b[38;5;213m"    # sonnet (hot pink)
+GREEN  = "\x1b[92m"          # haiku
+YELLOW = "\x1b[93m"          # cost
 RESET  = "\x1b[0m"
+
+TIER_COLOR = {
+    "opus":   WHITE,
+    "sonnet": PINK,
+    "haiku":  GREEN,
+}
 
 
 def family(model_id: str) -> str:
@@ -59,12 +63,6 @@ def fmt_tok(n: int) -> str:
     if n >= 1_000:
         return f"{n / 1_000:.1f}k"
     return str(n)
-
-
-def fmt_cost(c: float) -> str:
-    if c < 1.0:
-        return f"${c:.4f}"
-    return f"${c:.2f}"
 
 
 def empty_agg():
@@ -202,8 +200,6 @@ def main() -> None:
 
     # Aggregate by tier (merge multiple model_id variants of the same family)
     tier_agg = {t: empty_agg() for t in TIER_ORDER}
-    tier_name = {t: TIER_FALLBACK_NAME[t] for t in TIER_ORDER}
-    tier_seen = {t: False for t in TIER_ORDER}
 
     for model, a in agg.items():
         if not isinstance(model, str) or model.startswith("<"):
@@ -213,11 +209,10 @@ def main() -> None:
             continue
         for k in ("in", "out", "cw", "cr", "ws"):
             tier_agg[tier][k] += int(a.get(k, 0) or 0)
-        if not tier_seen[tier]:
-            tier_name[tier] = model  # prefer real observed model_id over fallback
-            tier_seen[tier] = True
 
-    # Always emit 3 rows in fixed order (opus -> sonnet -> haiku)
+    # Single line: three tier groups separated by '|', identity by color only.
+    # Each group = "input output cache_read cache_write" + yellow integer cost
+    groups = []
     for tier in TIER_ORDER:
         a = tier_agg[tier]
         p = PRICES[tier]
@@ -228,16 +223,14 @@ def main() -> None:
             a["cr"]  * p["cr"]
         ) / 1_000_000
         cost += a["ws"] * WEB_SEARCH_COST_USD
-        parts = [
-            f"{fmt_tok(a['in'])} input",
-            f"{fmt_tok(a['out'])} output",
-            f"{fmt_tok(a['cr'])} cache read",
-            f"{fmt_tok(a['cw'])} cache write",
-        ]
-        if a["ws"] > 0:
-            parts.append(f"{a['ws']} web search")
-        body = ", ".join(parts)
-        print(f"{DIM}{tier_name[tier]}{RESET}:  {body} {YELLOW}({fmt_cost(cost)}){RESET}")
+        nums = " ".join([
+            fmt_tok(a["in"]),
+            fmt_tok(a["out"]),
+            fmt_tok(a["cr"]),
+            fmt_tok(a["cw"]),
+        ])
+        groups.append(f"{TIER_COLOR[tier]}{nums}{RESET} {YELLOW}${int(cost)}{RESET}")
+    print("|".join(groups))
 
 
 if __name__ == "__main__":

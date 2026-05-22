@@ -1,0 +1,8 @@
+{
+  "name": "goal_stop_evaluator",
+  "command": "python \"C:/Users/AidenKim/.claude/hooks/goal_stop_evaluator.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "pretool_md_check",
+  "command": "python \"C:/Users/AidenKim/.claude/skills/doc-discovery/hooks/pretool_md_check.py\"",
+  "timeout": 15,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit|Write|MultiEdit"
+}

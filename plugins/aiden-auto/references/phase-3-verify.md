@@ -15,6 +15,7 @@ QA 테스터 투입 전 기계적 품질 검증을 수행합니다.
 # Quality Gate 실행
 quality_gate = Agent(
     subagent_type="quality-gate",
+    model=plan["quality-gate"],
     name="quality-checker",
     team_name=team_name,
     description="자동 품질 검증 (lint+complexity+coverage+security)",
@@ -43,7 +44,7 @@ quality_gate = Agent(
 ```
 # LIGHT 모드: QA 1회 실행, 실패 시 보고만 (진단/수정 사이클 없음)
 if mode == "LIGHT":
-    Agent(subagent_type="qa-tester", name="qa-runner", description="QA 실행", team_name="pdca-{feature}", prompt="[Phase 3 QA Runner] 6종 QA 실행. (LIGHT 모드)")
+    Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="qa-runner", description="QA 실행", team_name="pdca-{feature}", prompt="[Phase 3 QA Runner] 6종 QA 실행. (LIGHT 모드)")
     SendMessage(type="message", recipient="qa-runner", content="QA 실행 시작.")
     # 완료 대기 → shutdown_request
     if QA_PASSED → Step 3.2
@@ -59,7 +60,7 @@ while cycle < max_cycles:
   cycle += 1
 
   # Step A: QA Runner Teammate (Lead context 보호)
-  Agent(subagent_type="qa-tester", name="qa-runner-{cycle}", description="QA 실행 사이클",
+  Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="qa-runner-{cycle}", description="QA 실행 사이클",
        team_name="pdca-{feature}",
        prompt="[Phase 3 QA Runner] 6종 QA 실행.
                === 6종 QA Goal ===
@@ -111,7 +112,7 @@ while cycle < max_cycles:
 
     # Step C: Systematic Debugging D0-D4 (Iron Law #2 — Root cause 없이 수정 금지)
     # superpowers systematic-debugging 흡수: Architect 단순 진단 → D0-D4 체계 강화
-    Agent(subagent_type="architect", name="diagnostician-{cycle}", description="Systematic Debugging D0-D4 진단",
+    Agent(subagent_type="architect", model=plan["architect"], name="diagnostician-{cycle}", description="Systematic Debugging D0-D4 진단",
          team_name="pdca-{feature}",
          prompt="[Phase 3 Systematic Debugging] QA 실패 Root Cause 분석 — D0-D4 체계.
                  실패 내역: {qa_failed_details}
@@ -279,7 +280,7 @@ e2e_enabled = (
 
 **LIGHT 모드: Architect teammate만 (E2E 스킵)**
 ```
-Agent(subagent_type="architect", name="verifier", description="검증 실행", team_name="pdca-{feature}",
+Agent(subagent_type="architect", model=plan["architect"], name="verifier", description="검증 실행", team_name="pdca-{feature}",
      prompt="구현된 기능이 docs/01-plan/{feature}.plan.md 요구사항과 일치하는지 검증.")
 SendMessage(type="message", recipient="verifier", content="검증 시작. APPROVE/REJECT 판정 후 TaskUpdate 처리.")
 # verifier 완료 대기 → shutdown_request
@@ -290,7 +291,7 @@ SendMessage(type="message", recipient="verifier", content="검증 시작. APPROV
 ```
 # Step 3.2.1: E2E 백그라운드 spawn (e2e_enabled 시 — 포그라운드 검증과 병렬)
 if e2e_enabled:
-    Agent(subagent_type="qa-tester", name="e2e-runner", description="E2E 테스트 실행", team_name="pdca-{feature}",
+    Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="e2e-runner", description="E2E 테스트 실행", team_name="pdca-{feature}",
          prompt="[Phase 3 E2E Background] E2E 테스트 백그라운드 실행.
          1. 프레임워크 감지:
             - playwright.config.* -> npx playwright test --reporter=list
@@ -305,7 +306,7 @@ if e2e_enabled:
     # ※ 완료 대기하지 않음 — 아래 포그라운드 검증과 병렬 진행
 
 # Step 3.2.2: Architect 최종 검증 (포그라운드)
-Agent(subagent_type="architect", name="verifier", description="검증 실행", team_name="pdca-{feature}",
+Agent(subagent_type="architect", model=plan["architect"], name="verifier", description="검증 실행", team_name="pdca-{feature}",
      prompt="구현된 기능이 docs/01-plan/{feature}.plan.md 요구사항과 일치하는지 최종 검증 (type=FINAL).
 
              === Unified Verification Protocol (v25.0) ===
@@ -344,8 +345,8 @@ if e2e_enabled:
 
 HEAVY 모드에서도 Architect는 `verifier`, e2e-runner는 `e2e-runner` 사용:
 ```
-Agent(subagent_type="qa-tester", name="e2e-runner", description="E2E 테스트 실행", ..., ...)  # 백그라운드
-Agent(subagent_type="architect", name="verifier", description="검증 실행", ..., ...)
+Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="e2e-runner", description="E2E 테스트 실행", ..., ...)  # 백그라운드
+Agent(subagent_type="architect", model=plan["architect"], name="verifier", description="검증 실행", ..., ...)
 ```
 
 - e2e-runner: E2E 테스트 (백그라운드 병렬 -- Playwright/Cypress/Vitest 자동 감지)
@@ -374,7 +375,7 @@ Loop (max_e2e_fixes):
     e2e_fix_attempts += 1
 
     # A. Architect E2E 실패 root cause 진단
-    Agent(subagent_type="architect", name="e2e-diagnostician", description="E2E 진단", team_name="pdca-{feature}",
+    Agent(subagent_type="architect", model=plan["architect"], name="e2e-diagnostician", description="E2E 진단", team_name="pdca-{feature}",
          prompt="[E2E Failure Diagnosis] Playwright E2E 테스트 실패 분석.
          실패 상세: {e2e_failures}
          1. 실패 root cause 식별 (UI 렌더링, 네트워크, 타이밍, 셀렉터 등)
@@ -385,7 +386,7 @@ Loop (max_e2e_fixes):
     # 완료 대기 → shutdown_request
 
     # B. Domain-Smart Fix (Step 2.4 동일 라우팅)
-    Agent(subagent_type="{domain-agent}", name="e2e-fixer", description="E2E 수정", team_name="pdca-{feature}",
+    Agent(subagent_type="{domain-agent}", model=plan["{domain-agent}"], name="e2e-fixer", description="E2E 수정", team_name="pdca-{feature}",
          prompt="E2E 진단 기반 수정.
          DIAGNOSIS: {diagnosis}
          FIX_GUIDE: {fix_guide}
@@ -394,7 +395,7 @@ Loop (max_e2e_fixes):
     # 완료 대기 → shutdown_request
 
     # C. E2E 재실행
-    Agent(subagent_type="qa-tester", name="e2e-rerun", description="E2E 재실행", team_name="pdca-{feature}",
+    Agent(subagent_type="qa-tester", model=plan["qa-tester"], name="e2e-rerun", description="E2E 재실행", team_name="pdca-{feature}",
          prompt="npx playwright test --reporter=list 재실행. E2E_PASSED 또는 E2E_FAILED 보고.")
     SendMessage(type="message", recipient="e2e-rerun", content="E2E 재실행 시작.")
     # 완료 대기 → shutdown_request

@@ -1,0 +1,82 @@
+---
+title: Multi-Session Orchestration Design v10.3
+status: ACTIVE
+last-updated: {{ today }}
+owner: conductor
+tier: internal
+---
+
+## 🎯 Thesis
+
+> **Architect-then-Observer**: Orchestrator는 Phase 0에서 모든 것을 사전 설계 + 사전 세팅한 뒤, Phase 1+에는 GitHub 모니터링만. 사용자 진입점은 VSCode 폴더 클릭 1회.
+
+## §1. Streams 매트릭스
+
+상세 SSOT: [`team_assignment.yaml`](./team_assignment.yaml)
+
+| ID | 이름 | 흡수 폴더 | 의존성 |
+|----|------|---------|--------|
+{%- for sid, s in streams.items() %}
+| {{ sid }} | {{ s.name }} | {{ s.absorbs_existing | join(', ') or '(신설)' }} | {{ s.blocked_by | join(', ') or '-' }} |
+{%- endfor %}
+
+## §2. Architect-then-Observer 모델
+
+```
+        Phase 0
+   [Architect Mode]
+         │
+         │ Orchestrator: 90분 자율
+         │ - 설계서 + 도구 + GitHub 인프라
+         │ - {{ streams | length }} 워크트리 폴더 + 파일 사전 세팅
+         │
+         v
+    [Phase 0 게이트]
+         │
+         v
+        Phase 1+
+   [Observer Mode]
+         │
+         │ Orchestrator: 영구 모니터링
+         │ - gh pr/issue list 30s 폴링
+         │ - 의존성 위반 감지
+         │ - 사용자 동적 요청 처리
+```
+
+## §3. 워크트리 폴더 (사전 지정)
+
+{% for sid, s in streams.items() %}
+- `{{ s.worktree }}` ← {{ sid }} {{ s.name }}
+{%- endfor %}
+
+각 폴더 사전 세팅:
+- `.team` (Layer 2 SSOT)
+- `CLAUDE.md` (Layer 3 override)
+- `START_HERE.md` (사용자 첫 화면)
+- `.claude/hooks/` (Layer 4, 5)
+- `.vscode/settings.json`
+
+## §4. 6중 다층 방어
+
+| Layer | 메커니즘 | 강제 |
+|:-:|---------|------|
+| 1 | 워크트리 경로 패턴 | 진입 시 |
+| 2 | `.team` 메타 파일 | 진입 시 |
+| 3 | 워크트리 CLAUDE.md | LLM context |
+| 4 | SessionStart hook | 세션 시작 |
+| 5 | PreToolUse hook | Edit/Write 직전 |
+| 6 | GitHub 인프라 | PR 생성/머지 |
+
+## §5. 사용자 워크플로우
+
+1. VSCode에서 워크트리 폴더 열기
+2. 자동: SessionStart hook → identity 주입
+3. 사용자: "작업 시작" → issue + draft PR 자동 생성
+4. 작업 진행 (PreToolUse hook이 SCOPE 강제)
+5. 사용자: "작업 완료" → PR ready + auto-merge + cleanup
+
+## §6. 글로벌 스킬
+
+본 설정은 글로벌 `/orchestrator` 스킬 v10.3 의 적용 사례.
+- 글로벌 위치: `~/.claude/skills/orchestrator/`
+- 다른 프로젝트도 평문 트리거 또는 `/orchestrator` 한 줄로 적용 가능

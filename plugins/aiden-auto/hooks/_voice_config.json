@@ -1,0 +1,18 @@
+{
+  "voice_pool": [
+    "en-US-AriaNeural",
+    "en-US-GuyNeural",
+    "en-US-JennyNeural",
+    "en-IE-EmilyNeural",
+    "en-GB-SoniaNeural",
+    "en-GB-RyanNeural",
+    "en-AU-NatashaNeural",
+    "en-CA-LiamNeural"
+  ],
+  "overrides": {
+    "Claude": "en-US-AriaNeural",
+    "aiden-auto": "en-GB-RyanNeural"
+  },
+  "rate": "+10%",
+  "volume": "+0%"
+}

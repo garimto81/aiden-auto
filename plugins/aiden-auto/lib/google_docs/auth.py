@@ -5,28 +5,33 @@ Google Docs/Drive API 인증을 처리합니다.
 """
 
 import os
+import sys
 from pathlib import Path
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
+# Cross-platform project root via aiden-auto SSOT helper.
+_LIB_DIR = Path(__file__).resolve().parent.parent
+if str(_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(_LIB_DIR))
+from super.paths import find_project_root  # noqa: E402
+
 
 def _get_project_root() -> Path:
-    """프로젝트 루트 경로 반환 (환경변수 > 자동 탐지)"""
-    # 1. 환경변수 확인
-    env_root = os.environ.get("CLAUDE_PROJECT_ROOT")
-    if env_root:
-        return Path(env_root)
+    """프로젝트 루트 경로 반환 (환경변수 > 자동 탐지).
 
-    # 2. 현재 파일 기준으로 프로젝트 루트 탐지
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "CLAUDE.md").exists() or (parent / ".git").exists():
-            return parent
-
-    # 3. 기본값 (fallback) — env var 또는 cwd
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+    Backward-compat: legacy CLAUDE_PROJECT_ROOT env var still honored,
+    but primary resolution delegates to super.paths.find_project_root()
+    which handles CLAUDE_PROJECT_DIR + git toplevel + plugin walk-up.
+    """
+    legacy_env = os.environ.get("CLAUDE_PROJECT_ROOT")
+    if legacy_env:
+        p = Path(legacy_env)
+        if p.exists():
+            return p
+    return find_project_root()
 
 
 # 프로젝트 루트 기반 경로 설정

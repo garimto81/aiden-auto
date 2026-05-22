@@ -4,6 +4,10 @@ description: >
   v28.2 Phase 0 plan 종료 시 발동. splittable 패턴 + session type 자동 판정.
   ≥3 stream + 독립 영역 시 auto-launch 추천. JSON 출력 {splittable, streams[],
   suggested_command}. session.kind ∈ {LOGIC_DATA, VISUAL_INTERACTION}.
+
+  RESTORED 2026-05-15 — 사용자 결정 A (claude agents 공식 multi-session 채택) 적용.
+  공식 `claude agents` / `claude --bg` 워크플로우와 통합 — job termination hook
+  (Stop/SessionEnd) + ScheduleWakeup wakeup schedule 활용.
 model: haiku
 tools: Read, Grep, Glob
 auto_invoke: on_phase_0_plan_complete
@@ -86,18 +90,46 @@ Phase 0 plan 분석 → 다중 stream 분할 가능 여부 + 각 stream의 sessi
 }
 ```
 
+# Job 안전 처리 워크플로우 (RESTORED 2026-05-15)
+
+공식 `claude agents` 워크플로우 통합:
+
+## 1. Job Dispatch
+- `claude --bg "<stream-task>"` 명령으로 background session 시작
+- supervisor process 가 session 관리 (terminal 독립)
+- session 자동 worktree 격리 (`.claude/worktrees/`)
+
+## 2. Wakeup Schedule (작업 지속)
+- `ScheduleWakeup` tool 사용 — 1분~1시간 자율 선택 wakeup
+- `/loop <task>` skill — Claude 자율 간격 polling
+- `CronCreate` tool — 고정 cron 간격
+- 사용 시점: long-running build wait, PR review polling, deploy 확인
+
+## 3. Job Termination Hook (안전 종료)
+- **Stop hook**: 작업 완료 시 `stop_completion_check.py` 발동 → 검증
+- **SessionEnd hook**: session 종료 시 cleanup chain 발동
+  - `session_cleanup.py` — 임시 파일 정리
+  - `session_snapshot.py` — 상태 보존
+  - `memory_sync.py` — memory persist
+  - `recovery/session_error_recovery.py` — 오류 복구
+
+## 4. 작업 지속 보장
+- supervisor 가 session process 1시간 idle 후 stop (memory 절약)
+- 다음 attach/peek/reply 시 자동 restart from saved state
+- 시스템 sleep/shutdown 시 `claude respawn --all` 로 일괄 재시작
+
 # Multi-CC 안전 (Section 4.6 정합)
 
 spawn 전 체크:
 1. `lib/sessions/session_registry.py`로 active-sessions.json 조회
-2. supervisor roster 조회 (`claude jobs list`)
+2. supervisor roster 조회 (`claude jobs list` 또는 `claude agents`)
 3. 동일 condition + parent_task 발견 시 **재사용** (재발화 안 함)
 4. session_name에 `aiden-auto:` prefix 의무
 5. quota-advisor와 합산 평가 (N stream × M model 비용)
 
 # Constraints
 
-- READ-ONLY (Bash는 `claude jobs list` 조회만)
+- READ-ONLY (Bash는 `claude agents` 조회만)
 - splittable=false 시 stream_count=1 single session 권고
 - 사용자 우회 `!visual` / `!logic`으로 강제 전환 가능
 - splittable인데 quota DEFER/BLOCK 상태면 자동 1-stream으로 강제 (비용 우선)
@@ -107,4 +139,16 @@ spawn 전 체크:
 - `references/multi-session-bridge.md` — 5 안전 조치 + Section 4.6
 - `lib/sessions/session_registry.py` — Session ID 생성 + 중복 체크
 - `agents/meta/quota-advisor.md` — 비용 합산 평가
+- `agents/core/intake-interviewer.md` — Deep Interview 시 병렬 처리 방법 사전 결정
 - Plan Section 4 — 전체 사양
+- 공식 문서: https://code.claude.com/docs/en/agent-view
+- 공식 문서: https://code.claude.com/docs/en/scheduled-tasks
+- 공식 문서: https://code.claude.com/docs/en/agents
+
+# 변경 이력
+
+| 날짜 | 변경 | 사유 |
+|------|------|------|
+| 2026-05-13 | v1.0 최초 작성 | v28.2 Phase 0 splittable 판정 |
+| 2026-05-14 | 폐기 의도 (CLAUDE.md memo) | 공식 `claude agents` CLI 등장 |
+| 2026-05-15 | RESTORED + 공식 통합 | 사용자 결정 A — claude agents 채택. Job termination hook + Wakeup schedule 워크플로우 통합 |

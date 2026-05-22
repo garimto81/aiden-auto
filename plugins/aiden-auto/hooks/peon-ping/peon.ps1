@@ -591,21 +591,17 @@ if ($config.tts -and $config.tts.enabled -and $projectName -and $category) {
                 }
             }
 
+            # C1 (2026-05-19): PowerShell fallback removed. tts-generate.ps1 via
+            # powershell.exe was the residual `'M' is not recognized` leak source —
+            # the inner `& python -m edge_tts` call spawns a console-subsystem
+            # child whose stderr inherits to the parent console regardless of
+            # M5's outer UseShellExecute=$false. Cache miss now silently skips
+            # TTS priming when pythonw/tts_generate.py is unavailable. Acceptable
+            # because edge_tts requires Python anyway, pythonw is virtually
+            # always present on modern Python installs, and MP3 cache hits still
+            # play normally (this path only primes future cache misses).
             if ($pythonwAvailable -and (Test-Path $genPy)) {
                 Invoke-HiddenProcess -FileName "pythonw.exe" -ArgArray $pyArgs
-            } else {
-                # Fallback: same hidden-process pattern with powershell.exe
-                $argList = @(
-                    '-NoProfile', '-WindowStyle', 'Hidden',
-                    '-File', $genScript,
-                    '-Project', $projectName,
-                    '-DisplayName', $displayName,
-                    '-Category', $category,
-                    '-Voice', $voice,
-                    '-Template', $template,
-                    '-OutputDir', $ttsOutputDir
-                )
-                Invoke-HiddenProcess -FileName "powershell.exe" -ArgArray $argList
             }
         }
     }

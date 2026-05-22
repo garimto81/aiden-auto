@@ -29,7 +29,7 @@ if not existing_prd:
 
 **신규 PRD 생성 (기존 PRD 없음):**
 ```
-Agent(subagent_type="executor-high", name="prd-writer", description="PRD 문서 작성", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="prd-writer", description="PRD 문서 작성", team_name="pdca-{feature}",
      prompt="[Phase 1 PRD 생성] 사용자 요구사항을 PRD 문서로 작성하세요.
 
      === 사용자 요청 ===
@@ -94,7 +94,7 @@ SendMessage(type="message", recipient="prd-writer", content="PRD 문서 작성 �
 
 **기존 PRD 수정 (PRD 존재 시):**
 ```
-Agent(subagent_type="executor-high", name="prd-writer", description="PRD 문서 작성", team_name="pdca-{feature}",
+Agent(subagent_type="executor-high", model=plan["executor"], name="prd-writer", description="PRD 문서 작성", team_name="pdca-{feature}",
      prompt="[Phase 1 PRD 수정] 기존 PRD를 새 요구사항에 맞게 수정하세요.
 
      === 기존 PRD 파일 ===
@@ -110,35 +110,34 @@ Agent(subagent_type="executor-high", name="prd-writer", description="PRD 문서 
      4. ## Changelog 섹션에 변경 이력 추가
      5. 범위(Scope) 섹션도 요구사항 변경에 맞게 갱신
      6. 수용 기준(Acceptance Criteria)도 요구사항 변경에 맞게 갱신")
-SendMessage(type="message", recipient="prd-writer", content="PRD 수정 시작.")
-# 완료 대기 → shutdown_request
+Agent(subagent_type="writer", model=plan["writer"],
+      description="PRD 수정",
+      prompt="(위 prompt 내용을 그대로 전달)")
+# v28.1+ Agent() 단일 호출 (폐기된 SendMessage/shutdown_request 제거)
 ```
 
-## Step 1.1.3: 사용자 승인 (MANDATORY)
+## Step 1.1.3: PRD 작성 보고 (자동 진행, v28.3+ Core Philosophy 적용)
 
 ```
-# PRD 내용을 사용자에게 제시
+# PRD 내용을 사용자에게 요약 보고 (AskUserQuestion 제거 — A/B/C 옵션 나열 금지)
 prd_content = Read("docs/00-prd/{feature}.prd.md")
 
-# 사용자에게 PRD 요약 출력
+# 사용자에게 PRD 요약 출력 (안내형)
 print("=== PRD 작성 완료 ===")
 print("파일: docs/00-prd/{feature}.prd.md")
 print("요구사항 {N}건, 수용 기준 {M}건")
+print("주요 변경: {summary_one_line}")
+print("이의 없으면 자동으로 Phase 1 진입합니다.")
+print("수정 필요 시 별도 메시지로 알려주세요 (사용자 자율 진입점).")
 print("========================")
 
-# AskUserQuestion으로 승인 요청
-AskUserQuestion:
-  question: "PRD 문서를 확인해주세요. 진행 방식을 선택하세요."
-  options:
-    - "승인 (Phase 1 PLAN 진입)"
-    - "수정 요청 (PRD 수정 후 재확인)"
-    - "직접 수정 (사용자가 PRD 파일 직접 편집)"
-
-# 승인 → Phase 1 진입
-# 수정 요청 → 사용자 피드백 반영 후 Step 1.1.2 재실행 (max 3회)
-# 직접 수정 → 사용자가 파일 편집 완료 후 Phase 1 진입
-# 3회 수정 초과 → 현재 PRD로 Phase 1 진입 + 경고 출력
+# Phase 1 자동 진입 (Core Philosophy: 사용자 진입점 최소화)
 ```
+
+**v28.3 변경 사유** (정책 critic audit P0-1, 2026-05-14):
+- 기존 AskUserQuestion 3옵션 (승인/수정요청/직접수정)은 글로벌 CLAUDE.md "A/B/C 기술 옵션 나열 금지"와 정면 충돌
+- 신규: PRD 자동 작성 + 사후 이의제기 패턴. 사용자가 명시적으로 수정 요청 시에만 Step 1.1.2 재실행
+- 효과: PRD 단계 진입점 1회 제거, 자율 워크플로우 흐름 유지
 
 ## PRD→Phase 1 Gate
 

@@ -13,9 +13,11 @@ import sys
 import json
 from pathlib import Path
 
-# Windows cp949 인코딩 에러 방지
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+# Cross-platform project root via aiden-auto SSOT helper.
+_LIB_DIR = Path(__file__).resolve().parent.parent / "lib"
+if str(_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(_LIB_DIR))
+from super.paths import find_project_root  # noqa: E402
 
 
 CONVENTIONAL_COMMIT_PATTERN = re.compile(
@@ -117,8 +119,7 @@ def main():
         print(f'\n📊 커밋 품질 보통 ({score}/100)')
 
     # 로그 저장 (선택적)
-    _project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
-    log_dir = Path(_project_root) / ".claude" / "logs"
+    log_dir = find_project_root() / ".claude" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / 'commit_quality.jsonl'
     try:

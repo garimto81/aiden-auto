@@ -8,6 +8,7 @@
 IF NOT --skip-critic:
   Agent(
     subagent_type="doc-critic",
+    model=plan["doc-critic"],
     name="quick-critic-{doc_type}",
     description="{doc_type} 빠른 검증",
     team_name="{current_team}",

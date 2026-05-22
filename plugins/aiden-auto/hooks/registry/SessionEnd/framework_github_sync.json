@@ -1,0 +1,8 @@
+{
+  "name": "framework_github_sync",
+  "command": "python \"C:/Users/AidenKim/.claude/hooks/framework_github_sync.py\"",
+  "timeout": 60,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

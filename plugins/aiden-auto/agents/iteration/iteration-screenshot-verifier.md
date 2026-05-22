@@ -23,7 +23,7 @@ V10.0 Impl-first Step 6 의 UI 검증자. **VISUAL_INTERACTION 세션 전용** (
 | `LOGIC_DATA` | **자동 BLOCK** — "LOGIC_DATA 세션은 스크린샷 금지 (사용자 비전 §3.B). unit test + log analysis + checksum으로 검증" 메시지 출력 |
 | 미지정 / unknown | 보수적으로 skip (안전 우선) |
 
-판정 책임: `multi-session-router`가 spawn 시 결정한 `session.kind` 신뢰. 재판정 안 함. 사용자 우회 `!visual` / `!logic` 명시 시 강제 전환 가능.
+판정 책임: 사용자 명시 우회 키워드 `!visual` / `!logic` 또는 산출물 자동 감지 (Playwright artifacts 존재, 스크린샷 캡처 도구 호출 흔적 등). 명확한 신호 없으면 LOGIC_DATA로 보수적 처리.
 
 ## Phase 4 Gate 2 통합 (v28.2)
 

@@ -115,6 +115,30 @@ def purge_old_snapshots():
             snapshots.pop(0)
 
 
+def purge_old_audit_trends():
+    """research/audit-trend-*.md TTL 30일 초과 삭제 (D8: 누적 차단)."""
+    research_dir = SNAPSHOT_DIR.parent  # research/
+    if not research_dir.exists():
+        return
+
+    now = datetime.now(timezone.utc).timestamp()
+    for f in research_dir.glob("audit-trend-*.md"):
+        age_days = (now - f.stat().st_mtime) / 86400
+        if age_days > TTL_DAYS:
+            try:
+                f.unlink()
+            except Exception:
+                pass
+    # /audit suggest 결과물도 동일 정책
+    for f in research_dir.glob("audit-suggest-*.md"):
+        age_days = (now - f.stat().st_mtime) / 86400
+        if age_days > TTL_DAYS:
+            try:
+                f.unlink()
+            except Exception:
+                pass
+
+
 def write_snapshot(snapshot: dict) -> Path:
     """스냅샷 JSON 저장"""
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,8 +166,9 @@ def main():
             "pending_tasks": session_state.get("pending_tasks", []),
         }
 
-        # 오래된 스냅샷 정리 후 저장
+        # 오래된 스냅샷·audit-trend 정리 후 저장
         purge_old_snapshots()
+        purge_old_audit_trends()
         snap_path = write_snapshot(snapshot)
 
         summary_parts = [f"branch={branch}"]
