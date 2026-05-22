@@ -694,3 +694,72 @@ if "--skip-analysis" in options:
 if "--no-issue" in options:
     # Step 1.5 건너뛰기 (GitHub 이슈 생성/코멘트 안 함)
 ```
+
+---
+
+## v28.8 추가 옵션 (2026-05-23)
+
+### Mode 옵션
+
+| 옵션 | 효과 |
+|------|------|
+| `--no-auto` | /auto 자동 발동 차단 (사용자 명시 거부) |
+| `--mode=iteration` | ITERATION chapter 강제 진입 |
+| `--mode=research` | RESEARCH chapter 강제 진입 |
+| `--mode=qa` | QA chapter 강제 진입 (CODE Phase 2 의존성 검사) |
+
+### Eco / 비용 절감
+
+| 옵션 | 효과 | 비용 절감 |
+|------|------|:---------:|
+| `--eco` | Opus → Sonnet 강제 | ~30% |
+| `--eco-2` | 비핵심 agent 만 Haiku | ~50% |
+| `--eco-3` | 전 agent Haiku (프로토타이핑 전용) | ~70% |
+
+→ 글로벌 CLAUDE.md § Dynamic Model Routing 정합.
+
+### 옵션 실패 처리 정책 (HARD ENFORCE — F3 결함 해소)
+
+```
+모든 옵션 처리 후:
+  if any_option_failed:
+    log_to: ~/.claude/state/auto/options-failures-{session}.json
+    notify_user: "옵션 N개 미적용: <리스트>"
+    NEVER silent skip   ← "조용한 스킵 금지" 정책 강제
+```
+
+자율 정정 시도 → 실패 시 사용자에게 1줄 보고.
+
+### 모순 조합 (Hard Block)
+
+| 조합 | 사유 |
+|------|------|
+| `--no-push` + `--pr` | --pr 은 push 필요 |
+| `--no-push` + `--ship` | --ship 은 push 필요 |
+| `--skip-critic` + critical 작업 (보안/마이그레이션) | critic 우회 위험 |
+| `--eco-3` + production | 프로토타이핑 전용, production 금지 |
+
+모순 발견 시: 안전 옵션 자동 선택 + 1줄 안내 + 진행.
+
+### 자율 영역 vs 사용자 결정 영역
+
+| 작업 | 영역 |
+|------|:----:|
+| 옵션 검증 / 모순 처리 | **자율** |
+| 옵션 실패 시 retry + escalate | **자율** |
+| `--force` 사용 시 위험 작업 | **사용자 결정** (1회 명시 승인) |
+| Production `--eco-3` 사용 | **사용자 결정** |
+
+### 관련 자산
+
+| 자산 | 위치 |
+|------|------|
+| Option handler logic | `~/.claude/hooks/auto_workflow_enforcer.py` |
+| Failure log | `~/.claude/state/auto/options-failures-{session}.json` |
+| Forbidden pattern check | `~/.claude/scripts/forbidden_pattern_check.py` (F20) |
+
+### v28.8 변경 이력
+
+| 날짜 | 변경 |
+|------|------|
+| 2026-05-23 | v28.8: --no-auto / --mode=* / --eco-* 옵션 + 실패 처리 정책 + 모순 차단 추가 |

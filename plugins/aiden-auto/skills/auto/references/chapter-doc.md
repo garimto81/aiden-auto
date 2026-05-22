@@ -5,7 +5,7 @@ pipeline: [triage, chapter-doc]
 next-skill: null
 handoff: .claude/state/auto/doc-{slug}.md
 agent_team: [planner, writer, critic, architect, document-specialist, reader-experience]
-phase_path: [-2, -1, 0, 1, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 1, 4, cleanup]
 ---
 
 # Chapter: DOC — 기획서 / PRD / Spec 작성

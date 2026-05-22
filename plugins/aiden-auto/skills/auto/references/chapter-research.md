@@ -5,7 +5,7 @@ pipeline: [triage, chapter-research]
 next-skill: chapter-doc  # 리서치 결과를 문서로 정리 가능
 handoff: .claude/state/auto/research-{slug}.md
 agent_team: [researcher, analyst, writer, critic, tracer]
-phase_path: [-2, -1, 0, 1, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 1, 4, cleanup]
 ---
 
 # Chapter: RESEARCH — 조사 / 분석 / 비교 / 트렌드

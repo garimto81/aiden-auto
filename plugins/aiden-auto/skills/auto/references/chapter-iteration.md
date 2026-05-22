@@ -13,7 +13,7 @@ agent_team:
   - executor
   - architect
   - verifier
-phase_path: [-2, -1, 0, 1, 2, 3, iteration-loop, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 1, 2, 3, iteration-loop, 4, cleanup]
 ---
 
 # Chapter: ITERATION — 반복 cycle / Drift / Hot-swap

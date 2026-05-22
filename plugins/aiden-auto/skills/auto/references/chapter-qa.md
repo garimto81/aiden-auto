@@ -5,7 +5,7 @@ pipeline: [triage, chapter-qa]
 next-skill: null
 handoff: .claude/state/auto/qa-{slug}.md
 agent_team: [qa-tester, architect, executor, test-engineer, security-reviewer, verifier]
-phase_path: [-2, -1, 0, 3, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 3, 4, cleanup]
 ---
 
 # Chapter: QA — 테스트 / E2E / 검증

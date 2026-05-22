@@ -255,3 +255,100 @@ legacy_aliases:
   "ulw": "/auto"
   "ultrawork": "/auto"
   "autopilot": "/auto"
+  "/goal": "/auto (Phase -1.5 자율 iteration 시동 — v28.8+)"
+
+# ─────────────────────────────────────────────────────────────
+# v28.8 추가 (2026-05-23) — Iron Laws / Circuit Breaker / Magic Words / Loading Rules
+# ─────────────────────────────────────────────────────────────
+
+# Magic Word (bypass /auto 자동 트리거)
+magic_words:
+  "!quick":
+    behavior: "즉시 실행, Phase -1.5 skip"
+    appetite: "small (≤30분)"
+  "!just":
+    behavior: "단순 1-line 변경 — Phase -2 skip"
+  "!hotfix":
+    behavior: "buggy → 긴급 fix — Multi-perspective skip"
+  "--no-auto":
+    behavior: "사용자가 명시적으로 /auto 비활성"
+
+# Iron Laws (전 Phase 적용)
+iron_laws:
+  IL-1:
+    name: "TDD"
+    rule: "실패 테스트 없이 코드 작성 금지"
+  IL-2:
+    name: "Debugging"
+    rule: "Root cause 없이 수정 금지 (D0-D4 체계)"
+  IL-3:
+    name: "Verification"
+    rule: "증거 없이 완료 선언 금지"
+  IL-4:
+    name: "Architect Approval"
+    rule: "Architect 검증 없이 Phase 4 진입 금지"
+  IL-5:
+    name: "Bypass 금지"
+    rule: "--no-verify, --force 등 hook 우회 금지"
+
+# Circuit Breaker 4-counter (rule 17 정합)
+circuit_breakers:
+  architect_reject:
+    limit: 3
+    escalation: "Block executor re-invocation → 사용자 결정"
+  pdca_iterator:
+    limit: 5
+    escalation: "REJECT path 차단 → 요구사항 재정의 요청"
+  continuation_loop:
+    limit: 3
+    escalation: "Map-Reduce 청킹 강제 (12-large-document-protocol.md)"
+  auto_recursion:
+    limit: 1
+    escalation: "Nested /auto 차단 → 직접 응답"
+  atlassian_auth:
+    limit: 5
+    escalation: "MCP 호출 차단 + 사용자 안내"
+
+# Progressive Disclosure 로딩 매트릭스 (lazy load 규칙 v28.8)
+loading_rules:
+  entry:
+    files: ["references/index.yml", "references/communication-style.md"]
+  phase_minus_2:
+    condition: "ambiguity_score >= 0.5"
+    files: ["references/triage.md"]
+  phase_minus_1_5:
+    condition: "Magic Word (!quick/!just/!hotfix) 부재"
+    files: ["references/phase-minus-1.5-deep-interview.md"]
+    skill: "superpowers:brainstorming"
+  goal_loop:
+    files: ["references/goal-operation.md"]
+  chapter_load:
+    condition: "category 확정 후"
+    files: ["references/chapter-{category-lowercase}.md"]
+  options_handler:
+    condition: "--옵션 명시 시"
+    files: ["references/options-handlers.md"]
+  plan_design_gate:
+    condition: "CODE/ITERATION chapter Phase 1→2"
+    files: ["references/plan-design-gate.md"]
+  compaction_gate:
+    condition: "score>=4 OR load>15KB OR effort=high"
+    files: ["references/compaction-gate.md"]
+
+# v28.8 phase_path 갱신 — 모든 카테고리에 -1.5 (Deep Interview) 명시 추가
+# 위 categories 의 typical_phase_path 는 v27.2 잔존 — 본 절 phase_path_v28_8 가 정본
+phase_path_v28_8:
+  DOC: [-2, -1.5, -1, 0, 1, 4, cleanup]
+  CODE: [-2, -1.5, -1, 0, 1, 2, 3, 4, cleanup]
+  QA: [-2, -1.5, -1, 0, 3, 4, cleanup]
+  ITERATION: [-2, -1.5, -1, 0, 1, 2, 3, iteration-loop, 4, cleanup]
+  RESEARCH: [-2, -1.5, -1, 0, 1, 4, cleanup]
+  MEDIA: [-2, -1.5, -1, 0, 1, 2, 4, cleanup]
+
+# Version 갱신
+v28_8_changes:
+  - "Phase -1.5 (Deep Interview) 명시 추가 → 모든 chapter 적용"
+  - "Iron Laws 5종 + Circuit Breaker 4-counter 본 카탈로그 통합"
+  - "Magic Words 명시 추가 (!quick/!just/!hotfix/--no-auto)"
+  - "Loading Rules 매트릭스 추가 (lazy load 정책)"
+  - "/goal alias 명시 추가"

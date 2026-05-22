@@ -60,6 +60,11 @@ hint=<특별 신호. 예: "보안 critical">                       (선택)
     "iteration-spec-validator": "sonnet",
     "iteration-screenshot-verifier": "haiku",
     "iteration-spec-author": "sonnet",
+    "iteration-spec-classifier": "haiku",
+    "iteration-spec-coherence": "sonnet",
+    "iteration-decision-archivist": "haiku",
+    "iteration-phase-strategist": "sonnet",
+    "iteration-prototype-validator": "sonnet",
     "harness-watcher": "haiku",
     "harness-critic": "sonnet",
     "harness-applier": "sonnet"

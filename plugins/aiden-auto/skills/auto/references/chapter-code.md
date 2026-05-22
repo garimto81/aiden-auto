@@ -5,7 +5,7 @@ pipeline: [triage, chapter-code]
 next-skill: null
 handoff: .claude/state/auto/code-{slug}.md
 agent_team: [executor, architect, code-reviewer, qa-tester, security-reviewer, test-engineer, verifier]
-phase_path: [-2, -1, 0, 1, 2, 3, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 1, 2, 3, 4, cleanup]
 ---
 
 # Chapter: CODE — 기능 구현 / 수정 / 리팩토링

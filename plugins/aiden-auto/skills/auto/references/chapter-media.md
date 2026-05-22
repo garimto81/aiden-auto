@@ -5,7 +5,7 @@ pipeline: [triage, chapter-media]
 next-skill: chapter-code  # 디자인 후 구현 가능
 handoff: .claude/state/auto/media-{slug}.md
 agent_team: [designer, writer, executor, critic, verifier]
-phase_path: [-2, -1, 0, 1, 2, 4, cleanup]
+phase_path: [-2, -1.5, -1, 0, 1, 2, 4, cleanup]
 ---
 
 # Chapter: MEDIA — UI 목업 / 영상 / 이미지 / 디자인

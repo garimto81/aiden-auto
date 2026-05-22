@@ -1,0 +1,9 @@
+{
+  "name": "harness_cycle_runner",
+  "command": "python C:/Users/AidenKim/.claude/hooks/harness_cycle_runner.py",
+  "timeout": 30,
+  "blocking": false,
+  "priority": 70,
+  "owner": "global",
+  "comment": "자가개선 critic 사이클 실제 발동 (F7 결함 해소). harness-watcher 결과 scan + critic flag 생성 → Lead 가 Agent(harness-critic) 호출"
+}
