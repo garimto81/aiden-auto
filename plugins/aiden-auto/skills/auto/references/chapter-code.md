@@ -4,7 +4,7 @@ category: CODE
 pipeline: [triage, chapter-code]
 next-skill: null
 handoff: .claude/state/auto/code-{slug}.md
-agent_team: [executor, architect, code-reviewer, qa-tester, security-reviewer, test-engineer, verifier]
+agent_team: [executor, architect, code-reviewer, qa-tester, security-reviewer, test-engineer, verifier, reader-experience]
 phase_path: [-2, -1.5, -1, 0, 1, 2, 3, 4, cleanup]
 ---
 
@@ -163,10 +163,10 @@ code-reviewer 호출:
   output: APPROVE | CHANGES_REQUESTED (max 3회)
 ```
 
-## Phase 3 — Multi-perspective Validation (NEW v27.2, 병렬)
+## Phase 3 — Multi-perspective Validation (NEW v27.2, 병렬, F14 정합 v3)
 
 ```
-4개 agent 동시 호출 (Agent Teams 패턴):
+4 핵심 agent 동시 호출 (Agent Teams 패턴):
 
 ┌─────────────────────────┐
 │ architect (READ-ONLY)   │  ← 기능 완전성, gap-detector ≥90%, Iron Laws
@@ -175,11 +175,15 @@ code-reviewer 호출:
 ├─────────────────────────┤
 │ code-reviewer           │  ← 코드 품질 재검토
 ├─────────────────────────┤
-│ qa-tester (E2E)         │  ← Playwright 시나리오
+│ reader-experience (NEW v3) │  ← 코드 가독성 + 주석 품질 + naming 일관성 (P7 Hook/Anchor 코드 차원 적용)
 └─────────────────────────┘
 
+추가 ad-hoc agent (선택):
+- qa-tester (E2E Playwright 시나리오 — Phase 3 와 병렬 가능)
+- test-engineer (test coverage 점검)
+
 집계:
-  ALL APPROVE → Phase 3.5
+  ALL APPROVE (4 core) → Phase 3.5
   ANY REJECT → 해당 agent의 finding만 fix → 그 agent만 재호출
   2회 REJECT → 사용자 알림
 ```

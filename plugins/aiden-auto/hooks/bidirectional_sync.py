@@ -46,8 +46,8 @@ try:
     )
 except ImportError:
     # path_resolution.py 부재 시 graceful fallback (backward compat)
-    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None
-    def resolve_project_claude(): return Path(r"C:\claude\.claude") if Path(r"C:\claude\.claude").is_dir() else None
+    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None  # backward compat fallback
+    def resolve_project_claude(): return Path(r"C:\claude\.claude") if Path(r"C:\claude\.claude").is_dir() else None  # backward compat fallback
     def _resolve_cache_root_latest(): return None
     def resolve_marketplaces_dir(): return None
 

@@ -73,13 +73,28 @@ Phase Cleanup (NEW v27.2)
 | "보안" | OWASP | npm audit, bandit, gitleaks |
 | "성능" | benchmark | 프로파일링 + 비교 baseline |
 
-## Phase 3 — Multi-perspective QA (NEW v27.2, 병렬)
+## Phase 3 — Multi-perspective QA (NEW v27.2, 병렬, F15 정합 v3)
 
 ```
-qa-tester:        실제 test 실행
-test-engineer:    flaky test 패턴 + coverage gap 분석 (병렬)
-security-reviewer: OWASP scan (보안 종류 시 병렬)
-architect:        결과 해석 + 우선순위 ranking
+4 핵심 agent (필수, ALL PASS 집계):
+┌─────────────────────────┐
+│ qa-tester               │  ← 실제 test 실행
+├─────────────────────────┤
+│ test-engineer           │  ← flaky 패턴 + coverage gap 분석
+├─────────────────────────┤
+│ architect               │  ← 결과 해석 + 우선순위 ranking
+├─────────────────────────┤
+│ verifier (Phase 3.5)    │  ← fresh evidence 재검증
+└─────────────────────────┘
+
+2 ad-hoc agent (선택, 검증 종류별 추가):
+- security-reviewer (보안 검증 종류 시)
+- executor (D3 수정 단계 시)
+
+집계 (Aggregation Logic):
+  ALL PASS (4 core) → Phase 4 진입
+  ANY FAIL (core)   → D0-D4 systematic debugging
+  REJECT 2회 누적   → 사용자 알림 (Circuit Breaker)
 
 실패 시:
   D0 — 재현 가능?

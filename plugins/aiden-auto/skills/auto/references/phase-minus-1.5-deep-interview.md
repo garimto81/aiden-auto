@@ -124,7 +124,9 @@ Executive Summary — 본문 안 읽고도 1페이지 요약으로
 ### 호출 방식 (조건 충족 시만)
 
 ```bash
-python C:/Users/AidenKim/.claude/hooks/atlassian_auth.py
+# Universal path (모든 PC 동일 작동 — Layer B path_resolution 활용)
+python "$HOME/.claude/hooks/atlassian_auth.py"
+# Windows: %USERPROFILE%\.claude\hooks\atlassian_auth.py
 ```
 
 executor 가 verdict 산출:
@@ -142,7 +144,7 @@ executor 가 verdict 산출:
 | Atlassian 사용 + token stale | 0회 (AUTO_REFRESH 백그라운드) |
 | Atlassian 사용 + 401 누적 | 1회 (PROMPT_USER → `/mcp` 1회 실행) |
 
-상세: `C:/claude/docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md` v1.1+.
+상세: `docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md` v1.1+ (project-relative path).
 
 ## 전제 조건 자동 검증
 
@@ -160,7 +162,8 @@ Part C 활성화 시 Part E 도 자동 충족 (Confluence sync = Atlassian 인�
 `confluence_sync.enabled = true` 시 Phase 4 의 4.2 단계에서 자동 호출:
 
 ```bash
-python C:/claude/lib/confluence/md2confluence.py <md_file> <page_id>
+# Project-relative path (Layer B path_resolution 활용)
+python "$PROJECT_ROOT/lib/confluence/md2confluence.py" <md_file> <page_id>
 ```
 
 상세: `references/confluence-sync-flow.md`.
@@ -172,5 +175,5 @@ python C:/claude/lib/confluence/md2confluence.py <md_file> <page_id>
 | brainstorming skill | `superpowers:brainstorming` |
 | multi-session | `references/multi-session-router.md` (또는 plugin) |
 | Confluence 흐름 | `references/confluence-sync-flow.md` |
-| md2confluence 도구 | `C:/claude/lib/confluence/md2confluence.py` |
+| md2confluence 도구 | `$PROJECT_ROOT/lib/confluence/md2confluence.py` (project-relative) |
 | Executive Summary | `references/executive-summary-template.md` |

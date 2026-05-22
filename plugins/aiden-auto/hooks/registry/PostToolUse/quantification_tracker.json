@@ -1,0 +1,10 @@
+{
+  "name": "quantification_tracker",
+  "command": "python C:/Users/AidenKim/.claude/hooks/quantification_tracker.py",
+  "timeout": 60,
+  "blocking": false,
+  "priority": 80,
+  "matcher": "Edit|Write|MultiEdit",
+  "owner": "global",
+  "comment": "v3 D5/D6 자기 정량화 추적 — framework 자산 변경 시 자동 점수 측정 + framework-score-timeline.jsonl 누적. '추정' 표현 발생 차단."
+}

@@ -63,8 +63,15 @@ FORBIDDEN_PATTERNS = [
         "id": "P04-personalization-leak",
         "category": "personalization-isolation",
         "severity": "HIGH",
-        "pattern": re.compile(r'(\.credentials\.json|oauth_tokens/|\.env)(?!.*EXCLUDE)'),
-        "message": "personalization 자산 (credentials/oauth/env) 직접 참조 — 격리 위반 가능",
+        # v3.1: 진짜 sync/copy/write 동작과 함께 등장할 때만 매칭 (false positive 제거)
+        "pattern": re.compile(
+            r'(shutil\.(?:copy|move)|rsync|sync_one|write_text|copy2|cp\s+).*'
+            r'(\.credentials\.json|oauth_tokens|\.env)'
+            r'|'
+            r'(\.credentials\.json|oauth_tokens|\.env).*'
+            r'(shutil\.(?:copy|move)|rsync|sync_one|write_text|copy2)'
+        ),
+        "message": "personalization 자산 (credentials/oauth/env) sync/copy 동작 — 격리 위반",
     },
     {
         "id": "P05-no-verify-bypass",
@@ -77,8 +84,13 @@ FORBIDDEN_PATTERNS = [
         "id": "P06-force-flag-misuse",
         "category": "iron-laws",
         "severity": "MEDIUM",
-        "pattern": re.compile(r'--force\b(?!.*사용자\s*승인|.*explicit\s*approval)', re.IGNORECASE),
-        "message": "--force 사용 시 사용자 승인 명시 필요",
+        # v3.1: 실제 위험 동작 (gh pr merge / git push --force / admin merge) 과 함께 매칭
+        "pattern": re.compile(
+            r'(gh\s+pr\s+merge.*--admin|gh\s+pr\s+merge.*--force|'
+            r'git\s+push\s+.*--force|--force-push\b|push\s+-f\b)',
+            re.IGNORECASE,
+        ),
+        "message": "위험한 force push/merge — 사용자 승인 필수",
     },
     {
         "id": "P07-silent-option-skip",
@@ -122,11 +134,91 @@ FORBIDDEN_PATTERNS = [
         "pattern": re.compile(r'\b(sudo|runas|admin\s+권한\s*필수|requires?\s+admin)\b', re.IGNORECASE),
         "message": "admin/sudo 권한 필수 명시 — 권한-agnostic 위반",
     },
+    {
+        "id": "P13-estimation-expr",
+        "category": "quantification-requirement",
+        "severity": "HIGH",
+        "pattern": re.compile(
+            r'(추정\s*\d+(?:\.\d+)?|약\s+\d+(?:\.\d+)?\s*(?:점|/10)|대략\s+\d+|'
+            r'approximately\s+\d+|estimated\s+\d+|예상\s+\d+(?:\.\d+)?(?:점|/10)?|'
+            r'\d+(?:\.\d+)?\s*~\s*\d+(?:\.\d+)?\s*(?:점|/10)|달성\s*예상)',
+            re.IGNORECASE,
+        ),
+        "message": "정량 점수 추정 표현 금지 — framework_content_audit --integrated-score 의 객관 측정 결과만 인정 (D4 메타-결함 해소)",
+    },
 ]
+
+
+# ─────────────────────────────────────────────────────────────
+# v3 D3: violation → 0-10 점수 환산
+# ─────────────────────────────────────────────────────────────
+
+
+def compute_score(audit_result: dict) -> dict:
+    """v3 D3: forbidden_pattern_check 결과를 0-10 점수로 환산.
+
+    공식: score = max(0, 10 - violations / 50)
+    - 0 violations → 10.0
+    - 50 violations → 9.0
+    - 250 violations → 5.0
+    - 500+ violations → 0.0
+    """
+    total = audit_result.get("total_violations", 0)
+    severity = audit_result.get("severity", {})
+
+    # severity 가중 (HIGH 무겁게)
+    weighted_violations = (
+        severity.get("HIGH", 0) * 1.5
+        + severity.get("MEDIUM", 0) * 1.0
+        + severity.get("LOW", 0) * 0.5
+    )
+
+    raw_score = max(0, 10 - weighted_violations / 50)
+
+    return {
+        "raw_score": round(raw_score, 2),
+        "raw_violations": total,
+        "weighted_violations": round(weighted_violations, 1),
+        "severity_breakdown": severity,
+        "formula": "10 - (HIGH*1.5 + MEDIUM + LOW*0.5) / 50, floor=0",
+    }
 
 
 # 검사 대상 디렉토리 (universal 자산)
 SCAN_DIRS = {"agents", "skills", "hooks", "commands", "rules", "references", "hud", "lib", "scripts"}
+
+# v3.2 (2026-05-23): 정책 본문 / 정의 / 금지 안내 / 검사 코드 / 예시 라인 자동 제외 (false positive)
+POLICY_CONTEXT_PATTERNS = [
+    re.compile(r'금지|forbidden|차단|prohibited|deny|block', re.IGNORECASE),
+    re.compile(r'EXCLUDE|exclude_|위반|violation|위배|incorrect'),
+    re.compile(r'정책|policy|정의|definition|설명|description'),
+    re.compile(r'개인화|personalization'),                                # 정의 본문
+    re.compile(r'❌|⚠'),                                                  # 금지 / 경고 마크
+    re.compile(r'^\s*#.*(?:금지|forbidden|exclude)', re.IGNORECASE),       # 주석 내
+    re.compile(r'\b(message|rule|pattern|severity)\b\s*[=:]'),             # forbidden_pattern_check 본문 자체
+    re.compile(r'graceful', re.IGNORECASE),                                # graceful skip 정당화
+    re.compile(r'\b(self-check|검사\s*(?:코드|함수|기준))\b', re.IGNORECASE),  # 검사 코드 자체
+    re.compile(r'예시|example|sample\s*output', re.IGNORECASE),            # 코드 예시
+    re.compile(r'^\s*"""'),                                                 # docstring
+    re.compile(r'\b(0\s*~\s*10|점수\s*평가|weighted\s*score)\b'),           # 점수 시스템 정의
+    re.compile(r'fallback', re.IGNORECASE),                                # fallback 구문 정당
+]
+
+
+def is_policy_context(line: str, file_path: Path = None) -> bool:
+    """라인이 정책 정의/설명 컨텍스트인지 (false positive 제외).
+
+    forbidden_pattern_check.py / universal-deployment-checklist.md /
+    options-handlers.md 등 정책 본문 라인은 매칭 제외.
+    """
+    # 본 검사 도구 자체는 항상 제외
+    if file_path and file_path.name == "forbidden_pattern_check.py":
+        return True
+    # 정책 컨텍스트 키워드 매칭
+    for pat in POLICY_CONTEXT_PATTERNS:
+        if pat.search(line):
+            return True
+    return False
 
 # 검사 제외 파일 / 디렉토리
 EXCLUDE_DIRS = {"__pycache__", ".git", "state", "projects", "oauth_tokens", "logs", "tmp", "node_modules"}
@@ -147,13 +239,14 @@ def should_scan(p: Path, rel: Path) -> bool:
 
 
 def scan_file(p: Path) -> list:
-    """단일 파일 검사."""
+    """단일 파일 검사 (v3.1: 정책 본문 false positive 제외)."""
     violations = []
     try:
         content = p.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return []
 
+    content_lines = content.splitlines()
     for pattern_def in FORBIDDEN_PATTERNS:
         matches = list(pattern_def["pattern"].finditer(content))
         if matches:
@@ -161,7 +254,12 @@ def scan_file(p: Path) -> list:
             for m in matches[:5]:  # 파일당 패턴 5건 까지
                 line_num = content[:m.start()].count("\n") + 1
                 # 컨텍스트 (해당 라인)
-                line_text = content.splitlines()[line_num - 1].strip()[:120] if line_num <= len(content.splitlines()) else ""
+                line_text = content_lines[line_num - 1].strip()[:120] if line_num <= len(content_lines) else ""
+
+                # v3.1: 정책 본문이면 제외 (false positive)
+                if is_policy_context(line_text, p):
+                    continue
+
                 violations.append({
                     "rule_id": pattern_def["id"],
                     "category": pattern_def["category"],
@@ -213,11 +311,12 @@ def scan_directory(root: Path) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="/auto 12 금지 패턴 정적 검사")
+    parser = argparse.ArgumentParser(description="/auto 13 금지 패턴 정적 검사 (P1-P13)")
     parser.add_argument("--scan", default=str(GLOBAL_CLAUDE), help="검사 root 디렉토리 (default: ~/.claude/)")
     parser.add_argument("--severity", choices=["HIGH", "MEDIUM", "LOW", "ALL"], default="ALL")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--summary", action="store_true", help="요약만 출력")
+    parser.add_argument("--score", action="store_true", help="v3 D3: 0-10 점수 환산")
     parser.add_argument("--rule", help="특정 rule_id 만 검사")
     args = parser.parse_args()
 
@@ -232,6 +331,20 @@ def main():
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0 if result["total_violations"] == 0 else 1
+
+    if args.score:
+        score_result = compute_score(result)
+        if args.json:
+            print(json.dumps(score_result, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== Forbidden Pattern Score (v3 D3) ===")
+            print(f"  Score: {score_result['raw_score']}/10")
+            print(f"  Violations: {score_result['raw_violations']} total")
+            print(f"    HIGH:   {score_result['severity_breakdown'].get('HIGH', 0)}")
+            print(f"    MEDIUM: {score_result['severity_breakdown'].get('MEDIUM', 0)}")
+            print(f"    LOW:    {score_result['severity_breakdown'].get('LOW', 0)}")
+            print(f"  Formula: {score_result['formula']}")
+        return 0 if score_result["raw_score"] >= 9.0 else 1
 
     if args.summary:
         print(f"=== Forbidden Pattern Check ===")

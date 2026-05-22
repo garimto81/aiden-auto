@@ -155,15 +155,22 @@ threshold:
 <Exit_Criteria>
 
 ```python
+# v3 (F22 정정 — oscillation 허용):
 exit = (
     reimplementability_pass_rate >= 0.9
-    AND drift_direction == "decreasing"
+    AND current_drift < 0.1  # 절대값 임계
+    AND drift_improved_consecutive_cycles >= 3  # 진동 허용 — 3 연속 개선만 요구
     AND missing == 0
     AND e2e_status == "PASS"
     AND verifier_status == "VERIFIED"  # NEW v27.2
 ) OR user_explicit_stop in ["멈춰", "stop", "ok"]
   OR circuit_breaker(5_same_fail)
+
+# 폐기 (F22 결함):
+# AND drift_direction == "decreasing"  # 진동 (0.3→0.2→0.3) 시 무한 loop 발생
 ```
+
+> **oscillation tolerance (F22 v3)**: 이전 정책 `drift_direction == "decreasing"` 은 매 cycle 단조 감소 요구 → 진동 시 exit 차단. v3 정정: 절대값 < 0.1 임계 + 3 연속 개선 누적 → 진동 허용하되 추세 보장.
 
 </Exit_Criteria>
 

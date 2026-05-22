@@ -209,7 +209,158 @@ def check_F20_forbidden_pattern() -> dict:
     return result
 
 
-# 결함 → 검사 함수 매핑
+# ─────────────────────────────────────────────────────────────
+# v3 추가 검사 (F8-F22 잔여 11 결함)
+# ─────────────────────────────────────────────────────────────
+
+
+def check_F8_part_a_skip_consistency() -> dict:
+    """F8: Phase -1.5 Part A skip 조건 SKILL.md ↔ deep-interview.md 일관성."""
+    skill = SKILL_AUTO / "SKILL.md"
+    interview = SKILL_AUTO / "references" / "phase-minus-1.5-deep-interview.md"
+    if not (skill.exists() and interview.exists()):
+        return {"pass": False, "error": "files missing"}
+    skill_content = skill.read_text(encoding="utf-8")
+    interview_content = interview.read_text(encoding="utf-8")
+    # 둘 다 "Skip 조건: !quick / !just / !hotfix" 패턴 일관성
+    skill_skip = "!quick" in skill_content and "!hotfix" in skill_content
+    interview_skip = "!quick" in interview_content and "!hotfix" in interview_content
+    return {"pass": skill_skip and interview_skip, "skill_has": skill_skip, "interview_has": interview_skip}
+
+
+def check_F9_part_ce_hardcoded() -> dict:
+    """F9: Phase -1.5 Part C/E hardcoded path 제거."""
+    interview = SKILL_AUTO / "references" / "phase-minus-1.5-deep-interview.md"
+    if not interview.exists():
+        return {"pass": False, "error": "file missing"}
+    content = interview.read_text(encoding="utf-8")
+    # hardcoded C:\ 경로 패턴 (backward compat 표시 제외)
+    import re
+    hardcoded = re.findall(r'C:[\\/]Users[\\/]AidenKim|C:[\\/]claude[\\/](?!.*backward compat)', content)
+    return {"pass": len(hardcoded) <= 1, "hardcoded_count": len(hardcoded)}
+
+
+def check_F10_part_d_clarity() -> dict:
+    """F10: Part D 자율 판단 vs 자동 생성 단계 명확화."""
+    interview = SKILL_AUTO / "references" / "phase-minus-1.5-deep-interview.md"
+    if not interview.exists():
+        return {"pass": False}
+    content = interview.read_text(encoding="utf-8")
+    # Part D 가 "질문 단계" 명시 + Phase 1.3 reference
+    has_part_d = "Part D" in content
+    has_question_stage = "질문" in content and "생성" in content
+    return {"pass": has_part_d and has_question_stage}
+
+
+def check_F13_quota_advisor_2tier() -> dict:
+    """F13: quota_pretool_gate.py 가 2차 advisor escalate 구현."""
+    p = GLOBAL_CLAUDE / "hooks" / "quota_pretool_gate.py"
+    if not p.exists():
+        return {"pass": False, "exists": False}
+    content = p.read_text(encoding="utf-8")
+    has_advisor = "advisor" in content.lower() or "escalate" in content.lower()
+    has_sub_inference = "advisor-tool" in content or "sub_inference" in content.lower() or "ESCALATE" in content
+    return {"pass": has_advisor and has_sub_inference, "has_advisor": has_advisor, "has_sub_inference": has_sub_inference}
+
+
+def check_F14_code_chapter_reader_exp() -> dict:
+    """F14: CODE chapter Multi-perspective 에 reader-experience 포함."""
+    p = SKILL_AUTO / "references" / "chapter-code.md"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    return {"pass": "reader-experience" in content, "agent_present": "reader-experience" in content}
+
+
+def check_F15_qa_chapter_4agent() -> dict:
+    """F15: QA chapter Multi-perspective 4 agent 정합."""
+    p = SKILL_AUTO / "references" / "chapter-qa.md"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    # 4 핵심 agent + ad-hoc 분리 명시
+    has_aggregation = "aggregation" in content.lower() or "집계" in content or "ALL APPROVE" in content or "ALL PASS" in content
+    return {"pass": has_aggregation}
+
+
+def check_F16_iteration_critic() -> dict:
+    """F16: ITERATION chapter critic agent 명시."""
+    p = SKILL_AUTO / "references" / "chapter-iteration.md"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    # agent_team 에 critic 포함 OR Phase 3 에 critic 언급
+    return {"pass": "critic" in content.lower()}
+
+
+def check_F19_skill_md_concise() -> dict:
+    """F19: SKILL.md ≤120 줄 (원칙 3 정합)."""
+    p = SKILL_AUTO / "SKILL.md"
+    if not p.exists():
+        return {"pass": False}
+    lines = len(p.read_text(encoding="utf-8").splitlines())
+    return {"pass": lines <= 120, "lines": lines, "limit": 120, "excess": max(0, lines - 120)}
+
+
+def check_F21_critic_verdict_bridge() -> dict:
+    """F21: critic-protocol-unified.md 의 5종↔4종 verdict bridge."""
+    p = SKILL_AUTO / "references" / "critic-protocol-unified.md"
+    if not p.exists():
+        return {"pass": False, "exists": False}
+    content = p.read_text(encoding="utf-8")
+    # 5 verdict (APPROVE/REJECT/QUESTION/SURVIVED/DESTROYED) ↔ 4 verdict bridge
+    has_5_verdict = all(v in content for v in ["APPROVE", "REJECT", "QUESTION"])
+    has_bridge = "bridge" in content.lower() or "매핑" in content
+    return {"pass": has_5_verdict and has_bridge}
+
+
+def check_F22_iteration_exit_oscillation() -> dict:
+    """F22: ITERATION exit criteria 진동 허용."""
+    p = SKILL_AUTO / "references" / "chapter-iteration.md"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    # "decreasing" 폐기 + "consecutive cycles" 또는 oscillation tolerance 명시
+    has_old = "drift_direction=decreasing" in content or "decreasing\"" in content
+    has_new = "consecutive" in content.lower() or "oscillation" in content.lower() or "진동" in content
+    return {"pass": (not has_old) or has_new}
+
+
+def check_D1_integrated_score() -> dict:
+    """D1: framework_content_audit.py 에 compute_integrated_score() 존재."""
+    p = SCRIPTS_DIR / "framework_content_audit.py"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    return {"pass": "compute_integrated_score" in content and "weighted" in content.lower()}
+
+
+def check_D3_violation_score() -> dict:
+    """D3: forbidden_pattern_check.py 에 score() 메서드."""
+    p = SCRIPTS_DIR / "forbidden_pattern_check.py"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    return {"pass": "def score" in content or "compute_score" in content}
+
+
+def check_D4_estimation_pattern() -> dict:
+    """D4: forbidden_pattern_check.py 에 P13-estimation-expr 등재."""
+    p = SCRIPTS_DIR / "forbidden_pattern_check.py"
+    if not p.exists():
+        return {"pass": False}
+    content = p.read_text(encoding="utf-8")
+    return {"pass": "P13-estimation-expr" in content or "estimation-expr" in content}
+
+
+def check_D5_timeline_tracker() -> dict:
+    """D5: quantification_tracker.py + framework-score-timeline.jsonl."""
+    hook = GLOBAL_CLAUDE / "hooks" / "quantification_tracker.py"
+    timeline = STATE_DIR / "framework-score-timeline.jsonl"
+    return {"pass": hook.exists(), "hook_exists": hook.exists(), "timeline_exists": timeline.exists()}
+
+
+# 결함 → 검사 함수 매핑 (v3 확장 — 22 결함 + 5 메타-결함)
 DEFECT_CHECKS = {
     "F1": ("references/index.yml v28.8 정합", check_F1_index_yml),
     "F2": ("references/goal-operation.md 신규", check_F2_goal_operation),
@@ -217,12 +368,150 @@ DEFECT_CHECKS = {
     "F4_F5": ("auto_workflow_enforcer.py (Step 0.5/0.7 자동)", check_F4_F5_auto_workflow_enforcer),
     "F6": ("goal_loop_state.py (turn/token/fail counter)", check_F6_goal_loop_state),
     "F7": ("harness_cycle_runner.py (자가개선)", check_F7_harness_cycle),
+    "F8": ("Phase -1.5 Part A skip 조건 일관성", check_F8_part_a_skip_consistency),
+    "F9": ("Phase -1.5 Part C/E hardcoded path 제거", check_F9_part_ce_hardcoded),
+    "F10": ("Part D 자율 판단 vs 자동 생성 명확화", check_F10_part_d_clarity),
     "F11": ("model-router iteration 13 agent 라우팅", check_F11_model_router),
     "F12": ("circuit-breaker.json 4-counter", check_F12_circuit_breaker),
+    "F13": ("quota_pretool_gate 2차 advisor escalate", check_F13_quota_advisor_2tier),
+    "F14": ("CODE chapter reader-experience 포함", check_F14_code_chapter_reader_exp),
+    "F15": ("QA chapter Multi-perspective 4 agent 정합", check_F15_qa_chapter_4agent),
+    "F16": ("ITERATION chapter critic agent 명시", check_F16_iteration_critic),
     "F17": ("chapter 6종 phase_path -1.5 포함", check_F17_chapter_phase_path),
     "F18": ("chapter_dependency_guard.py 신규", check_F18_chapter_dependency_guard),
+    "F19": ("SKILL.md ≤120줄 (원칙 3 정합)", check_F19_skill_md_concise),
     "F20": ("forbidden_pattern_check.py 신규", check_F20_forbidden_pattern),
+    "F21": ("critic-protocol-unified verdict bridge", check_F21_critic_verdict_bridge),
+    "F22": ("ITERATION exit criteria 진동 허용", check_F22_iteration_exit_oscillation),
+    # v3 메타-결함 검사
+    "D1": ("compute_integrated_score() 공식 구현", check_D1_integrated_score),
+    "D3": ("forbidden_pattern_check score() 메서드", check_D3_violation_score),
+    "D4": ("P13-estimation-expr 등재", check_D4_estimation_pattern),
+    "D5": ("quantification_tracker hook 신규", check_D5_timeline_tracker),
 }
+
+
+# ─────────────────────────────────────────────────────────────
+# v3 통합 점수 공식 (메타-결함 D1 해소)
+# ─────────────────────────────────────────────────────────────
+
+
+def get_violation_count() -> int:
+    """forbidden_pattern_check 실행 결과 가져오기."""
+    import subprocess
+    check_script = SCRIPTS_DIR / "forbidden_pattern_check.py"
+    if not check_script.exists():
+        return -1
+    try:
+        result = subprocess.run(
+            [sys.executable, str(check_script), "--summary"],
+            capture_output=True, text=True, timeout=30,
+        )
+        # "Violations: NNN total" 파싱
+        for line in result.stdout.splitlines():
+            if "Violations:" in line and "total" in line:
+                parts = line.split()
+                for token in parts:
+                    if token.isdigit():
+                        return int(token)
+    except Exception:
+        pass
+    return -1
+
+
+def get_replication_rate() -> float:
+    """measure-replication.py 실행 결과."""
+    import subprocess
+    rep_script = SCRIPTS_DIR / "measure-replication.py"
+    if not rep_script.exists():
+        return -1.0
+    try:
+        result = subprocess.run(
+            [sys.executable, str(rep_script), "--target", str(GLOBAL_CLAUDE), "--json"],
+            capture_output=True, text=True, timeout=30,
+        )
+        data = json.loads(result.stdout)
+        return float(data.get("self_replication_rate", 0))
+    except Exception:
+        pass
+    return -1.0
+
+
+def compute_integrated_score(audit_result: dict) -> dict:
+    """v3 통합 점수 공식 (D1 핵심).
+
+    M1 (구조 완성도): PASS/total × 10 — 가중치 40%
+    M2 (규칙 준수도): max(0, 10 - violations/50) — 가중치 30%
+    M3 (자기복제율): rate × 0.1 — 가중치 20%
+    M4 (검사 커버율): checked/22 × 10 — 가중치 10%
+
+    Returns:
+        {value, formula, breakdown, confidence}
+    """
+    total_checks = audit_result.get("total_checks", 22)
+    passed = audit_result.get("passed", 0)
+    violations = get_violation_count()
+    replication = get_replication_rate()
+
+    # 4 메트릭 산출
+    M1 = (passed / total_checks * 10) if total_checks > 0 else 0
+    M2 = max(0, 10 - violations / 50) if violations >= 0 else 0
+    M3 = (replication * 0.1) if replication >= 0 else 0  # rate % → 0-10
+    M4 = min(10.0, total_checks / 22 * 10)  # 22 = 전체 결함 수 (cap 100%)
+
+    # 가중 평균
+    integrated = 0.4 * M1 + 0.3 * M2 + 0.2 * M3 + 0.1 * M4
+
+    # confidence
+    valid_metrics = sum(1 for m in [M1, M2, M3, M4] if m > 0)
+    confidence = "HIGH" if valid_metrics == 4 else ("MEDIUM" if valid_metrics >= 3 else "LOW")
+
+    return {
+        "value": round(integrated, 2),
+        "formula": "0.4×M1 + 0.3×M2 + 0.2×M3 + 0.1×M4",
+        "breakdown": {
+            "M1_structure": {"value": round(M1, 2), "basis": f"{passed}/{total_checks} PASS", "weight": 0.4, "weighted": round(0.4 * M1, 2)},
+            "M2_rule_compliance": {"value": round(M2, 2), "basis": f"{violations} violations", "weight": 0.3, "weighted": round(0.3 * M2, 2)},
+            "M3_replication": {"value": round(M3, 2), "basis": f"{replication}% self-replication", "weight": 0.2, "weighted": round(0.2 * M3, 2)},
+            "M4_coverage": {"value": round(M4, 2), "basis": f"{total_checks}/22 covered", "weight": 0.1, "weighted": round(0.1 * M4, 2)},
+        },
+        "confidence": confidence,
+        "max_score": 10.0,
+    }
+
+
+def append_to_timeline(audit_result: dict, integrated: dict) -> None:
+    """D5: framework-score-timeline.jsonl 누적."""
+    timeline_path = STATE_DIR / "framework-score-timeline.jsonl"
+    entry = {
+        "timestamp": __import__("time").strftime("%Y-%m-%dT%H:%M:%SZ", __import__("time").gmtime()),
+        "metrics": integrated["breakdown"],
+        "integrated_score": {"value": integrated["value"], "formula": integrated["formula"], "confidence": integrated["confidence"]},
+        "audit_summary": {
+            "total_checks": audit_result["total_checks"],
+            "passed": audit_result["passed"],
+            "failed": audit_result["failed"],
+        },
+    }
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        with timeline_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def load_trend(limit: int = 10) -> list:
+    """D5: 최근 N 점수 trend."""
+    timeline_path = STATE_DIR / "framework-score-timeline.jsonl"
+    if not timeline_path.exists():
+        return []
+    try:
+        lines = timeline_path.read_text(encoding="utf-8").splitlines()
+        entries = [json.loads(ln) for ln in lines[-limit:]]
+        return entries
+    except (OSError, json.JSONDecodeError):
+        return []
 
 
 def run_audit() -> dict:
@@ -257,12 +546,56 @@ def run_audit() -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="22 결함 회귀 검증 도구 (Phase D)")
+    parser = argparse.ArgumentParser(description="22 결함 + 메타-결함 회귀 검증 + 통합 점수 (v3)")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--summary", action="store_true")
+    parser.add_argument("--integrated-score", action="store_true", help="v3: 통합 점수 산출 (4 메트릭 가중)")
+    parser.add_argument("--trend", action="store_true", help="v3: 점수 trend timeline 출력")
+    parser.add_argument("--no-timeline", action="store_true", help="timeline.jsonl 자동 기록 비활성")
     args = parser.parse_args()
 
+    if args.trend:
+        # trend 모드 — 별도 처리
+        entries = load_trend(limit=20)
+        if not entries:
+            print("(no timeline entries yet)")
+            return 0
+        if args.json:
+            print(json.dumps(entries, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== Framework Score Timeline (recent {len(entries)}) ===")
+            for e in entries:
+                ts = e.get("timestamp", "?")
+                score = e.get("integrated_score", {}).get("value", "?")
+                conf = e.get("integrated_score", {}).get("confidence", "?")
+                print(f"  {ts}  score={score}/10  ({conf})")
+        return 0
+
     result = run_audit()
+
+    # v3: 통합 점수 자동 산출
+    integrated = compute_integrated_score(result)
+    result["integrated_score"] = integrated
+
+    # v3: timeline 자동 기록
+    if not args.no_timeline:
+        append_to_timeline(result, integrated)
+
+    if args.integrated_score:
+        # 통합 점수만 출력 (간결)
+        if args.json:
+            print(json.dumps({"integrated_score": integrated, "audit_summary": {
+                "total_checks": result["total_checks"], "passed": result["passed"]
+            }}, indent=2, ensure_ascii=False))
+        else:
+            print(f"=== Framework Integrated Score ===")
+            print(f"  Score: {integrated['value']}/{integrated['max_score']}")
+            print(f"  Confidence: {integrated['confidence']}")
+            print(f"  Formula: {integrated['formula']}")
+            print(f"\n  Breakdown:")
+            for k, v in integrated["breakdown"].items():
+                print(f"    {k}: {v['value']}/10 × {v['weight']} = {v['weighted']}  ({v['basis']})")
+        return 0 if integrated["value"] >= 9.0 else 1
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -272,6 +605,7 @@ def main():
         print(f"  Passed: {result['passed']}")
         print(f"  Failed: {result['failed']}")
         print(f"  Completeness: {result['completeness']}%")
+        print(f"  Integrated Score: {integrated['value']}/10 ({integrated['confidence']})")
     else:
         print(f"=== Framework Content Audit ===\n")
         for defect_id, r in result["results"].items():
