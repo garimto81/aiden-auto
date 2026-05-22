@@ -437,43 +437,178 @@ def get_replication_rate() -> float:
     return -1.0
 
 
+def get_behavior_score() -> float:
+    """B2 behavior audit score 가져오기."""
+    import subprocess
+    script = SCRIPTS_DIR / "framework_behavior_audit.py"
+    if not script.exists():
+        return -1.0
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), "--json"],
+            capture_output=True, text=True, timeout=60,
+        )
+        data = json.loads(result.stdout)
+        passed = data.get("passed", 0)
+        total = data.get("total_checks", 1)
+        return (passed / total * 10) if total > 0 else 0
+    except Exception:
+        return -1.0
+
+
+def get_hook_invocation_score() -> float:
+    """B3 hook invocation score 가져오기."""
+    import subprocess
+    script = SCRIPTS_DIR / "hook_invocation_audit.py"
+    if not script.exists():
+        return -1.0
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), "--score-only"],
+            capture_output=True, text=True, timeout=30,
+        )
+        data = json.loads(result.stdout)
+        return float(data.get("score", 0))
+    except Exception:
+        return -1.0
+
+
+def get_e2e_score() -> float:
+    """B4 e2e flow score — 캐싱된 trend 에서 (e2e 는 30-60초 소요)."""
+    timeline_path = STATE_DIR / "framework-e2e-timeline.jsonl"
+    if not timeline_path.exists():
+        return -1.0
+    try:
+        lines = timeline_path.read_text(encoding="utf-8").splitlines()
+        if not lines:
+            return -1.0
+        last_entry = json.loads(lines[-1])
+        return float(last_entry.get("score", 0))
+    except Exception:
+        return -1.0
+
+
+def get_test_coverage_score() -> float:
+    """B1 pytest test coverage score."""
+    import subprocess
+    tests_dir = GLOBAL_CLAUDE / "tests"
+    if not tests_dir.is_dir():
+        return -1.0
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", str(tests_dir), "--tb=no", "-q"],
+            capture_output=True, text=True, timeout=60,
+        )
+        output = result.stdout + result.stderr
+        passed = 0
+        failed = 0
+        for line in output.splitlines():
+            if "passed" in line and "in " in line:
+                parts = line.replace(",", "").split()
+                for i, p in enumerate(parts):
+                    if p == "passed" and i > 0:
+                        try:
+                            passed = int(parts[i-1])
+                        except ValueError:
+                            pass
+                    if p == "failed" and i > 0:
+                        try:
+                            failed = int(parts[i-1])
+                        except ValueError:
+                            pass
+        total = passed + failed
+        return (passed / total * 10) if total > 0 else 0
+    except Exception:
+        return -1.0
+
+
 def compute_integrated_score(audit_result: dict) -> dict:
-    """v3 통합 점수 공식 (D1 핵심).
+    """v4 통합 점수 공식 — Surface + Reality.
 
-    M1 (구조 완성도): PASS/total × 10 — 가중치 40%
-    M2 (규칙 준수도): max(0, 10 - violations/50) — 가중치 30%
-    M3 (자기복제율): rate × 0.1 — 가중치 20%
-    M4 (검사 커버율): checked/22 × 10 — 가중치 10%
+    Surface metrics (30% — 메타데이터):
+      M1 (구조 완성도): PASS/total × 10 — 가중치 15%
+      M2 (규칙 준수도): max(0, 10 - violations/50) — 가중치 10%
+      M4 (검사 커버율): min(10, checked/22 × 10) — 가중치 5%
 
-    Returns:
-        {value, formula, breakdown, confidence}
+    Reality metrics (70% — 실제 작동):
+      M3 (자기복제율): rate × 0.1 — 가중치 10%
+      M5 (behavior validation): B2 behavior audit — 가중치 20%
+      M6 (hook invocation): B3 hook invocation — 가중치 15%
+      M7 (e2e flow): B4 e2e flow — 가중치 15%
+      M8 (test coverage): B1 pytest — 가중치 10%
+
+    Surface = 30%, Reality = 70% (사용자 지적 반영).
     """
     total_checks = audit_result.get("total_checks", 22)
     passed = audit_result.get("passed", 0)
     violations = get_violation_count()
     replication = get_replication_rate()
+    behavior = get_behavior_score()
+    hook_inv = get_hook_invocation_score()
+    e2e = get_e2e_score()
+    test_cov = get_test_coverage_score()
 
-    # 4 메트릭 산출
+    # Surface metrics
     M1 = (passed / total_checks * 10) if total_checks > 0 else 0
     M2 = max(0, 10 - violations / 50) if violations >= 0 else 0
-    M3 = (replication * 0.1) if replication >= 0 else 0  # rate % → 0-10
-    M4 = min(10.0, total_checks / 22 * 10)  # 22 = 전체 결함 수 (cap 100%)
+    M3 = (replication * 0.1) if replication >= 0 else 0
+    M4 = min(10.0, total_checks / 22 * 10)
 
-    # 가중 평균
-    integrated = 0.4 * M1 + 0.3 * M2 + 0.2 * M3 + 0.1 * M4
+    # Reality metrics (v4 신규)
+    M5 = behavior if behavior >= 0 else 0
+    M6 = hook_inv if hook_inv >= 0 else 0
+    M7 = e2e if e2e >= 0 else 0
+    M8 = test_cov if test_cov >= 0 else 0
 
-    # confidence
-    valid_metrics = sum(1 for m in [M1, M2, M3, M4] if m > 0)
-    confidence = "HIGH" if valid_metrics == 4 else ("MEDIUM" if valid_metrics >= 3 else "LOW")
+    # v4 가중치 (Reality 70%)
+    weights = {
+        "M1_structure": 0.15,
+        "M2_rule_compliance": 0.10,
+        "M3_replication": 0.10,
+        "M4_coverage": 0.05,
+        "M5_behavior": 0.20,
+        "M6_hook_invocation": 0.15,
+        "M7_e2e_flow": 0.15,
+        "M8_test_coverage": 0.10,
+    }
+
+    metrics = {
+        "M1_structure": (M1, f"{passed}/{total_checks} PASS (Surface)"),
+        "M2_rule_compliance": (M2, f"{violations} violations (Surface)"),
+        "M3_replication": (M3, f"{replication}% self-replication (Reality)"),
+        "M4_coverage": (M4, f"{total_checks}/22 covered (Surface)"),
+        "M5_behavior": (M5, "behavior audit (Reality)"),
+        "M6_hook_invocation": (M6, "hook invocation (Reality)"),
+        "M7_e2e_flow": (M7, "e2e flow (Reality)"),
+        "M8_test_coverage": (M8, "pytest (Reality)"),
+    }
+
+    integrated = sum(weights[k] * v[0] for k, v in metrics.items())
+
+    valid_metrics = sum(1 for k, v in metrics.items() if v[0] > 0)
+    confidence = "HIGH" if valid_metrics >= 7 else ("MEDIUM" if valid_metrics >= 5 else "LOW")
+
+    # Surface vs Reality 분리 score
+    surface_score = (weights["M1_structure"] * M1 + weights["M2_rule_compliance"] * M2
+                     + weights["M4_coverage"] * M4) / 0.30  # 30% 가중치 정규화
+    reality_score = (weights["M3_replication"] * M3 + weights["M5_behavior"] * M5
+                     + weights["M6_hook_invocation"] * M6 + weights["M7_e2e_flow"] * M7
+                     + weights["M8_test_coverage"] * M8) / 0.70
 
     return {
         "value": round(integrated, 2),
-        "formula": "0.4×M1 + 0.3×M2 + 0.2×M3 + 0.1×M4",
+        "formula": "Surface 30% (M1/M2/M4) + Reality 70% (M3/M5/M6/M7/M8) — v4",
+        "surface_score": round(surface_score, 2),
+        "reality_score": round(reality_score, 2),
         "breakdown": {
-            "M1_structure": {"value": round(M1, 2), "basis": f"{passed}/{total_checks} PASS", "weight": 0.4, "weighted": round(0.4 * M1, 2)},
-            "M2_rule_compliance": {"value": round(M2, 2), "basis": f"{violations} violations", "weight": 0.3, "weighted": round(0.3 * M2, 2)},
-            "M3_replication": {"value": round(M3, 2), "basis": f"{replication}% self-replication", "weight": 0.2, "weighted": round(0.2 * M3, 2)},
-            "M4_coverage": {"value": round(M4, 2), "basis": f"{total_checks}/22 covered", "weight": 0.1, "weighted": round(0.1 * M4, 2)},
+            k: {
+                "value": round(v[0], 2),
+                "basis": v[1],
+                "weight": weights[k],
+                "weighted": round(weights[k] * v[0], 2),
+                "category": "Reality" if k in ("M3_replication", "M5_behavior", "M6_hook_invocation", "M7_e2e_flow", "M8_test_coverage") else "Surface",
+            }
+            for k, v in metrics.items()
         },
         "confidence": confidence,
         "max_score": 10.0,
