@@ -25,7 +25,11 @@ from pathlib import Path
 
 USER_CLAUDE = Path.home() / ".claude"
 PLUGIN_DIR = Path(r"C:\claude\plugins\aiden-auto")
-MARKETPLACES_DIR = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto"  # v5 신규
+MARKETPLACES_DIR = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto"  # v5 (deprecated — not a git repo)
+# v6 (2026-05-23): C:\aiden-auto-repo가 진짜 GitHub 정본 (origin = garimto81/aiden-auto.git).
+# v5 시 MARKETPLACES_DIR 만 sync 대상으로 잡아 본 cycle 패치 미반영 발견 → v6 추가.
+AIDEN_AUTO_REPO = Path(r"C:\aiden-auto-repo")
+GLOBAL_PLUGIN_SOURCE_FOR_REPO = AIDEN_AUTO_REPO / "plugins" / "aiden-auto"  # repo 내부 plugin 위치
 STATE_DIR = USER_CLAUDE / "state"
 LOG_FILE = STATE_DIR / "framework-github-sync.log"
 
@@ -51,6 +55,45 @@ def run_git(*args, cwd: Path = PLUGIN_DIR, timeout: int = 30):
         return result.returncode, result.stdout, result.stderr
     except Exception as e:
         return 1, "", str(e)
+
+
+def sync_global_to_repo() -> None:
+    """v6 (2026-05-23): 글로벌 정본 (~/.claude/) → C:\\aiden-auto-repo/plugins/aiden-auto/ 자동 mirror.
+
+    framework_github_sync 가 commit/push 하기 전에 글로벌 변경물을 repo working tree에 반영.
+    bidirectional_sync.py 가 cache 까지만 처리하고 aiden-auto-repo는 처리 안 함 → v6에서 추가.
+
+    대상 디렉토리: skills, agents, hooks, hud, references, rules, commands, lib, scripts, state
+    """
+    import shutil
+    if not GLOBAL_PLUGIN_SOURCE_FOR_REPO.parent.is_dir():
+        log(f"v6 mirror: repo dir 없음 ({AIDEN_AUTO_REPO}) — skip")
+        return
+    sync_dirs = ["skills", "agents", "hooks", "hud", "references", "rules", "commands", "lib", "scripts"]
+    copied = 0
+    for d in sync_dirs:
+        src = USER_CLAUDE / d
+        dst = GLOBAL_PLUGIN_SOURCE_FOR_REPO / d
+        if not src.is_dir():
+            continue
+        # rsync-like: src에 있는 파일만 dst로 copy. dst의 고유 파일은 보존 (additive).
+        for sp in src.rglob("*"):
+            if not sp.is_file():
+                continue
+            # 제외: __pycache__, .pyc, .log, state/runtime.yml
+            if "__pycache__" in sp.parts or sp.suffix in (".pyc", ".pyo", ".log", ".swp"):
+                continue
+            rel = sp.relative_to(src)
+            dp = dst / rel
+            try:
+                # 변경 감지: dst 부재 OR 내용 차이
+                if not dp.exists() or sp.read_bytes() != dp.read_bytes():
+                    dp.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(sp, dp)
+                    copied += 1
+            except (OSError, PermissionError):
+                pass
+    log(f"v6 mirror: {copied} files synced global → aiden-auto-repo")
 
 
 def check_spec_code_drift_safe() -> tuple[bool, str]:
@@ -156,10 +199,16 @@ def main() -> int:
     # v5.1 (2026-05-19): main-repo (C:/claude/) 자동 sync 제거.
     # 사유: main-repo는 사용자 작업 영역. 자동 commit 시 사용자 작업 중 파일까지
     # 같이 commit될 위험. 사용자 명시 /commit 슬래시로만 처리.
-    # marketplaces (별도 git repo, plugin install 경로) 만 자율 sync.
+    # v6 (2026-05-23): MARKETPLACES_DIR이 git repo가 아님이 확인됨.
+    # 진짜 정본은 C:\aiden-auto-repo (origin = garimto81/aiden-auto.git).
+    # v6은 ~/.claude/ → C:\aiden-auto-repo/plugins/aiden-auto/ 자동 mirror 후 commit/push 추가.
+    # 먼저 글로벌 정본 → repo 내부 mirror 동기화 (rsync 패턴)
+    sync_global_to_repo()
+
     results = []
     for repo_dir, repo_name, prefix in [
-        (MARKETPLACES_DIR, "aiden-auto-marketplace", "marketplace-sync"),
+        (MARKETPLACES_DIR, "aiden-auto-marketplace", "marketplace-sync"),  # legacy, dir 없으면 skip
+        (AIDEN_AUTO_REPO, "aiden-auto-repo", "framework-sync"),              # v6 신규 — 진짜 정본
     ]:
         if not repo_dir.is_dir():
             log(f"{repo_name}: dir 없음 ({repo_dir}) — skip")

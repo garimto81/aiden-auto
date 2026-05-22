@@ -148,6 +148,55 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 
 상세 정책: 글로벌 CLAUDE.md § Dynamic Model Routing (Advisor Pattern v1) 참조.
 
+## Step 0.7: 자율 자산 Inventory (MANDATORY — v28.8+)
+
+> **결함 차단 패치**: 본 cycle 2026-05-22 root cause 분석 결과 — `/auto` 워크플로우에 "기존 자율 자산 검색" 단계 부재로 사용자에게 "수동 처리" 표현 반복 사용. 본 step으로 차단.
+
+Step 0.5 직후, Phase -2 진입 전에 **반드시**:
+
+### 작업 영역별 자율 자산 검색
+
+작업 카테고리 식별 후 (CODE/DOC/ITERATION/QA/RESEARCH/MEDIA) 다음 3개 영역에서 관련 자율 자산 검색:
+
+```
+1. ~/.claude/hooks/registry/{event}/*.json  (자동 hook)
+2. ~/.claude/agents/meta/*.md               (advisor pattern + 기타 자율 agent)
+3. ~/.claude/skills/*/SKILL.md              (관련 skill)
+```
+
+### 작업 키워드별 우선 검색 매핑
+
+| 작업 키워드 | 우선 검색 대상 |
+|------------|--------------|
+| commit / push / GitHub / sync | `framework_github_sync.py`, `bidirectional_sync.py`, `marketplace-sync` 패턴 |
+| auth / 인증 / token / OAuth | `cc-auth-executor/advisor`, `atlassian-auth-executor/advisor` |
+| plugin / SSOT / mirror / drift | `plugin-ssot-audit`, `machine_framework_watcher.py` |
+| spec / drift / verify | `spec-verify.py`, `audit_spec_code_drift.py` |
+| matrix / 무결성 / audit | `agent-matrix-audit`, `command-matrix-audit`, `skill-matrix-audit`, `workflow-matrix-audit` |
+
+### 출력 형식 (MANDATORY)
+
+작업 시작 응답에 다음 inventory 결과 표시:
+
+```
+[자율 자산 inventory 결과]
+- 관련 hook: N개 발견
+- 관련 advisor agent: N개 발견
+- 관련 skill: N개 발견
+- 자동 trigger 시점: SessionEnd / PostToolUse / on-demand
+```
+
+### 금지 (HARD BLOCK — root cause 차단)
+
+본 inventory 결과를 확인하기 전에 다음 표현 사용 금지:
+
+- ❌ "사용자가 수동으로 …"
+- ❌ "사용자 결정 영역"
+- ❌ "별도 cycle 권장"
+- ❌ "다음에 직접 …"
+
+이 표현 사용 전 의무: inventory 결과로 자율 자산 부재 확인. 자산 존재 시 **자동 활용**.
+
 ## Phase -2 + -1.5: Deep Interview (brainstorming + @, v28.4+)
 
 Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
