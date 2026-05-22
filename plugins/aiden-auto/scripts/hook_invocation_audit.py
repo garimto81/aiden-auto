@@ -136,24 +136,29 @@ def analyze_hook_health() -> dict:
 
 
 def compute_hook_invocation_score(analysis: dict) -> dict:
-    """B3 통합 점수 (0-10).
+    """B3 통합 점수 (0-10) v2 — 의도된 차단 vs 진짜 에러 구분.
 
     공식:
       active_ratio = ACTIVE hooks / total registered hooks
       score = active_ratio × 10
-
-    + 에러 hook 감점 (각 에러 -0.5점, floor=0)
+      - 진짜 에러 감점 (각 -0.2점, floor=0)
+      - circuit_breaker / framework_edit_guard 의 의도된 차단은 error 카운트 제외
     """
     if not analysis:
         return {"score": 0.0, "basis": "no hooks analyzed", "active": 0, "total": 0}
 
     total = len(analysis)
     active = sum(1 for h in analysis.values() if h["state"] == "ACTIVE")
-
     base_score = (active / total * 10) if total > 0 else 0
 
-    errors = get_recent_errors(hours=168)
-    error_penalty = min(len(errors) * 0.5, base_score)
+    # 의도된 차단 hook (exit≠0 이 정책 위반 차단 의미) — error 카운트 제외
+    INTENTIONAL_BLOCK_HOOKS = {"circuit_breaker", "framework_edit_guard"}
+
+    all_errors = get_recent_errors(hours=168)
+    real_errors = [e for e in all_errors if e["hook_name"] not in INTENTIONAL_BLOCK_HOOKS]
+
+    # 진짜 에러만 페널티 (각 -0.2점)
+    error_penalty = min(len(real_errors) * 0.2, base_score)
     final_score = max(0, base_score - error_penalty)
 
     return {
@@ -161,9 +166,11 @@ def compute_hook_invocation_score(analysis: dict) -> dict:
         "active": active,
         "total": total,
         "active_ratio": round(active / total * 100, 1) if total > 0 else 0,
-        "recent_errors": len(errors),
-        "error_penalty": error_penalty,
-        "basis": f"{active}/{total} hooks ACTIVE in 7d, {len(errors)} errors",
+        "all_errors_7d": len(all_errors),
+        "intentional_blocks_7d": len(all_errors) - len(real_errors),
+        "real_errors_7d": len(real_errors),
+        "error_penalty": round(error_penalty, 2),
+        "basis": f"{active}/{total} hooks ACTIVE, {len(real_errors)} real errors ({len(all_errors) - len(real_errors)} intentional blocks excluded)",
     }
 
 
