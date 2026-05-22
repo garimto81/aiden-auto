@@ -24,8 +24,8 @@ DAILY_PATTERNS = [
     "daily_report_",
 ]
 
-SECRETARY_DIR = Path(r"C:\claude\secretary")
-COOLDOWN_FILE = Path(r"C:\claude\.claude\logs\daily_sample_last.txt")
+SECRETARY_DIR = Path(r"C:\claude\secretary")  # backward compat
+COOLDOWN_FILE = Path(r"C:\claude\.claude\logs\daily_sample_last.txt")  # backward compat
 
 
 def is_daily_file(file_path: str) -> bool:

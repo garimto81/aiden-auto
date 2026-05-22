@@ -19,7 +19,7 @@ from pathlib import Path
 USER_CLAUDE = Path(r"C:\Users\AidenKim\.claude").resolve()
 
 PROTECTED_PATHS = [
-    Path(r"C:\claude\plugins").resolve(),
+    Path(r"C:\claude\plugins").resolve(),  # backward compat
     USER_CLAUDE / "plugins" / "cache",
     USER_CLAUDE / "plugins" / "marketplaces",
 ]
@@ -27,7 +27,7 @@ PROTECTED_PATHS = [
 # Plugin 루트 파일: ~/.claude/ mirror 없는 plugin 배포 메타데이터.
 # guard 차단 범위(plugin 전체) > watcher sync 범위(SYNC_DIRS 7개) 사각지대 해소.
 # Edit 허용 조건: parent == PLUGIN_ROOT AND filename in WHITELIST (하위 디렉토리 보호 유지).
-PLUGIN_ROOT = Path(r"C:\claude\plugins\aiden-auto").resolve()
+PLUGIN_ROOT = Path(r"C:\claude\plugins\aiden-auto").resolve()  # backward compat
 ROOT_FILE_WHITELIST = {
     ".gitignore",
     "CLAUDE.md",

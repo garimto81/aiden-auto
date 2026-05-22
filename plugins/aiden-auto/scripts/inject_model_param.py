@@ -10,7 +10,7 @@ import re
 import sys
 from pathlib import Path
 
-REF_DIR = Path(r"C:\claude\plugins\aiden-auto\references")
+REF_DIR = Path(r"C:\claude\plugins\aiden-auto\references")  # backward compat
 
 
 def find_agent_calls(content):
