@@ -61,7 +61,9 @@ PLUGIN_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 
-SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib"}
+SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts"}
+# v4.0 (2026-05-23): hud + scripts 추가 — universal-deployment-checklist.md 의 universal 자산 정합.
+# 자기복제율 ≥95% 달성 위해 모든 universal 디렉토리가 sync 대상이어야 함 (premise #1).
 
 # EXCLUDE 패턴 (2026-05-15 Part 9 — critic E1 적용)
 # node_modules 등 빌드 산출물 + 캐시가 5축 sync 폭발 방지
