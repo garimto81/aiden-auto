@@ -24,11 +24,27 @@ import time
 from pathlib import Path
 
 USER_CLAUDE = Path.home() / ".claude"
-PLUGIN_DIR = Path(r"C:\claude\plugins\aiden-auto")
-MARKETPLACES_DIR = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto"  # v5 (deprecated — not a git repo)
-# v6 (2026-05-23): C:\aiden-auto-repo가 진짜 GitHub 정본 (origin = garimto81/aiden-auto.git).
-# v5 시 MARKETPLACES_DIR 만 sync 대상으로 잡아 본 cycle 패치 미반영 발견 → v6 추가.
-AIDEN_AUTO_REPO = Path(r"C:\aiden-auto-repo")
+
+# ⭐ Universal Deployment Layer B (v7, 2026-05-23):
+# hardcoded path 제거 + push reject 자동 정정.
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from path_resolution import (  # type: ignore[import-not-found]
+        resolve_plugin_source,
+        resolve_aiden_auto_repo,
+    )
+except ImportError:
+    def resolve_plugin_source():
+        p = Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+        return p if p.is_dir() else None
+    def resolve_aiden_auto_repo():
+        p = Path(r"C:\aiden-auto-repo")  # backward compat
+        return p if p.is_dir() and (p / ".git").is_dir() else None
+
+# Lazy resolution wrappers + backward compat constants
+PLUGIN_DIR = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+MARKETPLACES_DIR = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto"  # v5 legacy (not git repo)
+AIDEN_AUTO_REPO = resolve_aiden_auto_repo() or Path(r"C:\aiden-auto-repo")  # backward compat
 GLOBAL_PLUGIN_SOURCE_FOR_REPO = AIDEN_AUTO_REPO / "plugins" / "aiden-auto"  # repo 내부 plugin 위치
 STATE_DIR = USER_CLAUDE / "state"
 LOG_FILE = STATE_DIR / "framework-github-sync.log"
@@ -159,12 +175,43 @@ def sync_repo(repo_dir: Path, repo_name: str, changes_msg_prefix: str = "sync") 
         result["error"] = f"commit failed: {err[:100]}"
         return result
 
-    # push
-    rc, _, err = run_git("push", "origin", "HEAD", cwd=repo_dir, timeout=60)
-    result["push_ok"] = rc == 0
-    if not result["push_ok"]:
-        result["error"] = f"push failed: {err[:100]}"
+    # v7 (2026-05-23): push reject 자동 정정 (fetch + rebase + retry, circuit breaker 3회).
+    # 본 cycle 발생: 동시 push 충돌 시 v6 는 1회 fail 후 종료 → 사용자 수동 정정 필요.
+    # v7: 자율 영역 확대 — fetch + rebase 후 재시도.
+    push_attempts = 0
+    max_attempts = 3
+    while push_attempts < max_attempts:
+        push_attempts += 1
+        rc, _, err = run_git("push", "origin", "HEAD", cwd=repo_dir, timeout=60)
+        if rc == 0:
+            result["push_ok"] = True
+            result["push_attempts"] = push_attempts
+            return result
 
+        # push reject 감지 (fetch first / non-fast-forward / rejected)
+        is_reject = any(kw in (err or "").lower() for kw in ["fetch first", "non-fast-forward", "rejected", "behind"])
+        if not is_reject or push_attempts >= max_attempts:
+            result["error"] = f"push failed (attempt {push_attempts}): {err[:200]}"
+            result["push_attempts"] = push_attempts
+            return result
+
+        # fetch + rebase 자율 정정
+        log(f"{repo_name}: push attempt {push_attempts} rejected → fetch + rebase")
+        run_git("fetch", "origin", cwd=repo_dir, timeout=30)
+        # 현재 branch 확인
+        rc_br, branch, _ = run_git("rev-parse", "--abbrev-ref", "HEAD", cwd=repo_dir)
+        target_branch = branch.strip() if rc_br == 0 and branch.strip() else "main"
+        rc_rebase, _, err_rebase = run_git("rebase", f"origin/{target_branch}", cwd=repo_dir, timeout=60)
+        if rc_rebase != 0:
+            # 충돌 발생 — rebase abort 후 escalate
+            run_git("rebase", "--abort", cwd=repo_dir, timeout=10)
+            result["error"] = f"rebase conflict (attempt {push_attempts}): {err_rebase[:200]}"
+            result["push_attempts"] = push_attempts
+            return result
+
+    # 모든 attempt 실패
+    result["error"] = f"push failed after {max_attempts} attempts"
+    result["push_attempts"] = push_attempts
     return result
 
 

@@ -1,11 +1,11 @@
 ---
 name: auto
 description: >
-  Index Router (v28.7) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.7: Phase -1.5 Part E 신규 (Atlassian MCP 인증 자율 점검 — Atlassian 키워드/Part C 활성화/atlassian skill 호출 감지 시만 호출, 미감지 시 호출 자체 없음). v28.6 base: Part D Executive Summary 자율 판단. v28.5 base: Confluence sync (Part C). v28.4 base: Phase -2/-1.5 통합 + brainstorming + @ multi-session + /goal 자율 iteration 본질 재정의 + superpowers 12 skill 매트릭스.
+  Index Router (v28.8) — 사용자 평문을 분석하여 적절한 chapter만 lazy load. v28.8: ⭐ Universal Deployment Premise — Step 0.7 Part 2 (6 기준 자동 평가: 자기복제율/device-agnostic/OS-agnostic/권한-agnostic/idempotent/개인화 격리) + Part 3 위반 표현 강화. v28.7 base: Phase -1.5 Part E (Atlassian MCP 인증). v28.6 base: Part D Executive Summary 자율 판단. v28.5 base: Confluence sync (Part C). v28.4 base: Phase -2/-1.5 통합 + brainstorming + @ multi-session + /goal 자율 iteration.
   Auto-trigger ON. Skip for trivial questions, file reads, !quick/!hotfix.
   /aiden-auto:auto / /iteration / iterate / /goal 모두 이 SKILL로 redirect.
   (multi-session 운영은 공식 `claude agents` CLI로 위임 — 2026-05-14 폐기)
-version: 28.7.0
+version: 28.8.0
 auto_trigger: true
 output_style: user_friendly  # v28.3 Section 16 — 비개발자 친화 자세한 보고. user-friendly-reporter agent 의무 통과
 triggers:
@@ -148,13 +148,15 @@ scope/complexity 급변 시 (파일 수 폭증, 보안 영역 추가 등) router
 
 상세 정책: 글로벌 CLAUDE.md § Dynamic Model Routing (Advisor Pattern v1) 참조.
 
-## Step 0.7: 자율 자산 Inventory (MANDATORY — v28.8+)
+## Step 0.7: 자율 자산 Inventory + Universal Deployment 평가 (MANDATORY — v28.8+)
 
-> **결함 차단 패치**: 본 cycle 2026-05-22 root cause 분석 결과 — `/auto` 워크플로우에 "기존 자율 자산 검색" 단계 부재로 사용자에게 "수동 처리" 표현 반복 사용. 본 step으로 차단.
+> **결함 차단 패치**: 본 cycle 2026-05-22~23 root cause 분석 결과 — `/auto` 워크플로우에 "기존 자율 자산 검색" + "universal deployment 평가" 단계 부재로 사용자에게 "수동 처리" + device-scoped 표현 반복 사용. 본 step으로 차단.
 
 Step 0.5 직후, Phase -2 진입 전에 **반드시**:
 
-### 작업 영역별 자율 자산 검색
+### Part 1: 자율 자산 inventory (기존)
+
+작업 영역별 자율 자산 검색
 
 작업 카테고리 식별 후 (CODE/DOC/ITERATION/QA/RESEARCH/MEDIA) 다음 3개 영역에서 관련 자율 자산 검색:
 
@@ -186,16 +188,49 @@ Step 0.5 직후, Phase -2 진입 전에 **반드시**:
 - 자동 trigger 시점: SessionEnd / PostToolUse / on-demand
 ```
 
-### 금지 (HARD BLOCK — root cause 차단)
+### Part 2: Universal Deployment 평가 (v28.8+ 신규)
 
-본 inventory 결과를 확인하기 전에 다음 표현 사용 금지:
+> ⭐ 글로벌 CLAUDE.md § Universal Deployment Premise (0 순위) 의 운영 게이트.
 
-- ❌ "사용자가 수동으로 …"
-- ❌ "사용자 결정 영역"
+**평가 대상**: 변경이 framework 자산 (`~/.claude/{hooks,agents,skills,commands,rules,references,hud,lib,scripts}/`, plugin 본체) 일 때만.
+**평가 제외**: 본인 PC 만의 자산 (`state/`, `projects/memory/`, `.credentials.json`, `settings.json` 등) — 개인화 영역.
+
+```
+변경 대상 = framework 자산?
+   │
+   ├─ NO → 평가 skip (개인화 영역, premise 적용 안 함)
+   │
+   └─ YES → 6 기준 자동 평가
+```
+
+#### 6 기준 자동 평가
+
+| # | 기준 | 통과 검증 |
+|---|------|----------|
+| 1 | 자기복제율 ≥95% | 변경 후 신규 PC 에서 동일 작동? |
+| 2 | hardcoded path 0 | `C:\\claude\\...`, `C:\\aiden-auto-repo\\...` 직접 참조 안 함? |
+| 3 | OS-agnostic | `pathlib.Path` 만 사용? |
+| 4 | 권한-agnostic | admin/sudo 명시 안 함? |
+| 5 | idempotent | 재실행 / 재install 안전? |
+| 6 | 개인화 격리 | credentials/state/memory EXCLUDE 명시? |
+
+위 6 중 하나라도 통과 못 함 → 변경 보류 + premise 위배 사유 보고.
+
+상세: `~/.claude/references/universal-deployment-checklist.md`
+
+### Part 3: 금지 (HARD BLOCK — root cause 차단)
+
+본 inventory + premise 평가 확인 전에 다음 표현 사용 금지:
+
+- ❌ "사용자가 수동으로 …" (자율 자산 inventory 위반)
+- ❌ "사용자 결정 영역" (의미 결정 아닌 단순 실행 영역)
 - ❌ "별도 cycle 권장"
 - ❌ "다음에 직접 …"
+- ❌ **"본인 PC 에서만", "내 환경"** (universal premise 위반, v28.8+)
+- ❌ **`C:\claude\...`, `C:\aiden-auto-repo\...` hardcoded** (universal premise 위반, v28.8+)
+- ❌ **"다른 PC 는 수동"** (universal premise 위반, v28.8+)
 
-이 표현 사용 전 의무: inventory 결과로 자율 자산 부재 확인. 자산 존재 시 **자동 활용**.
+이 표현 사용 전 의무: inventory + premise 6 기준 통과 확인. 자산 존재 + premise 통과 시 **자동 활용 + 자율 진행**.
 
 ## Phase -2 + -1.5: Deep Interview (brainstorming + @, v28.4+)
 
@@ -381,6 +416,7 @@ Step 0.5 직후, 평문 분석과 함께 Deep Interview 즉시 발동.
 
 | 버전 | 핵심 변경 |
 |------|----------|
+| v28.8 (2026-05-23) | ⭐ **Universal Deployment Premise** 도입 — Step 0.7 Part 2 (6 기준 자동 평가) + Part 3 위반 표현 강화. 글로벌 CLAUDE.md 최상단 premise 추가 (Core Philosophy 위). hardcoded path 금지 + 자기복제율 ≥95% 의무 |
 | v28.7 (2026-05-22) | Phase -1.5 Part E 신규 (Atlassian MCP 인증 자율 점검). 이전 SessionStart 자동 발동 폐기 — Atlassian 미사용 프로젝트 부하 차단. 키워드/Part C/skill 호출 감지 시만 `atlassian_auth.py` executor 호출. registry/SessionStart/atlassian-auth.json → `_disabled/` 격리 (deregistration). 사용자 피드백 정정 |
 | v28.6 (2026-05-22) | Phase -1.5 Part D 신규 (Executive Summary 자율 판단). v28.5.1 "default 무조건" 폐기 → DOC 카테고리 + 키워드/길이/이해관계자 휴리스틱 충족 시만 인터뷰 질문 추가, 미충족 시 자동 skip. chapter-doc Step 1.3 trigger 를 `active-goal.json.executive_summary.enabled` 기반으로 전환. Core Philosophy "사용자 진입점 최소화 + 자율 영역 확대" 정합 |
 | v28.5.2 (2026-05-19) | critic 4 결정 자율 정정: plugin.json version 28.3.0 → 28.5.1 bump (2 mirror) + chapter-doc Step 1.3 / Phase 4.2 trigger logic 강조 (R3 운영 검증 강화) + R7 Context 누적 우려 폐기 (시작 직후라 무의미) + R10 Confluence Q 진입점 정당화 (Sync 위해 정보 필요) + R12 "permanent close" 표현 폐기 → "deferred" (GG NETWORK 자료 확보 시 재개 가능) |

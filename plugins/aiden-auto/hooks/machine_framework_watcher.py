@@ -18,9 +18,17 @@ from pathlib import Path
 USER_CLAUDE = Path.home() / ".claude"
 SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib"}
 
-# 3 mirror 위치 (project source + cache 2 + marketplaces 1)
-# 실제 cache version은 동적 탐색
-PROJECT_SOURCE = Path(r"C:\claude\plugins\aiden-auto")
+# ⭐ Universal Deployment Layer B (2026-05-23, v4.0):
+# hardcoded path 제거. path_resolution 모듈로 위임.
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from path_resolution import resolve_plugin_source  # type: ignore[import-not-found]
+except ImportError:
+    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None
+
+# Lazy + backward compat (legacy code 참조 시)
+PROJECT_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 

@@ -33,9 +33,31 @@ import sys
 import time
 from pathlib import Path
 
+# ⭐ Universal Deployment Layer B (2026-05-23, v4.0):
+# hardcoded path 제거 — env > autodetect > graceful None 패턴.
+# 본 hook 이 import 가능하도록 hooks/ 가 sys.path 에 있어야 함 (CC dispatcher 가 처리).
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from path_resolution import (  # type: ignore[import-not-found]
+        resolve_plugin_source,
+        resolve_project_claude,
+        resolve_cache_root as _resolve_cache_root_latest,
+        resolve_marketplaces_dir,
+    )
+except ImportError:
+    # path_resolution.py 부재 시 graceful fallback (backward compat)
+    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None
+    def resolve_project_claude(): return Path(r"C:\claude\.claude") if Path(r"C:\claude\.claude").is_dir() else None
+    def _resolve_cache_root_latest(): return None
+    def resolve_marketplaces_dir(): return None
+
 USER_CLAUDE = Path.home() / ".claude"
-PROJECT_CLAUDE = Path(r"C:\claude\.claude")
-PLUGIN_SOURCE = Path(r"C:\claude\plugins\aiden-auto")
+# Lazy resolution (각 sync call 마다 재평가 — env 변경 / 디렉토리 생성 반영)
+def _get_project_claude(): return resolve_project_claude()
+def _get_plugin_source(): return resolve_plugin_source()
+# Backward compat constants (legacy code 참조 시 graceful — None 일 수 있음)
+PROJECT_CLAUDE = resolve_project_claude() or Path(r"C:\claude\.claude")  # backward compat
+PLUGIN_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 
