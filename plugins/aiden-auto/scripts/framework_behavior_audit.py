@@ -124,9 +124,8 @@ def check_framework_content_audit_behavior() -> dict:
         trend = audit.load_trend(limit=3)
         checks["load_trend_returns_list"] = isinstance(trend, list)
 
-        # 3. run_audit 호출 (실제 검사)
-        audit_result = audit.run_audit()
-        checks["run_audit_returns_dict"] = "results" in audit_result
+        # 3. DEFECT_CHECKS 매핑 존재 확인 (재귀 호출 방지 — run_audit() 호출 안 함)
+        checks["defect_checks_registered"] = len(audit.DEFECT_CHECKS) >= 22
 
         return {"pass": all(checks.values()), "checks": checks}
     except Exception as e:

@@ -489,7 +489,8 @@ def get_e2e_score() -> float:
 
 
 def get_test_coverage_score() -> float:
-    """B1 pytest test coverage score."""
+    """B1 pytest test coverage score (v2 — 파싱 강화)."""
+    import re as _re
     import subprocess
     tests_dir = GLOBAL_CLAUDE / "tests"
     if not tests_dir.is_dir():
@@ -497,27 +498,18 @@ def get_test_coverage_score() -> float:
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pytest", str(tests_dir), "--tb=no", "-q"],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, timeout=120, cwd=str(GLOBAL_CLAUDE),
         )
         output = result.stdout + result.stderr
-        passed = 0
-        failed = 0
-        for line in output.splitlines():
-            if "passed" in line and "in " in line:
-                parts = line.replace(",", "").split()
-                for i, p in enumerate(parts):
-                    if p == "passed" and i > 0:
-                        try:
-                            passed = int(parts[i-1])
-                        except ValueError:
-                            pass
-                    if p == "failed" and i > 0:
-                        try:
-                            failed = int(parts[i-1])
-                        except ValueError:
-                            pass
+        # "29 passed in 14.28s" 또는 "1 failed, 28 passed in 14.28s" 패턴
+        passed_match = _re.search(r'(\d+)\s+passed', output)
+        failed_match = _re.search(r'(\d+)\s+failed', output)
+        passed = int(passed_match.group(1)) if passed_match else 0
+        failed = int(failed_match.group(1)) if failed_match else 0
         total = passed + failed
-        return (passed / total * 10) if total > 0 else 0
+        if total == 0:
+            return -1.0
+        return (passed / total * 10)
     except Exception:
         return -1.0
 
