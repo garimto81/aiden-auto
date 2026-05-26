@@ -107,24 +107,63 @@ A 카테고리만:
 
 각 수정 후 즉시 해당 audit 재실행하여 정합 확인.
 
-### Step 5 — 종료 조건 검증
+### Step 5 — 종료 조건 검증 (2026-05-26 R2 — plateau auto-detect 강화)
 
 ```python
-# A-26 (Cycle 23): plugin-ssot-audit 통합. 단 is_perfect_mirror 종료 조건은
-# A-30 (Cycle 24 critic Weakness 1+2) 에서 재정의 필요.
+# A-26 (Cycle 23): plugin-ssot-audit 통합. is_perfect_mirror 종료 조건은
+# A-30 (Cycle 24 critic Weakness 1+2) 에서 재정의됨.
 #
 # A-30 정정: Path α detach 후 project source != marketplaces cache (의도된 비대칭).
 # is_perfect_mirror 는 항상 False 가 정상 → 종료 조건에서 제외.
 # 대신 4 audit (agent/skill/command/workflow) 의 real issues == 0 이면 RESOLVED.
 # plugin-ssot drift 는 detach 의도 정보로 보고만 (종료 조건 영향 0).
+#
+# R2 (2026-05-26): plateau 자동 감지 강화. 직전 12 self-critic cycle 에서
+# 결함 추세 14→12→8→6→3→3→1 패턴 발견 — 3 cycle 동일 결함 수 = plateau 신호.
+# 단일 cycle 비교 (이전 vs 현재) 만으로는 plateau 놓침.
+#
+# 3-cycle rolling window 비교로 plateau 정량 검출.
 if issues_current == 0:
     return "RESOLVED"  # 4 audit 결함 0 + plugin-ssot drift 는 detach 의도 (정상)
+
+if cycle >= 3 and issues_history[-3:] == [issues_current] * 3:
+    return "PLATEAU"  # 3 cycle 동일 → 자율 영역 소진 (R2 신규)
+
 if issues_current == issues_previous:
-    return "CONVERGED"  # 더 이상 자율로 줄일 수 없음
+    return "CONVERGED"  # 2 cycle 동일 (PLATEAU 보다 약한 신호, 보존)
+
 if cycle >= 3:
-    return "CIRCUIT_BREAKER"
+    return "CIRCUIT_BREAKER"  # max recursion (A-33: audit-loop 로컬 카운터)
+
+# paradox 영역 (6th lens R1) 만 잔여 → 자율 정정 불가
+if all(d.get("paradox_classification") != "none" for d in remaining_defects):
+    return "PARADOX_ONLY"  # 의도적 잔여, user escalate
+
 return "CONTINUE"
 ```
+
+### Plateau vs Converged vs Circuit Breaker 구분
+
+| 신호 | 정의 | 의미 |
+|------|------|------|
+| `RESOLVED` | issues=0 | 자율 영역 완전 처리 |
+| `PLATEAU` | 3 cycle 동일 issues 수 | 자율 영역 소진 (R2 신규) |
+| `CONVERGED` | 2 cycle 동일 | 일시적 정체 (다음 cycle 진행) |
+| `PARADOX_ONLY` | 잔여 결함 모두 paradox | 의도적 잔여 (6th lens R1) |
+| `CIRCUIT_BREAKER` | cycle ≥ 3 + 변화 있음 | 강제 종료 |
+
+### Cycle 종료 4 case 매핑 (D1 사용자 결정 — rule 21 정합)
+
+본 audit-loop 의 종료 신호는 rule 21 `cycle-termination.md` 의 4 case 와 정합:
+
+| 작업 유형 | rule 21 case | audit-loop critic 적용 대상 | 종료 신호 |
+|----------|:------------:|---------------------------|----------|
+| 설계 작업 (PRD / design) | Case 1 | design 자체 결함 | `RESOLVED` (design 결함 0) 또는 `PARADOX_ONLY` |
+| 구현 작업 (executor) | Case 2 | 구현 진행도 vs design 갭 | `RESOLVED` (잔여 개발 0) |
+| QA 검증 (test) | Case 3 | QA test 의 design 정합 | `RESOLVED` (design 100% 코드 구현 확인) |
+| 코드 리뷰 (PR) | Case 4 | code 의 design 정합 | `RESOLVED` (code 완벽 구현 확인) |
+
+→ design SSOT 가 모든 case 의 검증 기준. design 자체에 결함 있으면 Case 1 로 회귀 후 다른 case 재진입.
 
 ### Step 6 — 최종 보고
 

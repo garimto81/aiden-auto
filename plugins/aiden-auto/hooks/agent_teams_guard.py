@@ -1,24 +1,30 @@
 #!/usr/bin/env python
 """
-Agent Teams 프로토콜 강제 Hook - bare Agent() 호출 차단
+Agent Teams 프로토콜 강제 Hook — DEPRECATED 2026-05-26.
 
-PreToolUse(Agent) 이벤트에서 실행됩니다.
-team_name 없이 실행형 에이전트를 스폰하는 것을 물리적으로 차단합니다.
+폐기 사유: 글로벌 CLAUDE.md (2026-05-07) 에서 TeamCreate / SendMessage /
+shutdown_request / team_name / TeamDelete 모두 폐기 선언. 신규 표준:
+Agent(subagent_type, description, prompt) 단일 호출.
+
+본 hook 는 옛 protocol 을 12 self-critic cycle 동안 강제하여
+critic agent 위임을 차단했음 (G3 갭, 2026-05-26 평가 확인).
+
+"Removal isn't the answer" 정책 — 파일 + 변수 보존, 강제 로직만 무효화.
+2026-05-26 R3 자율 정정.
 """
 
 import json
 import sys
 
-# team_name 없이도 허용되는 에이전트 타입 (단순 조회/탐색용)
+# (보존) team_name 없이도 허용되는 에이전트 타입 — 옛 protocol 흔적
 EXEMPT_TYPES = {
     "Explore",
     "Plan",
     "general-purpose",
-    # statusline-setup 등 시스템 에이전트
     "statusline-setup",
 }
 
-# 항상 차단 대상인 실행형 에이전트 접두사
+# (보존) 옛 실행형 에이전트 접두사 — 현재는 의미 없음, 참조 목적만
 EXECUTION_PREFIXES = [
     "executor",
     "architect",
@@ -40,16 +46,12 @@ EXECUTION_PREFIXES = [
 
 
 def is_execution_agent(subagent_type: str) -> bool:
-    """실행형 에이전트인지 판별"""
-    if not subagent_type:
-        return True  # 타입 없으면 general-purpose → 실행 가능성 있음
+    """DEPRECATED 2026-05-26 — 항상 False 반환 (모든 agent 면제).
 
-    # 면제 목록 확인
-    if subagent_type in EXEMPT_TYPES:
-        return False
-
-    # 면제 목록에 없는 모든 에이전트는 실행형으로 간주
-    return True
+    옛 Agent Teams 강제 폐기. 신규 protocol 에서는 subagent_type +
+    description + prompt 만으로 충분. team_name / name 강제 없음.
+    """
+    return False
 
 
 def main():

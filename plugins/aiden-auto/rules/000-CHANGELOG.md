@@ -2,7 +2,7 @@
 
 > **목적**: `.claude/rules/`의 번호 sparse(누락) 사유를 추적하고 다음 신규 룰 자리를 명문화. 번호 자체는 git blame·history reference 보존을 위해 재정렬 안 함.
 
-## 현재 활성 룰 (7개)
+## 현재 활성 룰 (8개)
 
 | 번호 | 파일 | 용도 |
 |------|------|------|
@@ -13,6 +13,7 @@
 | 13 | requirements-prd.md | PRD-First 정책 |
 | 15 | backlog-capture.md | 백로그 즉시 기록 |
 | 16 | auto-default.md | /auto 자동 실행 (REVIVED in v27.6 after deprecation in 6af0e83) |
+| 21 | cycle-termination.md | 자율 cycle 종료 정의 — design SSOT critic 4 게이트 (D1 사용자 결정 반영) |
 
 ## 사라진 번호 추적 (Historical)
 
@@ -70,3 +71,4 @@
 | 날짜 | 변경 | 사유 |
 |------|------|------|
 | 2026-05-10 | 본 파일 신규 작성 | critic 보고서 H4 결정 — sparse 번호 사유 명문화 |
+| 2026-05-26 | rule 21 신규 등록 (cycle-termination.md) | D1 사용자 결정 — "until no more cycles" 종료 정의 (design SSOT critic 4 게이트). G1 갭 해소 |

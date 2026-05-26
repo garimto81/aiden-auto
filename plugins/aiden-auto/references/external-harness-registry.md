@@ -20,17 +20,6 @@ frameworks:
       - "references/"
     rationale: "PDCA + chapter routing의 원조. v27.x 진화 영감의 출처."
 
-  - id: claude-code
-    owner: anthropics
-    repo: claude-code
-    check_method: "releases"
-    last_known_version: "v2.1.138"
-    last_checked: "2026-05-11"
-    interesting_paths:
-      - "CHANGELOG.md"
-      - "docs/"
-    rationale: "CC CLI 본체. hook spec / MCP / skills 표준 변화 추적."
-
   - id: react-best-practices
     owner: vercel-labs
     repo: agent-skills
@@ -41,27 +30,6 @@ frameworks:
     interesting_paths:
       - "skills/react-best-practices/"
     rationale: "Vercel 공식 React/Next.js 성능 최적화 룰셋 (70 rules, 8 categories). React 컴포넌트/data fetching/bundle 최적화 코드 리뷰 및 자동 리팩토링 가이드."
-
-  - id: superpowers
-    owner: obra
-    repo: superpowers
-    check_method: "tags"
-    last_known_version: "v5.1.0"
-    last_checked: "2026-05-11"
-    interesting_paths:
-      - "skills/"
-    rationale: "skill discipline 패턴 (brainstorming, TDD, debugging)."
-
-  - id: frontend-design
-    owner: anthropics
-    repo: claude-plugins-public
-    subdir: "plugins/frontend-design"   # 본 plugin은 mono-repo 하위 디렉토리
-    check_method: "subdir-commits"
-    last_known_version: "00679aef"
-    last_checked: "2026-05-11"
-    interesting_paths:
-      - "plugins/frontend-design/"
-    rationale: "디자인 시스템 가이드라인 (Typography, Color, Motion). Anthropic 통합 plugin repo의 하위."
 
   - id: oh-my-claudecode
     owner: yeachan-heo
@@ -79,62 +47,15 @@ frameworks:
       - "CHANGELOG.md"
     rationale: "Teams-first 멀티 에이전트 오케스트레이션 프레임워크 — agent/skill/hook 구조 및 model routing 패턴 추적 (v4.13.7+)."
 
-  # === v28.2 신규 추적 (Section 1, 13, 14) ===
-  - id: claude-code-goal
-    owner: anthropics
-    repo: claude-code
-    check_method: "releases"
-    last_known_version: "v2.1.138"
-    last_checked: "2026-05-13"
-    interesting_paths:
-      - "docs/slash-commands/goal*"
-      - "docs/hooks*"
-    rationale: "CC 빌트인 /goal — auto-loop until condition. v28.2 /auto의 loop driver. reference only."
-
-  - id: advisor-tool-beta
-    owner: anthropics
-    repo: anthropic-cookbook
-    check_method: "url-hash"   # v28.2 신규 check_method
-    url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool"
-    last_known_version: "advisor-tool-2026-03-01"
-    last_checked: "2026-05-13"
-    rationale: "advisor-tool API beta. header 회전 시 quota-advisor fallback."
-
-  # === Host statusline tools (v28.2 Section 15 정정) ===
-  # aiden-auto의 statusline은 자체 구현이 아니라 호스트의 hud/* 도구 그대로 채택.
-  # Core Philosophy #1 (외부 도구 그대로 유지, 참조만) 정합.
-  - id: statusline-combined
-    owner: host
-    path: "~/.claude/hud/statusline-combined.mjs"
-    check_method: "optional-host-file"
-    optional: true
-    last_checked: "2026-05-13"
-    rationale: "Multi-line combinator (hybrid + model usage). aiden-auto의 statusline 진입점. GLOBAL settings.json statusLine으로 등록되어 매 세션 화면에 출력. 미존재 시 plugin/hud/ fallback."
-
-  - id: hybrid-statusline
-    owner: host
-    path: "~/.claude/hud/hybrid-statusline.mjs"
-    check_method: "optional-host-file"
-    optional: true
-    last_checked: "2026-05-13"
-    rationale: "메인 statusline (디렉토리, git 브랜치, 사용 중 모델). 호스트 표준 출력 1줄. 미존재 시 plugin/hud/ fallback."
-
-  - id: model-usage-line
-    owner: host
-    path: "~/.claude/hud/model-usage-line.py"
-    check_method: "optional-host-file"
-    optional: true
-    last_checked: "2026-05-13"
-    rationale: "3-tier visibility 모델별 토큰 사용량 + 비용 출력 (opus / sonnet / haiku 각 1줄, 총 3줄). transcript 파싱 + Anthropic 가격 적용. 미존재 시 plugin/hud/ fallback."
-
-  - id: aiden-auto-telemetry
-    owner: host
-    path: "~/.claude/hud/aiden-auto-telemetry.mjs"
-    state_source: "~/.claude/state/telemetry.json"
-    check_method: "optional-host-file"
-    optional: true
-    last_checked: "2026-05-13"
-    rationale: "Aiden-auto 한 줄 텔레메트리 (phase · agent · model · pdca · cost · breaker). 사용자가 '어디까지 했어?' 질문하지 않게 만드는 핵심 장치. 데이터 미존재 시 silent skip. 결정 횟수 0~2회 목표 정합. 미존재 시 plugin/hud/ fallback."
+  # === 2026-05-26 사용자 결정 ===
+  # claude-code / superpowers / frontend-design / claude-code-goal /
+  # advisor-tool-beta / statusline-combined / hybrid-statusline /
+  # model-usage-line / aiden-auto-telemetry 9 entries 제거
+  # 사유: 사용자 본인 워크플로우 추적 가치 없음. registry 자율 추가의
+  #       적정성 검증 부재 (G8 갭) 으로 11→3 정리.
+  # 메모: 위 9 framework 의 본문 활용 (예: superpowers skill matrix,
+  #       advisor pattern, statusline HUD) 는 별도 영역에서 보존 —
+  #       registry 추적 만 종료.
 ```
 
 ## v28.2 내부 advisors (자가 등록)
@@ -207,6 +128,7 @@ internal_advisors:
 | 2026-05-11 | (initial) | — | — | registry 신규 생성 |
 | 2026-05-11 | (dry-run baseline) | 6 framework | — | 첫 watcher dry-run으로 4건 owner 보정 + 4건 baseline 신규 수립 (claude-code v2.1.138, vercel 61f1903b, atlassian 9b52fb18, frontend-design 00679aef). 2건은 일치 (bkit-claude-code v2.1.12, superpowers v5.1.0). 신규 update 0건. |
 | 2026-05-13 | (manual) | — | bypass | 사용자 직접 결정 (critic 우회): `atlassian` 제거, `vercel`→`react-best-practices` 교체 (vercel-labs/agent-skills subdir-commits, dc8367e6), `oh-my-claudecode` 신규 추가 (yeachan-heo, tags v4.13.7). |
+| 2026-05-26 | (manual) | 11 → 3 | bypass | 사용자 직접 결정 (G8 갭 정정): registry 11 entry 중 8 entry 제거 — claude-code / superpowers / frontend-design / claude-code-goal / advisor-tool-beta / statusline-combined / hybrid-statusline / model-usage-line / aiden-auto-telemetry. 사유: 추적 가치 부재. 유지 3개: bkit-claude-code, react-best-practices, oh-my-claudecode. daily harness_cycle_runner API 호출 비용 73% 즉시 절감. |
 
 ## Internal Advisors (자가개선 사이클 내부 advisor)
 
@@ -240,6 +162,59 @@ watcher가 daily 실행 시 `state/cc-auth-decisions-{date}.json` 7일치를 읽
   - `releases`: GitHub releases API (release notes 포함)
   - `commits`: default branch HEAD commit sha (tag 없는 repo)
   - `subdir-commits`: monorepo의 하위 디렉토리 commit (path 필터)
+
+### Registry 추가 룰 (D4 사용자 결정 — 2026-05-26)
+
+> **D1 정신 (critic mode 게이트) 적용**: registry 추가도 critic 게이트 + 사용자 명시 승인 요구.
+
+**현재 (R5 + D4 정합) 정책**:
+
+```
+   harness-watcher 신규 framework 발견
+        │
+        ▼
+   state/harness-discoveries-{date}.json 에 후보 기록만
+        │
+        ▼
+   harness-critic 의 5+1 lens 평가
+   (사용자 워크플로우 가치 lens 추가 — 본 framework 사용자가
+    실제 추적할 가치 있는가?)
+        │
+        ▼
+   APPROVE → 사용자에게 추가 제안 (1줄 보고)
+        │
+        ▼
+   사용자 명시 승인 (예: "/registry add <id>") 시만 등록
+   ┌────────────────────────────────────────────┐
+   │ ★ 자율 추가 금지 ★                          │
+   │ R5 의 11→3 cleanup 학습 — 잡음 73% 회피      │
+   └────────────────────────────────────────────┘
+```
+
+**핵심 변경**:
+
+| 옛 정책 | 새 정책 (D4) |
+|---------|------------|
+| watcher 자율 추가 | 후보 기록만 (state/harness-discoveries-{date}.json) |
+| critic 만 평가 | critic + 사용자 명시 승인 |
+| 누적만 (제거 룰 없음) | 추가 시 보수적, 제거는 R5 패턴 (사용자 명시 결정) |
+| 등록 후 daily 추적 자동 | 등록 자체가 사용자 명시 결정 |
+
+**자율 추가 허용 예외** (없음):
+
+```
+   D4 정책의 엄격함:
+     • 자율 추가 예외 0건
+     • monorepo auto_discover_subdir 도 후보 기록만
+     • critic APPROVE 만으로는 등록 불가
+     • 사용자 명시 발화 ("이거 추가해", "/registry add ..." 등) 필수
+```
+
+**state 자산**:
+
+- `~/.claude/state/harness-discoveries-{date}.json` — 후보 목록 (사용자 확인 대기)
+- `~/.claude/state/harness-critic-decisions-{date}.json` — critic 평가 결과
+- `~/.claude/references/external-harness-registry.md` — 실제 등록 목록 (사용자 명시 결정 후만 갱신)
 
 ## v28.4 신규: superpowers 12 skill 매트릭스 (Deep Interview brainstorming 위임 정합)
 
@@ -318,21 +293,23 @@ superpowers_skill_matrix:
 
 ### 추가 외부 framework 참조 워크플로우 (보강, 사용자 지시 2026-05-19 — "다른 하네스 프레임워크 참조 누락")
 
-| Framework | 활용 chapter / phase | 역할 |
-|-----------|----------------------|------|
-| **bkit-claude-code** | 전체 SKILL 영감 | PDCA + chapter routing 패턴 원조 |
-| **claude-code** | hook spec / MCP / skills 표준 | CC CLI 본체 추적 |
-| **claude-code-goal** | /goal 본질 정의 | CC 빌트인 /goal — 자율 iteration 원조 |
-| **react-best-practices** | CODE chapter (React 작업) | Vercel 70 rules 자동 참조 |
-| **frontend-design** | MEDIA chapter | Typography/Color/Motion 디자인 시스템 |
-| **oh-my-claudecode** | multi_session method A 영감 | Teams-first 멀티 에이전트 패턴 |
-| **advisor-tool-beta** | model-router / quota-advisor / cc-auth-advisor | advisor 2-tier 패턴 |
-| **statusline-combined** | 시각화 진입점 | host hud/ 직접 사용 (5원칙 #1) |
-| **hybrid-statusline** | 메인 statusline 1줄 | host hud/ 직접 사용 |
-| **model-usage-line** | 3-tier model usage | host hud/ 직접 사용 |
-| **aiden-auto-telemetry** | 텔레메트리 1줄 | host hud/ 직접 사용 |
+| Framework | 활용 chapter / phase | 역할 | 추적 상태 |
+|-----------|----------------------|------|----------|
+| **bkit-claude-code** | 전체 SKILL 영감 | PDCA + chapter routing 패턴 원조 | ✅ 추적 |
+| **react-best-practices** | CODE chapter (React 작업) | Vercel 70 rules 자동 참조 | ✅ 추적 |
+| **oh-my-claudecode** | multi_session method A 영감 | Teams-first 멀티 에이전트 패턴 | ✅ 추적 |
+| ~~claude-code~~ | ~~hook spec / MCP / skills 표준~~ | ~~CC CLI 본체 추적~~ | ❌ 2026-05-26 제거 |
+| ~~claude-code-goal~~ | ~~/goal 본질 정의~~ | ~~CC 빌트인 /goal~~ | ❌ 2026-05-26 제거 |
+| ~~frontend-design~~ | ~~MEDIA chapter~~ | ~~디자인 시스템~~ | ❌ 2026-05-26 제거 |
+| ~~advisor-tool-beta~~ | ~~advisor 2-tier 패턴~~ | ~~참조 패턴은 본문 유지~~ | ❌ 2026-05-26 제거 |
+| ~~statusline-combined~~ | ~~시각화 진입점~~ | ~~host hud/ 직접 사용~~ | ❌ 2026-05-26 제거 |
+| ~~hybrid-statusline~~ | ~~메인 statusline~~ | ~~host hud/ 직접 사용~~ | ❌ 2026-05-26 제거 |
+| ~~model-usage-line~~ | ~~3-tier model usage~~ | ~~host hud/ 직접 사용~~ | ❌ 2026-05-26 제거 |
+| ~~aiden-auto-telemetry~~ | ~~텔레메트리 1줄~~ | ~~host hud/ 직접 사용~~ | ❌ 2026-05-26 제거 |
 
 각 framework 의 update 추적은 daily harness-watcher 가 처리 (위 cycle 참조).
+
+> **메모 (2026-05-26)**: 제거된 9 framework 의 패턴/구현은 본 framework 내부에 이미 흡수되었거나 (예: advisor-tool 패턴 → cc-auth-advisor, quota-advisor) 호스트 자원으로 보존됨. registry 의 daily 추적만 종료.
 
 ## v28.3 신규: auto_discover_subdir + cc-researcher chain
 
