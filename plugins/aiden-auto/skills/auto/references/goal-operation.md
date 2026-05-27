@@ -41,36 +41,35 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 
 ## State 추적 메커니즘
 
-### 2 State 파일 역할 분담 (GAP-1 — 2026-05-28 SSOT 명확화)
+### 안전절 메커니즘 — Stop hook 단일 (B-018 단일화, 2026-05-28)
 
-> **D1 패턴 (design SSOT) 적용**: /goal loop 는 2개 state 파일을 사용. 같은 개념 (turn/token/fail) 을 추적하나 **다른 layer 의 다른 책임** — 중복이 아니라 분리.
+> **B-018 사용자 결정 (2026-05-28)**: /goal 안전절은 **Stop hook(active-goal) 단일 메커니즘**. 과거 "2 State 분담" 설계(goal-loop 사전 차단 + active-goal 사후 평가)는 phantom(미구현, 발동 0회) 확인 → **단일화 폐기**. 같은 한계를 사후(Stop) 한 번만 검사 — 중복 제거 + 계기판 1개로 단순화.
 
 ```
    ┌────────────────────────────────────────────────────────┐
-   │ goal-loop-{session}.json  ← 본 framework safety trip    │
-   │   관리: scripts/goal_loop_state.py                      │
-   │   counter: turn / token_used / fail                    │
-   │   책임: 20턴·200K·5실패 안전절 (Circuit Breaker)        │
-   │   정본 경로: ~/.claude/state/auto/ (path_resolution)    │
-   │                                                          │
-   │ active-goal-{session}.json  ← CC 빌트인 Stop hook 평가  │
+   │ active-goal-{session}.json  ← 단일 안전절 (✅ 작동)     │
    │   관리: lib/goal/goal_writer.py                         │
    │   counter: turn_count / tokens_consumed /              │
    │            perfect_output_fails                         │
-   │   책임: CC 공식 /goal Stop hook 의 continue 판정         │
+   │   책임: Stop hook continue 판정 + 안전절(20턴/200K/5)   │
+   │   검사: goal_stop_evaluator.check_safety_limits (Stop)  │
    │   경로: goal_stop_evaluator.py 가 정본 + plugin cache    │
    │         양쪽 검색 (2026-05-19 root cause 대응)           │
    └────────────────────────────────────────────────────────┘
+
+   [DEPRECATED — B-018] goal-loop-{session}.json (사전 차단)
+     goal_loop_state.py 관리 + auto_workflow_enforcer PreToolUse 검사 설계
+     → 미구현 phantom (발동 0회). Stop hook 으로 통합, 코드 파일 보존.
 ```
 
-| 구분 | goal-loop | active-goal |
-|------|-----------|-------------|
-| SSOT 책임 | safety trip (본 framework) | Stop hook 평가 (CC 빌트인) |
-| 관리 도구 | goal_loop_state.py | goal_writer.py |
-| 사용 hook | auto_workflow_enforcer.py (PreToolUse) | goal_stop_evaluator.py (Stop) |
-| counter 의미 | 자율 iteration 한계 | CC loop continue 신호 |
+| 구분 | active-goal (단일 정본) | goal-loop (DEPRECATED) |
+|------|------------------------|------------------------|
+| 상태 | ✅ 작동 (Stop hook 348회) | ❌ 폐기 (phantom, 0회) |
+| 관리 도구 | goal_writer.py | goal_loop_state.py (보존·미사용) |
+| 사용 hook | goal_stop_evaluator.py (Stop) | auto_workflow_enforcer (미호출) |
+| 책임 | continue 판정 + 안전절 검사 | — (폐기) |
 
-> **두 counter 는 독립 추적** (sync 안 됨). 의도적 — 본 framework 의 safety trip 과 CC 의 stop 평가는 다른 시점·다른 목적. 향후 단일 SSOT 통합은 backlog (코드 통합 시 회귀 위험 — 현재는 역할 분담 명시로 충분).
+> **안전절 작동 방식 (단일)**: 매 턴 종료 시 goal_stop_evaluator(Stop) 가 active-goal 의 turn_count/tokens_consumed/perfect_output_fails 를 check_safety_limits 로 검사 → 20턴·200K·5실패 초과 시 멈춤 + 사용자 보고. 사전(PreToolUse) 차단 없음 — 사후 단일 점검 (B-018).
 
 ### State File 구조
 
@@ -122,9 +121,11 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 
 → `~/.claude/scripts/goal_loop_state.py` (구현 도구)
 
-### Safety Trip Detector (자동 감지)
+### Safety Trip Detector ([DEPRECATED — B-018] 폐기된 사전 차단 설계)
 
-PreToolUse hook 패턴:
+> **B-018 단일화 (2026-05-28)**: 아래 PreToolUse trip 패턴은 **폐기**. 실제 안전절은 goal_stop_evaluator(Stop) 의 check_safety_limits 가 단독 수행 (사후 단일 점검). 본 섹션은 폐기된 설계의 참조용 보존.
+
+PreToolUse hook 패턴 (폐기 — 참조용):
 ```
 매 Agent() 호출 직전:
   state = load(goal-loop-{session}.json)
@@ -235,7 +236,7 @@ test-results/*.png 저장 + Phase 4 통과
 | 자산 | 위치 |
 |------|------|
 | State tracker | `~/.claude/scripts/goal_loop_state.py` |
-| Safety trip hook | `~/.claude/hooks/auto_workflow_enforcer.py` (PreToolUse) |
+| Safety trip hook | ⚠ **미구현 (phantom)** — 설계상 auto_workflow_enforcer.py (PreToolUse) 이나 goal-loop counter 미호출. 실제 안전절은 goal_stop_evaluator (Stop) 단독 |
 | State file | `~/.claude/state/auto/goal-loop-{session_id}.json` |
 | Phase 4 QA Gate | `agents/verification/perfect-output-validator.md` + `e2e-qa-prover.md` + `iteration-screenshot-verifier.md` |
 | Circuit Breaker 통합 | `~/.claude/state/circuit-breaker.json` |
