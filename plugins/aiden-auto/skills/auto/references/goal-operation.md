@@ -41,6 +41,37 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 
 ## State 추적 메커니즘
 
+### 2 State 파일 역할 분담 (GAP-1 — 2026-05-28 SSOT 명확화)
+
+> **D1 패턴 (design SSOT) 적용**: /goal loop 는 2개 state 파일을 사용. 같은 개념 (turn/token/fail) 을 추적하나 **다른 layer 의 다른 책임** — 중복이 아니라 분리.
+
+```
+   ┌────────────────────────────────────────────────────────┐
+   │ goal-loop-{session}.json  ← 본 framework safety trip    │
+   │   관리: scripts/goal_loop_state.py                      │
+   │   counter: turn / token_used / fail                    │
+   │   책임: 20턴·200K·5실패 안전절 (Circuit Breaker)        │
+   │   정본 경로: ~/.claude/state/auto/ (path_resolution)    │
+   │                                                          │
+   │ active-goal-{session}.json  ← CC 빌트인 Stop hook 평가  │
+   │   관리: lib/goal/goal_writer.py                         │
+   │   counter: turn_count / tokens_consumed /              │
+   │            perfect_output_fails                         │
+   │   책임: CC 공식 /goal Stop hook 의 continue 판정         │
+   │   경로: goal_stop_evaluator.py 가 정본 + plugin cache    │
+   │         양쪽 검색 (2026-05-19 root cause 대응)           │
+   └────────────────────────────────────────────────────────┘
+```
+
+| 구분 | goal-loop | active-goal |
+|------|-----------|-------------|
+| SSOT 책임 | safety trip (본 framework) | Stop hook 평가 (CC 빌트인) |
+| 관리 도구 | goal_loop_state.py | goal_writer.py |
+| 사용 hook | auto_workflow_enforcer.py (PreToolUse) | goal_stop_evaluator.py (Stop) |
+| counter 의미 | 자율 iteration 한계 | CC loop continue 신호 |
+
+> **두 counter 는 독립 추적** (sync 안 됨). 의도적 — 본 framework 의 safety trip 과 CC 의 stop 평가는 다른 시점·다른 목적. 향후 단일 SSOT 통합은 backlog (코드 통합 시 회귀 위험 — 현재는 역할 분담 명시로 충분).
+
 ### State File 구조
 
 `~/.claude/state/auto/goal-loop-{session_id}.json`:
