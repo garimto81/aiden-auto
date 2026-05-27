@@ -71,9 +71,11 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 
 > **안전절 작동 방식 (단일)**: 매 턴 종료 시 goal_stop_evaluator(Stop) 가 active-goal 의 turn_count/tokens_consumed/perfect_output_fails 를 check_safety_limits 로 검사 → 20턴·200K·5실패 초과 시 멈춤 + 사용자 보고. 사전(PreToolUse) 차단 없음 — 사후 단일 점검 (B-018).
 
-### State File 구조
+### State File 구조 ([DEPRECATED — B-018] 참조용)
 
-`~/.claude/state/auto/goal-loop-{session_id}.json`:
+> 아래 goal-loop-{session_id}.json 구조는 폐기된 사전 차단 설계의 참조용. 실제 안전절 state 는 active-goal-{session}.json (goal_writer.py). 재도입 시 참조 목적 보존.
+
+`~/.claude/state/auto/goal-loop-{session_id}.json` (deprecated):
 
 ```json
 {
@@ -119,7 +121,7 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 | Agent() 호출 종료 (실패) | fail += 1, token_used += partial_usage |
 | Phase 완료 | phase_history.append({phase, completed_at}) |
 
-→ `~/.claude/scripts/goal_loop_state.py` (구현 도구)
+→ `~/.claude/scripts/goal_loop_state.py` (**[DEPRECATED — B-018]** 미사용. active-goal counter 는 goal_stop_evaluator 가 increment_counter 로 갱신)
 
 ### Safety Trip Detector ([DEPRECATED — B-018] 폐기된 사전 차단 설계)
 
@@ -187,8 +189,8 @@ test-results/*.png 저장 + Phase 4 통과
    Phase -1.5 Deep Interview (Part A~E)
             │
             ▼
-   goal-loop state 초기화
-   ~/.claude/state/auto/goal-loop-{session}.json 생성
+   active-goal state 초기화 (단일 — B-018)
+   goal_writer.py 가 active-goal-{session}.json 생성
             │
             ▼
    ┌──────────────────────────────────┐
@@ -235,8 +237,8 @@ test-results/*.png 저장 + Phase 4 통과
 
 | 자산 | 위치 |
 |------|------|
-| State tracker | `~/.claude/scripts/goal_loop_state.py` |
+| State tracker (단일) | `~/.claude/lib/goal/goal_writer.py` (active-goal). `goal_loop_state.py` = DEPRECATED (B-018) |
 | Safety trip hook | ⚠ **미구현 (phantom)** — 설계상 auto_workflow_enforcer.py (PreToolUse) 이나 goal-loop counter 미호출. 실제 안전절은 goal_stop_evaluator (Stop) 단독 |
-| State file | `~/.claude/state/auto/goal-loop-{session_id}.json` |
+| State file (단일) | `~/.claude/state/active-goal-{session}.json`. `goal-loop-{session_id}.json` = DEPRECATED (B-018) |
 | Phase 4 QA Gate | `agents/verification/perfect-output-validator.md` + `e2e-qa-prover.md` + `iteration-screenshot-verifier.md` |
 | Circuit Breaker 통합 | `~/.claude/state/circuit-breaker.json` |
