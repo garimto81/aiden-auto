@@ -27,6 +27,15 @@ try:
 except ImportError:
     def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None
 
+# P5 (B-018 critic 2026-05-28): layer-독립 파일 누출 차단.
+# bidirectional_sync 의 EXCLUDE 정책을 재사용 (단일 소스 — EXCLUDE drift 방지).
+# settings.json / CLAUDE.md / .env / _silent_wrap.cmd 등이 watcher 로 전파되지 않도록.
+try:
+    from bidirectional_sync import is_excluded_path as _is_excluded  # type: ignore[import-not-found]
+except ImportError:
+    def _is_excluded(rel):  # graceful fallback (bidirectional 부재 시 기존 동작)
+        return (False, "")
+
 # Lazy + backward compat (legacy code 참조 시)
 PROJECT_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
@@ -142,6 +151,11 @@ def main() -> int:
 
     # 자기 자신 sync 방지
     if is_self_edit(rel.parts):
+        return 0
+
+    # P5 (B-018 critic): EXCLUDE 검사 — layer-독립 파일(settings/CLAUDE.md/_silent_wrap 등) 차단
+    excluded, _reason = _is_excluded(rel)
+    if excluded:
         return 0
 
     # 3+ mirror sync
