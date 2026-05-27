@@ -29,7 +29,7 @@ Phase -1.5 Deep Interview 직후 시동. Phase 4 close 까지 자율 진행.
 | token counter | 200,000 | Claude API usage 누적 |
 | fail counter | 5 | Agent() result error / Phase 검증 REJECT 누적 |
 
-상태 저장: `~/.claude/state/auto/goal-loop-{session_id}.json`
+상태 저장: `~/.claude/state/active-goal-{session}.json` (goal_stop_evaluator 가 check_safety_limits 로 검사 — B-018 단일화)
 
 ### 조건 3: 진짜 막힘 (외부 정보 필요)
 사용자 결정 영역 진입 시:
@@ -219,7 +219,7 @@ test-results/*.png 저장 + Phase 4 통과
 | 작업 | 영역 |
 |------|:----:|
 | Agent() 호출 / 결과 처리 | **자율** |
-| Counter 갱신 | **자율** (goal_loop_state.py 자동) |
+| Counter 갱신 | **자율** (goal_stop_evaluator 가 active-goal counter 자동 갱신) |
 | Safety trip 감지 | **자율** (PreToolUse hook) |
 | Phase 전환 | **자율** |
 | Phase 4 QA Gate 통과 | **자율** (스크린샷 ≥ 3장 자동 검증) |
