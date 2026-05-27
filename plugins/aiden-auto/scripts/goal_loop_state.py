@@ -2,6 +2,12 @@
 # -*- coding: utf-8 -*-
 """goal_loop_state.py — /goal Loop state tracker (F6 결함 해소).
 
+⚠ DEPRECATED (B-018, 2026-05-28): Stop hook 단일화로 미사용.
+   /goal 안전절(20턴/200K/5실패)은 goal_stop_evaluator.py 의 check_safety_limits 가
+   active-goal-{session}.json 기반으로 단독 수행한다. 본 모듈의 PreToolUse 사전 차단 설계는
+   auto_workflow_enforcer 가 호출하지 않아 phantom 이었다 (hook_events.db 발동 0회).
+   파일은 재도입 시 참조용으로 보존 ("Removal isn't the answer"). 신규 호출 추가 금지.
+
 ⭐ Universal Deployment Premise 정합.
 
 기능:
