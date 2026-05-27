@@ -67,7 +67,7 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 | 위치 | 역할 | 편집 가능? | 비고 |
 |------|------|:---------:|------|
 | `~/.claude/` | 정본 | **YES** | 모든 변경의 시작점 |
-| `C:\claude\plugins\aiden-auto\` | Mirror 1 — git 추적 | READ-ONLY | auto-sync 수신 전용 |
+| `C:\claude\plugins\aiden-auto\` | Mirror 1 — auto-sync 수신 전용 (git-free) | READ-ONLY | **git 추적 안 됨** (ls-files=0, 자체 .git 없음). 실제 git 배포 repo 는 `C:\aiden-auto-repo` (origin=garimto81/aiden-auto.git) — framework_github_sync.py 가 사용 |
 | `~/.claude/plugins/cache/…/28.3.0/` | Mirror 2 — CC 로드 | READ-ONLY | auto-sync 수신 전용 |
 | `~/.claude/plugins/marketplaces/…/` | Mirror 3 — 메타 | READ-ONLY | marketplace.json만 관리 |
 
@@ -159,18 +159,23 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 
 ---
 
-## GitHub repo 위상
+## GitHub repo 위상 (v3.8 정정 — 2026-05-28)
 
-`https://github.com/garimto81/aiden-auto` 는 Mirror 1(`C:\claude\plugins\aiden-auto\`)의
-git remote일 뿐이다. **정본이 아니다.** 변경 흐름:
+`https://github.com/garimto81/aiden-auto` 의 **실제 로컬 클론은 `C:\aiden-auto-repo`** 다
+(`C:\claude\plugins\aiden-auto\` 가 **아니다** — 그 폴더는 git ls-files=0, 자체 .git 없음, 잡힌 remote 는 무관 repo).
+**정본이 아니다.** 변경 흐름:
 
 ```
-정본 ~/.claude/ → (auto-sync) → Mirror 1
-                                     │
-                                     └─ git commit + push → GitHub (백업)
+정본 ~/.claude/ ─(framework_github_sync.py v6)→ C:\aiden-auto-repo\plugins\aiden-auto\
+                                                      │
+                                                      └─ git commit + push → GitHub (배포원)
+
+정본 ~/.claude/ ─(bidirectional_sync + watcher)→ Mirror 1 C:\claude\plugins\aiden-auto\
+                                                  (git-free 부분 mirror — 증분 sync 수신)
 ```
 
-GitHub는 백업 및 버전 이력 보존 용도. CC 로드 경로가 아니다.
+GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirror 1
+(`C:\claude\plugins\aiden-auto\`) 은 git 추적 안 되는 별개의 sync 수신 폴더이며 CC 로드 경로도 아니다 (cache 가 로드).
 
 ---
 
@@ -383,6 +388,7 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-18 | v3.5 | 본문 cache 경로 28.2.0 → 28.3.0 갱신 (6곳) | audit-loop critic review 자율 정정. plugin v28.3.0 실제 버전 정합 |
 | 2026-05-19 | v3.6 | Sync 메커니즘 표 v3.2 정합화 (단방향 → 양방향) + EXCLUDE_FILE_NAMES 명시 (settings.json / CLAUDE.md / .env) | Single Dispatcher Pattern critic Agent B S5/S9 자율 정정. layer 독립성 보호 + 정책 본문 vs 실제 코드 일치 |
 | 2026-05-19 | v3.7 | EXCLUDE 에 `_silent_wrap.cmd` 추가 + Deregistration vs Code Removal 구분 정책 신규 | critic Agent B R6 (wrapper lock 폭탄 자동 복귀) + Agent A C1 (Phase 4a "Removal" 위배 정당화) 자율 정정 |
+| 2026-05-28 | v3.8 | Mirror 1 정의 정정 ("git 추적" → "auto-sync 수신 전용 git-free") + GitHub repo 위상 정정 (실제 배포 repo = `C:\aiden-auto-repo`, Mirror 1 은 git ls-files=0) | critic NOT-A-GHOST 판정. 증분 sync 만으로 부분 mirror (1036 파일 누락) 발견 → reconcile-plugin-mirror.py 로 완전화 + bidirectional_sync global registry 등록 |
 
 ---
 

@@ -1,0 +1,9 @@
+{
+  "name": "bidirectional_sync",
+  "command": "python \"C:/Users/AidenKim/.claude/hooks/bidirectional_sync.py\"",
+  "timeout": 15,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit|Write|MultiEdit"
+}
