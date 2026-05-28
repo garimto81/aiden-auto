@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""bidirectional_sync.py — Plan B 3축 통합 sync hook (v2.0)
+"""bidirectional_sync.py — Plan B 3축 통합 sync hook (v3 — v3.13 단방향 정합)
 
 사용자 결정 (2026-05-15): 단일 정본 SSOT 불가 시 Plan B 적용.
-"3축 어느 곳에서 편집해도 나머지 자동 sync — 어떤 것도 제거하지 않음"
+사용자 결정 (2026-05-29 v3.13): Plan B 양방향 폐기 → Global 단일 정본 + Project 단방향 수신.
+"3축 어느 곳에서 편집해도 나머지 자동 sync — 어떤 것도 제거하지 않음" → "Global 단일 정본 + Project 단방향 mirror"
 
 v2.0 변화 (2026-05-15 QA 결과):
     machine_framework_watcher.py 가 work.md 변경 시 발동 안 함 확인.
     원인 추정: project settings.json PostToolUse 매처가 global 매처를 override.
     해결: 본 hook 이 watcher 책임도 흡수. 5 mirror 모두 단독 처리.
 
-흐름:
-    Global edit  (~/.claude/)           ──► Project + Plugin source + cache + marketplaces
-    Project edit (C:\\claude\\.claude\\) ──► Global + Plugin source + cache + marketplaces
+v3.13 변화 (2026-05-29, 사용자 가르침 #2 적용):
+    Project edit 분기 (line 188-201) 비활성화 — 4 개월간 실측 발생 0건.
+    가정 "Project 동시 편집 시나리오" 가 history 미발생 → over-engineering 자율 판정.
+    회복 조건: 향후 Project 직접 편집 시나리오 발생 시 line 188-201 주석 해제로 즉시 복원.
+
+흐름 (v3.13):
+    Global edit  (~/.claude/)           ──► Project + Plugin source + cache + marketplaces  [ACTIVE]
+    Project edit (C:\\claude\\.claude\\) ──► (DEPRECATED — line 188-201 비활성화, 코드 보존)
 
 Plugin 영역은 framework_edit_guard.py 차단으로 사용자 편집 불가 — 수신만.
 
