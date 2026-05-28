@@ -9,7 +9,7 @@
 
     본 스크립트는 정본 ~/.claude/{SYNC_DIRS} 전체를 EXCLUDE 적용하며 plugin mirror
     (Plugin source + cache 버전들 + Marketplaces) 로 1회 reconcile 하여 부분 mirror 를 완전화한다.
-    Project (C:\claude\.claude) 는 dest 제외 — collect_dests() 주석 참조 (double-fire 방지).
+    Project (C:/claude/.claude) + marketplaces 는 dest 제외 — collect_dests() 주석 참조.
 
 P1 확장 (2026-05-28):
     기존엔 Plugin source 1곳만 reconcile 했다. bidirectional_sync 의
@@ -84,11 +84,11 @@ def collect_dests() -> list[tuple[str, Path]]:
     for cache_ver in get_active_cache_versions():
         dests.append((f"cache:{cache_ver.name}", cache_ver))
 
-    marketplaces = resolve_marketplaces_dir()
-    if marketplaces is not None:
-        # determine_source_and_dests 와 동일 위상 (plugins/aiden-auto 하위)
-        mp_dest = marketplaces / "plugins" / "aiden-auto"
-        dests.append(("marketplaces", mp_dest))
+    # marketplaces 는 reconcile dest 에서 제외 (2026-05-28 정정).
+    # 이유: rule 19 — marketplaces 는 "메타데이터만"(.git + marketplace.json) 저장소.
+    #       전체 자산 mirror 가 아니므로 reconcile 로 채우면 정책 위배 + 비대.
+    #       (bidirectional_sync 가 marketplaces 를 dest 에 포함하는 것은 별개 — P4 backlog)
+    # 실제 plugin mirror 는 plugin-source(git 백업) + cache(CC 로드) 만.
 
     return dests
 
