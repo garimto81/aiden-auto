@@ -188,7 +188,7 @@ GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirr
 
 | 영역 | 가지는 것 | 가지지 않는 것 |
 |------|----------|---------------|
-| **Project** (`C:\claude\.claude\`) | 이 프로젝트만의 rules, settings.json, project-only hooks (4개), project audit skills | commands, agents (Global이 정본) |
+| **Project** (`C:\claude\.claude\`) | settings.json (layer 독립, EXCLUDE 대상). 그 외 모든 자산은 Global ⭐ 정본의 **자동 mirror** (Plan B 양방향 sync) — 이 프로젝트의 git 추적용 | project-only 분류 자체 (폐기 v3.11/v3.12 2026-05-29 — Global SSOT 단일화. rules / audit skills / hooks / scripts / agents / commands 모두 Global 정본의 mirror) |
 | **Global** (`~\.claude\`) ⭐ 정본 SSOT | commands, agents, skills, hooks, rules, references | 프로젝트별 override (Project로 위임) |
 | **Plugin** (`C:\claude\plugins\aiden-auto\`) | 외부 framework — 자체 완결 패키지 | 사용자 customization (Global로 위임) |
 
@@ -396,6 +396,8 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-28 | v3.8 | Mirror 1 정의 정정 ("git 추적" → "auto-sync 수신 전용 git-free") + GitHub repo 위상 정정 (실제 배포 repo = `C:\aiden-auto-repo`, Mirror 1 은 git ls-files=0) | critic NOT-A-GHOST 판정. 증분 sync 만으로 부분 mirror (1036 파일 누락) 발견 → reconcile-plugin-mirror.py 로 완전화 + bidirectional_sync global registry 등록 |
 | 2026-05-28 | v3.9 | P4 정정 — 한 줄 정책 + 도서관 비유 양방향 정합 (단방향 뉘앙스 → Plan B 양방향 + 6 물리 위치 + aiden-auto-repo 배포 명시) + R3 전면 — registry json 15개 command `C:/Users/AidenKim` → `$HOME` device-agnostic | /auto autonomous iteration — P1/P6 후속 잔여 정리 |
 | 2026-05-28 | v3.10 | cache 버전 drift 정정 — 본문 cache 경로 `28.3.0` → `<latest>` (5곳, 동적 탐색 표기) + 책임 매트릭스에 "Plan B 양방향 단일 hook 정책" 명문화 (Project↔Global = Global bidirectional_sync 단독 책임) | critic 종합 검증 — rule19 버전 drift MED + C2/C4 LOW 자율 정정 |
+| 2026-05-29 | v3.11 | **Multi-SSOT 결함 해소** — 실측 결과 Project-only hooks "4개" → 실제 33개 (8배 drift) 발견. 5 iteration autonomous: 21개 registry-body 분리 + 5개 P2b doublefire + 11개 scripts 모두 Global 이전, notify_voice 까지 정리 → **Project-only active = 0** 달성. 책임 매트릭스 line 191 정정 (project-only hooks 분류 폐기, Global = 정본 SSOT 명시). Global registry hook 38개 phantom = 0 검증 | /goal autonomous iteration — critic verdict 7결함 H4 (multi-SSOT) 자율 해소. (A) Universal-only 실측 적용 (Plan B 양방향 자체 변경은 다음 cycle) |
+| 2026-05-29 | v3.12 | **Iter 6 critic 후속** — N3 line 191 자기 모순 정정 (단일 정의 "Global mirror layer", project audit skills 도 Global mirror 로 통일) + N5 _disabled hardcoded path → $HOME + N4 _disabled 23개 `owner: project → archived` + N2 notify_voice.py SHA256 양쪽 일치 검증(`2122d5f5...`) + H4-residual tmp 정리. **rule 21 4 case 적용**: Case 1 (설계) PASS (line 191 자기 모순 해소) / Case 2 (구현) PASS (Project-only active=0, hardcoded=0) / Case 3 (QA) PASS (SHA 일치, phantom=0) / Case 4 (리뷰) PASS (본 entry inline 인용) | /goal autonomous Iter 6 — critic 7 잔여 결함 자율 흡수, framework-critic T2 승격 후보(H1) + H7 self-reliability 는 사용자 결정 영역 분리 |
 
 ---
 

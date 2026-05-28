@@ -1,0 +1,8 @@
+{
+  "name": "notify_voice",
+  "command": "python \"$HOME/.claude/hooks/notify_voice.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}
