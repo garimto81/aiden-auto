@@ -63,11 +63,11 @@ SessionEnd hook + framework-critic 결정이 누적된 경우
      ## 변경 요약
      {critic rationale}
      
-     ## 5원칙 평가
+     ## 5원칙 평가 (가르침 #4 v5.1 정합)
      | 원칙 | 결과 |
      |------|:----:|
-     | 진입점 최소화 | {pass/fail} |
-     | 자율 이터레이션 | {pass/fail} |
+     | 사용자 의도 정합성 (v5.1, 옛 "진입점 최소화" 폐기) | {pass/fail} |
+     | 자율 이터레이션 (= 의도 정합 수단) | {pass/fail} |
      | 외부 reference만 | {pass/fail} |
      | 데이터 손실 방지 | {pass/fail} |
      | 사용자 안전성 | {pass/fail} |

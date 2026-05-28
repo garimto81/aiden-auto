@@ -48,14 +48,28 @@ triggers:
 | 추천안 성격 | Claude 동작 |
 |-------------|-------------|
 | **비파괴 + 되돌림 가능** (예: 로컬 커밋, PR 생성) | 제안 직후 **즉시 실행**. 사용자는 결과만 확인 |
-| **파괴적·비가역적** (force push, `--admin` merge, drop commits) | 제안 후 **명시적 승인 대기** (`y/N`). Iron Law 준수 |
-| **외부 시스템 영향** (다른 브랜치 변경, 공개 PR 머지) | 제안 후 **승인 대기** |
+| **파괴적·비가역적** (force push, `--admin` merge, drop commits) | 제안 후 **AskUserQuestion tool 의무 사용** (가르침 #6, 2026-05-29). 명시적 승인 대기 (`y/N` chat text 금지). Iron Law 준수 |
+| **외부 시스템 영향** (다른 브랜치 변경, 공개 PR 머지) | 제안 후 **AskUserQuestion tool 의무 사용**. 승인 대기 |
+
+### 파괴적 결정의 AskUserQuestion 호출 표준 (가르침 #6 정합)
+
+```
+   AskUserQuestion
+   ├─ question: "{action} 실행할까요? 영향: {blast radius}"
+   ├─ header: 짧은 라벨 (예: "Force push", "Admin merge")
+   ├─ multiSelect: false
+   └─ options:
+       ├─ "예, 실행" — description: 결과 명시 + 되돌림 비용
+       ├─ "아니오, 보류" — description: 다른 대안 + 진행 권고
+       └─ (선택) "다른 방법 추천" — description: 대안 1 안내
+```
 
 ### 금지
 
 - ❌ 2개 이상 선택지를 동등하게 나열하며 "어떻게 할까요?"
 - ❌ 추천 없이 "사용자 판단 필요" 로 종료
 - ❌ 파괴적 동작을 승인 없이 "추천에 따라" 즉시 실행
+- ❌ **파괴적 결정 chat text 승인 요청** (`y/N` 자유 텍스트) — AskUserQuestion 의무 (가르침 #6, 2026-05-29)
 
 ### Step 1: 상태 확인 (병렬 실행)
 
