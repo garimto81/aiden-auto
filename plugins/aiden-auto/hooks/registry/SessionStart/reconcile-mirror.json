@@ -1,0 +1,9 @@
+{
+  "name": "reconcile-mirror",
+  "command": "python $HOME/.claude/scripts/reconcile-plugin-mirror.py",
+  "timeout": 60,
+  "blocking": false,
+  "priority": 15,
+  "owner": "global",
+  "comment": "P1 전체 reconcile 자동화, idempotent. 정본 ~/.claude/ -> 전체 mirror(Project+Plugin source+cache+Marketplaces) 단방향 sync. bootstrap(priority 10)로 Global 채워진 후 mirror 전파. sync_one SHA256 비교로 재실행 0 쓰기. command 는 $HOME 변수 사용 — dispatcher expandvars 런타임 확장 → device-agnostic (R3 해결 2026-05-28)."
+}

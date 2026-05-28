@@ -1,9 +1,9 @@
 {
   "name": "bootstrap",
-  "command": "python C:/Users/AidenKim/.claude/hooks/bootstrap.py",
+  "command": "python $HOME/.claude/hooks/bootstrap.py",
   "timeout": 30,
   "blocking": false,
   "priority": 10,
   "owner": "global",
-  "comment": "Universal Deployment Layer C (v4.0). 신규 PC pristine install 감지 시 cache → ~/.claude/ 자동 복사. 본인 PC 는 idempotent (0 files copied). Plugin manifest lifecycle.post_install 미지원 시의 fallback."
+  "comment": "Universal Deployment Layer C (v4.0). 신규 PC pristine install 감지 시 cache → ~/.claude/ 자동 복사. 본인 PC 는 idempotent (0 files copied). Plugin manifest lifecycle.post_install 미지원 시의 fallback. command 는 $HOME 변수 사용 — dispatcher expandvars 런타임 확장 → device-agnostic (R3 해결 2026-05-28)."
 }
