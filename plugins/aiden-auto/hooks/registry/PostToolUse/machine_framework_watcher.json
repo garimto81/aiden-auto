@@ -1,6 +1,6 @@
 {
   "name": "machine_framework_watcher",
-  "command": "python \"C:/Users/AidenKim/.claude/hooks/machine_framework_watcher.py\"",
+  "command": "python \"$HOME/.claude/hooks/machine_framework_watcher.py\"",
   "timeout": 15,
   "blocking": false,
   "priority": 50,

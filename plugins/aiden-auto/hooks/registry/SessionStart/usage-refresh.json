@@ -1,6 +1,6 @@
 {
   "name": "usage-refresh",
-  "command": "node C:/Users/AidenKim/.claude/hud/usage-refresh.mjs",
+  "command": "node $HOME/.claude/hud/usage-refresh.mjs",
   "timeout": 10,
   "blocking": true,
   "priority": 50,

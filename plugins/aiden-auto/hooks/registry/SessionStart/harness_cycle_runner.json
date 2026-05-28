@@ -1,6 +1,6 @@
 {
   "name": "harness_cycle_runner",
-  "command": "python C:/Users/AidenKim/.claude/hooks/harness_cycle_runner.py",
+  "command": "python $HOME/.claude/hooks/harness_cycle_runner.py",
   "timeout": 30,
   "blocking": false,
   "priority": 70,
