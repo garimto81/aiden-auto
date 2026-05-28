@@ -1,0 +1,8 @@
+{
+  "name": "agent_validator",
+  "command": "python \"$HOME/.claude/hooks/agent_validator.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

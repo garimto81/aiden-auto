@@ -1,0 +1,8 @@
+{
+  "name": "memory_sync",
+  "command": "python \"$HOME/.claude/hooks/memory_sync.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

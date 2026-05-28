@@ -1,0 +1,9 @@
+{
+  "name": "edit_slack_reporter",
+  "command": "python \"$HOME/.claude/hooks/edit_slack_reporter.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit|Write"
+}

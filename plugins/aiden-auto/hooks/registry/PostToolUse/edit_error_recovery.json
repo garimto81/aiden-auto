@@ -1,0 +1,9 @@
+{
+  "name": "edit_error_recovery",
+  "command": "python \"$HOME/.claude/hooks/recovery/edit_error_recovery.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "checklist_updater",
+  "command": "python \"$HOME/.claude/hooks/checklist_updater.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

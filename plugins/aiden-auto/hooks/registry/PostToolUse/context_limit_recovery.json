@@ -1,0 +1,8 @@
+{
+  "name": "context_limit_recovery",
+  "command": "python \"$HOME/.claude/hooks/recovery/context_limit_recovery.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

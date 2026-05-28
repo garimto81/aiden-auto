@@ -1,0 +1,9 @@
+{
+  "name": "tool_validator",
+  "command": "python \"$HOME/.claude/hooks/tool_validator.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Bash|Write|Edit"
+}

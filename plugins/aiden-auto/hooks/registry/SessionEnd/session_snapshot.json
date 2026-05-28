@@ -1,0 +1,8 @@
+{
+  "name": "session_snapshot",
+  "command": "python \"$HOME/.claude/hooks/session_snapshot.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

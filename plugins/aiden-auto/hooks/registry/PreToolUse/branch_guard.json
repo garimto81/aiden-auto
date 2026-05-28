@@ -1,0 +1,9 @@
+{
+  "name": "branch_guard",
+  "command": "python \"$HOME/.claude/hooks/branch_guard.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit|Write"
+}

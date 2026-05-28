@@ -1,0 +1,8 @@
+{
+  "name": "tmpclaude_cleanup",
+  "command": "python \"$HOME/.claude/hooks/tmpclaude_cleanup.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global"
+}

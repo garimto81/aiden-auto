@@ -1,0 +1,9 @@
+{
+  "name": "task_completed_trigger",
+  "command": "python \"$HOME/.claude/hooks/task_completed_trigger.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "TaskUpdate"
+}

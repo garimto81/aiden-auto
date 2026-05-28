@@ -1,0 +1,9 @@
+{
+  "name": "daily_sample_sender",
+  "command": "python \"$HOME/.claude/hooks/daily_sample_sender.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Edit|Write"
+}

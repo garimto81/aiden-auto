@@ -1,0 +1,8 @@
+{
+  "name": "pre_compact_save",
+  "command": "python \"$HOME/.claude/hooks/pre_compact_save.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

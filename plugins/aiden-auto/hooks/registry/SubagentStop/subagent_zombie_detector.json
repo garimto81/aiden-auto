@@ -1,0 +1,8 @@
+{
+  "name": "subagent_zombie_detector",
+  "command": "python \"$HOME/.claude/hooks/subagent_zombie_detector.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

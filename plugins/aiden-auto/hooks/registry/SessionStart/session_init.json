@@ -1,0 +1,8 @@
+{
+  "name": "session_init",
+  "command": "python \"$HOME/.claude/hooks/session_init.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}

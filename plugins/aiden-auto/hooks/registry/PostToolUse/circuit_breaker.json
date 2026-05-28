@@ -1,0 +1,9 @@
+{
+  "name": "circuit_breaker",
+  "command": "python \"$HOME/.claude/hooks/circuit_breaker.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Bash|Edit|Write|Agent"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "stop_completion_check",
+  "command": "python \"$HOME/.claude/hooks/stop_completion_check.py\"",
+  "timeout": 10,
+  "blocking": true,
+  "priority": 50,
+  "owner": "global"
+}
