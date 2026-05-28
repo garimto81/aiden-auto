@@ -191,11 +191,11 @@ GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirr
 
 | 영역 | 가지는 것 | 가지지 않는 것 |
 |------|----------|---------------|
-| **Project** (`C:\claude\.claude\`) | settings.json (layer 독립, EXCLUDE 대상). 그 외 모든 자산은 Global ⭐ 정본의 **자동 mirror** (Plan B 양방향 sync) — 이 프로젝트의 git 추적용 | project-only 분류 자체 (폐기 v3.11/v3.12 2026-05-29 — Global SSOT 단일화. rules / audit skills / hooks / scripts / agents / commands 모두 Global 정본의 mirror) |
+| **Project** (`C:\claude\.claude\`) | settings.json (layer 독립, EXCLUDE 대상). 그 외 모든 자산은 Global ⭐ 정본의 **단방향 수신 mirror** (v3.13 — Plan B 양방향 폐기 후, 2026-05-29) — 이 프로젝트의 git 추적용 | project-only 분류 자체 (폐기 v3.11/v3.12 2026-05-29 — Global SSOT 단일화. rules / audit skills / hooks / scripts / agents / commands 모두 Global 정본의 mirror) |
 | **Global** (`~\.claude\`) ⭐ 정본 SSOT | commands, agents, skills, hooks, rules, references | 프로젝트별 override (Project로 위임) |
 | **Plugin** (`C:\claude\plugins\aiden-auto\`) | 외부 framework — 자체 완결 패키지 | 사용자 customization (Global로 위임) |
 
-> **Plan B 양방향 sync 단일 hook 정책 (2026-05-28 명문화)**: Project↔Global 양방향은 **Global registry 의 `bidirectional_sync.py` 단일 hook** 이 책임. `determine_source_and_dests` 가 Project edit / Global edit 모두 감지하여 양방향 sync. Project registry 의 `bidirectional_sync.json` 은 **double-fire 방지를 위해 deregister 됨** (`_disabled/` 보존). 따라서 양방향 동작은 단일 Global hook 에 의존 — 미래에 이 hook 의 Project-edit 분기를 제거하면 양방향 침묵 단절.
+> **v3.13 (2026-05-29) 단방향 수신 정책 — Plan B 양방향 폐기**: Global → Project sync 는 **Global registry 의 `bidirectional_sync.py` 단일 hook** 이 책임. `determine_source_and_dests` 의 Global edit 분기만 활성. Project edit 분기 (line 188-201) 는 비활성화 (코드 보존, 회복 가능). Project registry 의 `bidirectional_sync.json` 은 **double-fire 방지를 위해 deregister 됨** (`_disabled/` 보존). 회복 트리거: 향후 Project 직접 편집 시나리오 발생 시 hook 분기 주석 해제 + 본 박스 갱신. (옛 v3.10 "Plan B 양방향 sync 단일 hook" 정책은 v3.13 으로 대체됨 — 4 개월간 Project source 발생 0건 실측 근거)
 
 ### Resolution Priority (CC 호출 시 추정 순서)
 
@@ -246,7 +246,9 @@ GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirr
 
 ---
 
-## Plan B — 양방향 Sync 메커니즘 (v3.2 신규)
+## Plan B — 양방향 Sync 메커니즘 (v3.2 신규 — ⚠️ 폐기 v3.13 / 2026-05-29, historical 보존)
+
+> **⚠️ 폐기 안내 (v3.13, 2026-05-29)**: 본 섹션은 historical 보존 — "제거 ≠ 답" 패러다임 적용. 현재 정책은 한 줄 정책 (상단) + Sync 메커니즘 표 (line 83+) + 책임 매트릭스 (line 187+) 참조. 4 개월간 Project source 발생 0건 실측 근거로 양방향 폐기. 본 섹션의 양방향 흐름 다이어그램 / 패러다임 문장은 모두 v3.2 (2026-05-15) ~ v3.12 시점의 historical 정책.
 
 **핵심 원칙 (사용자 결정 2026-05-15)**: 단일 정본 SSOT 불가 시 → **양방향 sync 로 모든 변경 자동 전파**.
 
@@ -299,7 +301,9 @@ GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirr
 
 ---
 
-## Plan B v2.0 — 5 Mirror 통합 책임 (2026-05-15 QA 결과)
+## Plan B v2.0 — 5 Mirror 통합 책임 (2026-05-15 QA 결과 — ⚠️ 양방향 분기 폐기 v3.13 / historical 보존)
+
+> **⚠️ 부분 폐기 안내 (v3.13, 2026-05-29)**: 본 섹션의 "5 Mirror 통합 책임" 자체는 유효 — bidirectional_sync.py 가 5 mirror 통합 처리하는 hook 책임은 v3.13 에서도 보존. 단 **Project → Global 양방향 분기는 폐기** (line 188-201 비활성화, 코드 보존). 현재 hook 은 Global → 5 mirror 단방향 처리만 활성. "Project ↔ Global 양방향 작동" 문장은 v3.2 ~ v3.12 시점의 historical 기록.
 
 **배경**: Plan B v1.0 의 QA 시나리오 1-2 결과 — `bidirectional_sync.py` 는 Project ↔ Global 양방향 작동했으나, `machine_framework_watcher.py` 가 `Edit` 도구 발동 시 호출 안 됨 확인.
 
