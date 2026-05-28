@@ -23,15 +23,18 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 
 ## 한 줄 정책
 
-> **정본 1곳 (`~/.claude/`) → 자동 mirror 3곳. 편집은 정본에만.**
+> **정본 `~/.claude/` ↔ Project `C:\claude\.claude\` 양방향 sync (Plan B) + Plugin 3 mirror 단방향 수신. 실제 git 배포 repo = `C:\aiden-auto-repo` (총 6 물리 위치). 편집은 정본/Project 어디서나 — Plugin layer 만 read-only (framework_edit_guard 차단).**
+>
+> *(P4 정정 2026-05-28: 옛 "정본 1곳 → mirror 3곳, 편집 정본에만" 은 단방향 뉘앙스였으나 실제는 v3.2 Plan B 양방향. "정본"은 논리적 개념 — 물리적으로는 peer mirror 양방향 + Plugin 단방향 + 별도 배포 repo.)*
 
 ---
 
 ## 도서관 비유
 
-`~/.claude/`는 **본관 도서관**이다. 3곳의 mirror는 **분관**이다.
-분관은 본관 책을 복사해서 보관할 뿐, 분관에서 책을 고치면 본관과 어긋난다.
-수정은 항상 본관에서 → 분관은 자동 배달(sync)로 맞춰진다.
+`~/.claude/` 와 Project `C:\claude\.claude\` 는 **두 본관**이다 — 어느 본관에서 고쳐도
+다른 본관에 자동 양방향 배달(Plan B sync). Plugin 3 mirror 는 **분관** — 본관 책 복사
+수신 전용 (분관에서 고치면 framework_edit_guard 가 차단). 실제 출판 원본(git 배포)은
+별도 `C:\aiden-auto-repo` 다. 총 6 물리 위치.
 
 ---
 
@@ -389,6 +392,7 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-19 | v3.6 | Sync 메커니즘 표 v3.2 정합화 (단방향 → 양방향) + EXCLUDE_FILE_NAMES 명시 (settings.json / CLAUDE.md / .env) | Single Dispatcher Pattern critic Agent B S5/S9 자율 정정. layer 독립성 보호 + 정책 본문 vs 실제 코드 일치 |
 | 2026-05-19 | v3.7 | EXCLUDE 에 `_silent_wrap.cmd` 추가 + Deregistration vs Code Removal 구분 정책 신규 | critic Agent B R6 (wrapper lock 폭탄 자동 복귀) + Agent A C1 (Phase 4a "Removal" 위배 정당화) 자율 정정 |
 | 2026-05-28 | v3.8 | Mirror 1 정의 정정 ("git 추적" → "auto-sync 수신 전용 git-free") + GitHub repo 위상 정정 (실제 배포 repo = `C:\aiden-auto-repo`, Mirror 1 은 git ls-files=0) | critic NOT-A-GHOST 판정. 증분 sync 만으로 부분 mirror (1036 파일 누락) 발견 → reconcile-plugin-mirror.py 로 완전화 + bidirectional_sync global registry 등록 |
+| 2026-05-28 | v3.9 | P4 정정 — 한 줄 정책 + 도서관 비유 양방향 정합 (단방향 뉘앙스 → Plan B 양방향 + 6 물리 위치 + aiden-auto-repo 배포 명시) + R3 전면 — registry json 15개 command `C:/Users/AidenKim` → `$HOME` device-agnostic | /auto autonomous iteration — P1/P6 후속 잔여 정리 |
 
 ---
 
