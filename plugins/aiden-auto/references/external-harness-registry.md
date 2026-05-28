@@ -12,8 +12,8 @@ frameworks:
     owner: popup-studio-ai
     repo: bkit-claude-code
     check_method: "tags"
-    last_known_version: "v2.1.12"
-    last_checked: "2026-05-11"
+    last_known_version: "v2.1.20"
+    last_checked: "2026-05-29"
     interesting_paths:
       - "skills/"
       - "agents/"
@@ -26,7 +26,7 @@ frameworks:
     subdir: "skills/react-best-practices"
     check_method: "subdir-commits"
     last_known_version: "dc8367e6"
-    last_checked: "2026-05-13"
+    last_checked: "2026-05-29"
     interesting_paths:
       - "skills/react-best-practices/"
     rationale: "Vercel 공식 React/Next.js 성능 최적화 룰셋 (70 rules, 8 categories). React 컴포넌트/data fetching/bundle 최적화 코드 리뷰 및 자동 리팩토링 가이드."
@@ -35,8 +35,8 @@ frameworks:
     owner: yeachan-heo
     repo: oh-my-claudecode
     check_method: "tags"
-    last_known_version: "v4.13.7"
-    last_checked: "2026-05-13"
+    last_known_version: "v4.14.4"
+    last_checked: "2026-05-29"
     interesting_paths:
       - "agents/"
       - "skills/"
@@ -129,6 +129,9 @@ internal_advisors:
 | 2026-05-11 | (dry-run baseline) | 6 framework | — | 첫 watcher dry-run으로 4건 owner 보정 + 4건 baseline 신규 수립 (claude-code v2.1.138, vercel 61f1903b, atlassian 9b52fb18, frontend-design 00679aef). 2건은 일치 (bkit-claude-code v2.1.12, superpowers v5.1.0). 신규 update 0건. |
 | 2026-05-13 | (manual) | — | bypass | 사용자 직접 결정 (critic 우회): `atlassian` 제거, `vercel`→`react-best-practices` 교체 (vercel-labs/agent-skills subdir-commits, dc8367e6), `oh-my-claudecode` 신규 추가 (yeachan-heo, tags v4.13.7). |
 | 2026-05-26 | (manual) | 11 → 3 | bypass | 사용자 직접 결정 (G8 갭 정정): registry 11 entry 중 8 entry 제거 — claude-code / superpowers / frontend-design / claude-code-goal / advisor-tool-beta / statusline-combined / hybrid-statusline / model-usage-line / aiden-auto-telemetry. 사유: 추적 가치 부재. 유지 3개: bkit-claude-code, react-best-practices, oh-my-claudecode. daily harness_cycle_runner API 호출 비용 73% 즉시 절감. |
+| 2026-05-29 | bkit-claude-code | v2.1.12 → v2.1.20 (8 commits) | **REJECT** | 사용자 명시 "자가 진화 테스트" cycle. GitHub spot check 실측 정합 100%. critic 5+1 lens 평가 → Q1/Q3/Q6 FAIL — "Sprint Management / Trust Score / 21-key manifest 검증" 추가 = 진입점 ↑, Plan B 폐기 (어제) 와 동일 anti-pattern. applier 미발동. |
+| 2026-05-29 | oh-my-claudecode | v4.13.7 → v4.14.4 (minor bump) | **REJECT** | 같은 cycle. critic Q1 FAIL — `omc ultragoal` CLI 신규 명령어 = "워크플로우 자체도 진입점" Core Philosophy 위배. **영감 후보 1건** (skill-bodies registry shim 패턴) backlog 보존. applier 미발동. |
+| 2026-05-29 | react-best-practices | dc8367e6 (변화 없음) | — | NO_CHANGE 확인. 다음 daily 추적 지속. |
 
 ## Internal Advisors (자가개선 사이클 내부 advisor)
 
