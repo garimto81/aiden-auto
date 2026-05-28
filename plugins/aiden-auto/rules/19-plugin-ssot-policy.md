@@ -23,18 +23,20 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 
 ## 한 줄 정책
 
-> **정본 `~/.claude/` ↔ Project `C:\claude\.claude\` 양방향 sync (Plan B) + Plugin 3 mirror 단방향 수신. 실제 git 배포 repo = `C:\aiden-auto-repo` (총 6 물리 위치). 편집은 정본/Project 어디서나 — Plugin layer 만 read-only (framework_edit_guard 차단).**
+> **정본 `~/.claude/` 단일 SSOT → Project `C:\claude\.claude\` 단방향 mirror + Plugin 3 mirror 단방향 수신. 실제 git 배포 repo = `C:\aiden-auto-repo`. 편집은 정본에만 — Project / Plugin layer 모두 자동 수신.**
 >
-> *(P4 정정 2026-05-28: 옛 "정본 1곳 → mirror 3곳, 편집 정본에만" 은 단방향 뉘앙스였으나 실제는 v3.2 Plan B 양방향. "정본"은 논리적 개념 — 물리적으로는 peer mirror 양방향 + Plugin 단방향 + 별도 배포 repo.)*
+> *(v3.13 정정 2026-05-29: Plan B 양방향 폐기. 실측 근거 — 4 개월간 Project source 0건. v3.2 (2026-05-15) Plan B 도입 시 "Project 동시 편집 가정" 이 history 로 미발생 확인 → over-engineering 판정. bidirectional_sync.py:188-201 Project edit 분기 비활성화 (코드 보존, 회복 가능). 회복 조건: 향후 Project 직접 편집 시나리오 발생.)*
 
 ---
 
 ## 도서관 비유
 
-`~/.claude/` 와 Project `C:\claude\.claude\` 는 **두 본관**이다 — 어느 본관에서 고쳐도
-다른 본관에 자동 양방향 배달(Plan B sync). Plugin 3 mirror 는 **분관** — 본관 책 복사
-수신 전용 (분관에서 고치면 framework_edit_guard 가 차단). 실제 출판 원본(git 배포)은
-별도 `C:\aiden-auto-repo` 다. 총 6 물리 위치.
+`~/.claude/` 가 **유일한 본관**이다 (v3.13 정정 2026-05-29). Project `C:\claude\.claude\`
+와 Plugin 3 mirror 는 **분관** — 본관 책 복사 수신 전용. 책 고치기는 본관에서만.
+실제 출판 원본(git 배포)은 별도 `C:\aiden-auto-repo`. 총 6 물리 위치.
+
+옛 비유 (v3.2~v3.12): "두 본관 양방향 배달" 은 Plan B 양방향 도입 시 가정이었으나
+4 개월간 발생 0건 (사용자 + Claude 모두 본관에서만 작업) → 가정 폐기.
 
 ---
 
@@ -398,6 +400,7 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-28 | v3.10 | cache 버전 drift 정정 — 본문 cache 경로 `28.3.0` → `<latest>` (5곳, 동적 탐색 표기) + 책임 매트릭스에 "Plan B 양방향 단일 hook 정책" 명문화 (Project↔Global = Global bidirectional_sync 단독 책임) | critic 종합 검증 — rule19 버전 drift MED + C2/C4 LOW 자율 정정 |
 | 2026-05-29 | v3.11 | **Multi-SSOT 결함 해소** — 실측 결과 Project-only hooks "4개" → 실제 33개 (8배 drift) 발견. 5 iteration autonomous: 21개 registry-body 분리 + 5개 P2b doublefire + 11개 scripts 모두 Global 이전, notify_voice 까지 정리 → **Project-only active = 0** 달성. 책임 매트릭스 line 191 정정 (project-only hooks 분류 폐기, Global = 정본 SSOT 명시). Global registry hook 38개 phantom = 0 검증 | /goal autonomous iteration — critic verdict 7결함 H4 (multi-SSOT) 자율 해소. (A) Universal-only 실측 적용 (Plan B 양방향 자체 변경은 다음 cycle) |
 | 2026-05-29 | v3.12 | **Iter 6 critic 후속** — N3 line 191 자기 모순 정정 (단일 정의 "Global mirror layer", project audit skills 도 Global mirror 로 통일) + N5 _disabled hardcoded path → $HOME + N4 _disabled 23개 `owner: project → archived` + N2 notify_voice.py SHA256 양쪽 일치 검증(`2122d5f5...`) + H4-residual tmp 정리. **rule 21 4 case 적용**: Case 1 (설계) PASS (line 191 자기 모순 해소) / Case 2 (구현) PASS (Project-only active=0, hardcoded=0) / Case 3 (QA) PASS (SHA 일치, phantom=0) / Case 4 (리뷰) PASS (본 entry inline 인용) | /goal autonomous Iter 6 — critic 7 잔여 결함 자율 흡수, framework-critic T2 승격 후보(H1) + H7 self-reliability 는 사용자 결정 영역 분리 |
+| 2026-05-29 | v3.13 | **Plan B 양방향 폐기 — Global 단일 정본 + Project 단방향 mirror**. 도입 (v3.2 2026-05-15) 의 전제 "Project 동시 편집 시나리오" 가 4 개월간 history 검증 결과 **발생 0건** (bidirectional-sync.log Project source 0건 / git log .claude/ 14 commit 모두 framework 정합 작업 / 본 세션 10 turn Edit tool 100% Global) → over-engineering 판정. `bidirectional_sync.py:188-201` Project edit 분기 비활성화 (주석 처리 — 코드 보존, 향후 Project 직접 편집 시나리오 발생 시 주석 해제로 회복). 한 줄 정책 + 도서관 비유 정정. 책임 매트릭스 line 191 = "Project = 단방향 수신 mirror" 단일 정의 | 사용자 가르침 #2 (2026-05-29) — "정책 도입 시 가정한 시나리오가 실제 발생했는지 history 검증 의무" 적용. feedback_verify_policy_premise.md 신규 보존 |
 
 ---
 

@@ -185,20 +185,27 @@ def determine_source_and_dests(p: Path) -> tuple[Path | None, list[Path], Path |
     except ValueError:
         pass
 
-    # Project edit?
-    try:
-        rel = p_resolved.relative_to(PROJECT_CLAUDE.resolve())
-        if rel.parts and rel.parts[0] in SYNC_DIRS and not is_self_edit(rel.parts):
-            # EXCLUDE 패턴 검사 (Part 9 E1 적용)
-            excluded, reason = is_excluded_path(rel)
-            if excluded:
-                return None, [], None
-            dests = [USER_CLAUDE, PLUGIN_SOURCE]
-            dests.extend(get_active_cache_versions())
-            dests.append(MARKETPLACES)
-            return PROJECT_CLAUDE, dests, rel
-    except ValueError:
-        pass
+    # [DEPRECATED 2026-05-29] Project edit 분기 — Plan B 양방향 폐기
+    # 사유: 4 개월간 history 검증 결과 Project 단독 의도 편집 발생 0건
+    #       (bidirectional-sync.log 1253 라인 Project source = 0,
+    #        git log .claude/ 14 commit 모두 framework 정합 작업,
+    #        이번 세션 10 turn Edit tool 100% Global).
+    # 정책: rule 19 v3.13 — Global 단일 정본 + Project 단방향 mirror.
+    # 회복: 4 개월 후 Project 직접 편집 시나리오 발생 시 본 블록 주석 해제로 즉시 복원.
+    # 참조: feedback_verify_policy_premise.md (정책 검증 의무 — 발생 0건 → over-engineering)
+    #
+    # try:
+    #     rel = p_resolved.relative_to(PROJECT_CLAUDE.resolve())
+    #     if rel.parts and rel.parts[0] in SYNC_DIRS and not is_self_edit(rel.parts):
+    #         excluded, reason = is_excluded_path(rel)
+    #         if excluded:
+    #             return None, [], None
+    #         dests = [USER_CLAUDE, PLUGIN_SOURCE]
+    #         dests.extend(get_active_cache_versions())
+    #         dests.append(MARKETPLACES)
+    #         return PROJECT_CLAUDE, dests, rel
+    # except ValueError:
+    #     pass
 
     return None, [], None
 
