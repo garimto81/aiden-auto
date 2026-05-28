@@ -12,7 +12,7 @@ v1.0은 `~/.claude/plugins/marketplaces/…/plugins/aiden-auto/` 가 CC(Claude C
 모두 엉뚱한 위치를 추적해왔다.
 
 2026-05-14 진단 결과:
-- **실제 CC 로드 위치**: `~/.claude/plugins/cache/garimto81-aiden-auto/aiden-auto/28.3.0/`
+- **실제 CC 로드 위치**: `~/.claude/plugins/cache/garimto81-aiden-auto/aiden-auto/<latest>/` (`get_active_cache_versions()` 가 mtime 최신 버전 동적 탐색)
 - **marketplaces/** 폴더: marketplace 메타데이터 저장소일 뿐 (`.git` + `marketplace.json`)
 - **정본**: `~/.claude/` (CC가 직접 읽는 agents, skills, hooks, rules, commands, references)
 - `framework_edit_guard.py`가 이미 "plugin은 read-only auto-mirror, 정본은 `~/.claude/`"를 강제하고 있음
@@ -59,7 +59,7 @@ v2.0은 이 실제 구조를 정책에 반영한다.
   aiden-auto\ garimto81-      garimto81-aiden-auto/
               aiden-auto/     plugins/aiden-auto/
               aiden-auto/
-              28.3.0/
+              <latest>/
               (CC 실제 로드)   (메타데이터만)
 ```
 
@@ -71,7 +71,7 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 |------|------|:---------:|------|
 | `~/.claude/` | 정본 | **YES** | 모든 변경의 시작점 |
 | `C:\claude\plugins\aiden-auto\` | Mirror 1 — auto-sync 수신 전용 (git-free) | READ-ONLY | **git 추적 안 됨** (ls-files=0, 자체 .git 없음). 실제 git 배포 repo 는 `C:\aiden-auto-repo` (origin=garimto81/aiden-auto.git) — framework_github_sync.py 가 사용 |
-| `~/.claude/plugins/cache/…/28.3.0/` | Mirror 2 — CC 로드 | READ-ONLY | auto-sync 수신 전용 |
+| `~/.claude/plugins/cache/…/<latest>/` | Mirror 2 — CC 로드 | READ-ONLY | auto-sync 수신 전용 (`get_active_cache_versions()` 동적 탐색) |
 | `~/.claude/plugins/marketplaces/…/` | Mirror 3 — 메타 | READ-ONLY | marketplace.json만 관리 |
 
 `framework_edit_guard.py`가 Mirror 1/2/3에 대한 직접 Edit/Write를 자동 차단한다.
@@ -136,7 +136,7 @@ v2.0은 이 실제 구조를 정책에 반영한다.
   machine_framework_watcher.py 자동 발동
          │
          ├──► Mirror 1 (C:\claude\plugins\aiden-auto\)
-         ├──► Mirror 2 (~/.claude/plugins/cache/…/28.3.0/)
+         ├──► Mirror 2 (~/.claude/plugins/cache/…/<latest>/)
          └──► Mirror 3 (~/.claude/plugins/marketplaces/…/)
 
   [Mirror 직접 편집 시도]
@@ -191,6 +191,8 @@ GitHub 배포원 = `C:\aiden-auto-repo` (신규 PC 자기복제의 원천). Mirr
 | **Project** (`C:\claude\.claude\`) | 이 프로젝트만의 rules, settings.json, project-only hooks (4개), project audit skills | commands, agents (Global이 정본) |
 | **Global** (`~\.claude\`) ⭐ 정본 SSOT | commands, agents, skills, hooks, rules, references | 프로젝트별 override (Project로 위임) |
 | **Plugin** (`C:\claude\plugins\aiden-auto\`) | 외부 framework — 자체 완결 패키지 | 사용자 customization (Global로 위임) |
+
+> **Plan B 양방향 sync 단일 hook 정책 (2026-05-28 명문화)**: Project↔Global 양방향은 **Global registry 의 `bidirectional_sync.py` 단일 hook** 이 책임. `determine_source_and_dests` 가 Project edit / Global edit 모두 감지하여 양방향 sync. Project registry 의 `bidirectional_sync.json` 은 **double-fire 방지를 위해 deregister 됨** (`_disabled/` 보존). 따라서 양방향 동작은 단일 Global hook 에 의존 — 미래에 이 hook 의 Project-edit 분기를 제거하면 양방향 침묵 단절.
 
 ### Resolution Priority (CC 호출 시 추정 순서)
 
@@ -368,7 +370,7 @@ spec-verify: 100.0 / 100 PASS
 |------|------|
 | 정본 SSOT | `~/.claude/` |
 | Mirror 1 (git 추적) | `C:\claude\plugins\aiden-auto\` |
-| Mirror 2 (CC 로드) | `~/.claude/plugins/cache/garimto81-aiden-auto/aiden-auto/28.3.0/` |
+| Mirror 2 (CC 로드) | `~/.claude/plugins/cache/garimto81-aiden-auto/aiden-auto/<latest>/` (현재 28.7.0, 동적) |
 | Mirror 3 (메타데이터) | `~/.claude/plugins/marketplaces/garimto81-aiden-auto/plugins/aiden-auto/` |
 | 편집 차단 | `machine_framework_watcher.py` — `framework_edit_guard.py` |
 | Audit skill | `C:\claude\.claude\skills\plugin-ssot-audit\` |
@@ -393,6 +395,7 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-19 | v3.7 | EXCLUDE 에 `_silent_wrap.cmd` 추가 + Deregistration vs Code Removal 구분 정책 신규 | critic Agent B R6 (wrapper lock 폭탄 자동 복귀) + Agent A C1 (Phase 4a "Removal" 위배 정당화) 자율 정정 |
 | 2026-05-28 | v3.8 | Mirror 1 정의 정정 ("git 추적" → "auto-sync 수신 전용 git-free") + GitHub repo 위상 정정 (실제 배포 repo = `C:\aiden-auto-repo`, Mirror 1 은 git ls-files=0) | critic NOT-A-GHOST 판정. 증분 sync 만으로 부분 mirror (1036 파일 누락) 발견 → reconcile-plugin-mirror.py 로 완전화 + bidirectional_sync global registry 등록 |
 | 2026-05-28 | v3.9 | P4 정정 — 한 줄 정책 + 도서관 비유 양방향 정합 (단방향 뉘앙스 → Plan B 양방향 + 6 물리 위치 + aiden-auto-repo 배포 명시) + R3 전면 — registry json 15개 command `C:/Users/AidenKim` → `$HOME` device-agnostic | /auto autonomous iteration — P1/P6 후속 잔여 정리 |
+| 2026-05-28 | v3.10 | cache 버전 drift 정정 — 본문 cache 경로 `28.3.0` → `<latest>` (5곳, 동적 탐색 표기) + 책임 매트릭스에 "Plan B 양방향 단일 hook 정책" 명문화 (Project↔Global = Global bidirectional_sync 단독 책임) | critic 종합 검증 — rule19 버전 drift MED + C2/C4 LOW 자율 정정 |
 
 ---
 

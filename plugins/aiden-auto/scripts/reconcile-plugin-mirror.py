@@ -56,7 +56,10 @@ from bidirectional_sync import (  # type: ignore[import-not-found]
     is_excluded_path,
     sync_one,
     get_active_cache_versions,
+    EXCLUDE_DIR_NAMES,
 )
+
+import os
 
 USER_CLAUDE = Path.home() / ".claude"
 
@@ -94,19 +97,26 @@ def collect_dests() -> list[tuple[str, Path]]:
 
 
 def iter_source_files():
-    """정본 SYNC_DIRS 의 EXCLUDE 미적용 파일을 (src_path, rel) 로 yield."""
+    """정본 SYNC_DIRS 의 EXCLUDE 미적용 파일을 (src_path, rel) 로 yield.
+
+    C5 정정 (2026-05-28): rglob 대신 os.walk(topdown=True) + dirnames 가지치기.
+    node_modules / __pycache__ 등 EXCLUDE_DIR_NAMES 디렉토리는 **진입 전 차단**
+    → 수만 파일 stat 비용 회피 (timeout 60s 안전 마진 확보).
+    """
     for d in sorted(SYNC_DIRS):
         src_dir = USER_CLAUDE / d
         if not src_dir.is_dir():
             continue
-        for sp in src_dir.rglob("*"):
-            if not sp.is_file():
-                continue
-            rel = sp.relative_to(USER_CLAUDE)
-            excluded, _ = is_excluded_path(rel)
-            if excluded:
-                continue
-            yield sp, rel
+        for dirpath, dirnames, filenames in os.walk(src_dir, topdown=True):
+            # 디렉토리 레벨 가지치기 — node_modules / __pycache__ 등 진입 차단
+            dirnames[:] = [dn for dn in dirnames if dn not in EXCLUDE_DIR_NAMES]
+            for fn in filenames:
+                sp = Path(dirpath) / fn
+                rel = sp.relative_to(USER_CLAUDE)
+                excluded, _ = is_excluded_path(rel)
+                if excluded:
+                    continue
+                yield sp, rel
 
 
 def main() -> int:
@@ -141,22 +151,26 @@ def main() -> int:
             else:
                 totals[label]["skipped"] += 1
 
-    # Project-only 항목 탐지 (Global 부재 — 자동 sync 안 함, 보고만)
+    # Project-only 항목 탐지 (Global 부재 — 자동 sync 안 함, 보고만).
+    # ⚠ 현재 dead code: Project 가 collect_dests() dest 제외(2026-05-28, double-fire 방지)
+    #    이후 project_root 항상 None → 본 블록 미진입. 미래 재활성화 대비 보존.
+    # C5 정정 (2026-05-28): rglob → os.walk topdown 가지치기 (node_modules 등 진입 차단).
     project_root = next((root for lbl, root in dests if lbl == "project"), None)
     if project_root is not None:
         for d in sorted(SYNC_DIRS):
             pdir = project_root / d
             if not pdir.is_dir():
                 continue
-            for pp in pdir.rglob("*"):
-                if not pp.is_file():
-                    continue
-                rel = pp.relative_to(project_root)
-                excluded, _ = is_excluded_path(rel)
-                if excluded:
-                    continue
-                if not (USER_CLAUDE / rel).exists():
-                    project_only += 1
+            for dirpath, dirnames, filenames in os.walk(pdir, topdown=True):
+                dirnames[:] = [dn for dn in dirnames if dn not in EXCLUDE_DIR_NAMES]
+                for fn in filenames:
+                    pp = Path(dirpath) / fn
+                    rel = pp.relative_to(project_root)
+                    excluded, _ = is_excluded_path(rel)
+                    if excluded:
+                        continue
+                    if not (USER_CLAUDE / rel).exists():
+                        project_only += 1
 
     # 출력
     if dry_run:
