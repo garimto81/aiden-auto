@@ -80,21 +80,22 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 
 ---
 
-## Sync 메커니즘 (v3.6 정합 — Plan B v2.0 반영)
+## Sync 메커니즘 (v3.13 정합 — Plan B 양방향 폐기 반영)
 
 | 도구 | 발동 시점 | 방향 | 책임 |
 |------|----------|------|------|
-| `bidirectional_sync.py` v2.0 | PostToolUse Edit/Write (Plan B 단독) | Global ↔ Project (**양방향**) + Global → Plugin (단방향) | 5 mirror 단독 처리 (v3.3 도입) |
+| `bidirectional_sync.py` v3 | PostToolUse Edit/Write (Plan B 양방향 분기 폐기 v3.13) | Global → Project + Plugin (**단방향**) | 5 mirror 단독 처리 (v3.3 도입, v3.13 양방향 폐기) |
 | `machine_framework_watcher.py` | PostToolUse Edit/Write/MultiEdit | Global → Mirror 1/2/3 (백업 layer) | "제거 ≠ 답" 정책으로 보존 |
 | `framework_edit_guard.py` | PreToolUse Edit/Write | — | Mirror 직접 편집 차단 |
 | `plugin-ssot-audit` skill | 명시 호출 또는 audit-loop cycle 1 | 보고만 | drift 감지 + JSON 보고 |
 
-**sync 방향 (v3.6 정의)**:
-- **Project ↔ Global**: **양방향** (Plan B v2.0 — `bidirectional_sync.py`)
+**sync 방향 (v3.13 정의 — 단방향 폐기 후)**:
+- **Global → Project**: **단방향** (Global 정본 → Project 자동 mirror 수신)
+- **Project → Global**: **폐기 (v3.13)** — `bidirectional_sync.py:188-201` Project edit 분기 비활성화 (코드 보존, 회복 가능). 4 개월간 발생 0건 실측 근거
 - **Global → Plugin (source / cache / marketplaces)**: 단방향
 - **Plugin → Global / Project**: 없음 (Plugin layer 는 read-only)
 
-> 옛 v2.0 본문의 "단방향 sync — 정본 → Mirror" 정의는 **v3.2 (Plan B 도입, 2026-05-15)** 으로 변경됨. v3.6 (2026-05-19) 이 본 표를 실제 코드 (`bidirectional_sync.py` 의 `determine_source_and_dests`) 와 정합화.
+> v3.2 (2026-05-15) Plan B 양방향 도입 → v3.13 (2026-05-29) **양방향 폐기**. 가정 "Project 동시 편집 시나리오" 가 4 개월 history 검증 결과 발생 0건 → over-engineering. 회복 조건: 향후 Project 직접 편집 시나리오 발생 시 hook line 188-201 주석 해제로 즉시 복원.
 
 ### EXCLUDE 정책 (Layer 독립성 보호 — v3.7 갱신)
 
