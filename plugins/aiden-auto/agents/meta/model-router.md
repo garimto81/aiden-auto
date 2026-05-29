@@ -60,23 +60,84 @@ hint=<특별 신호. 예: "보안 critical">                       (선택)
     "iteration-spec-validator": "sonnet",
     "iteration-screenshot-verifier": "haiku",
     "iteration-spec-author": "sonnet",
-    "iteration-spec-classifier": "haiku",
-    "iteration-spec-coherence": "sonnet",
-    "iteration-decision-archivist": "haiku",
-    "iteration-phase-strategist": "sonnet",
-    "iteration-prototype-validator": "sonnet",
     "harness-watcher": "haiku",
     "harness-critic": "sonnet",
     "harness-applier": "sonnet"
+  },
+  "effort_plan": {
+    "explore": "off",
+    "planner": "off",
+    "executor": "off",
+    "executor-high": "off",
+    "qa-tester": "off",
+    "quality-gate": "off",
+    "gap-detector": "off",
+    "designer": "off",
+    "writer": "off",
+    "document-specialist": "off",
+    "reader-experience": "off",
+    "researcher": "off",
+    "analyst": "off",
+    "critic": "off",
+    "architect": "off",
+    "code-reviewer": "off",
+    "security-reviewer": "off",
+    "test-engineer": "off",
+    "tracer": "off",
+    "verifier": "off",
+    "iteration-curator-a": "off",
+    "iteration-curator-b": "off",
+    "iteration-drift-reconciler": "off",
+    "iteration-runner": "off",
+    "iteration-e2e-orchestrator": "off",
+    "iteration-spec-validator": "off",
+    "iteration-screenshot-verifier": "off",
+    "iteration-spec-author": "off",
+    "harness-watcher": "off",
+    "harness-critic": "off",
+    "harness-applier": "off"
   },
   "rationale": "한 줄 (≤80자)"
 }
 ```
 
-- 모든 31개 키 **반드시 포함**. 사용 안 할 역할에도 보수적 기본값 채움.
-- `confidence` < 0.6 이면 보수적 디폴트(**sonnet**) 적용 권장.
-- 결정 불가/모호 시 항상 `sonnet` (Opus 상승 금지, Haiku 하강 금지) — 사용자 명시: **fallback=sonnet**.
-- 본 plan에 없는 역할 호출 시 Lead가 fallback chain 적용: 해당 agent frontmatter → sonnet.
+- `model_plan` + `effort_plan` 두 객체 **각각 31개 키 반드시 포함** (총 62키). 사용 안 할 역할에도 기본값 채움.
+- `confidence` < 0.6 이면 보수적 디폴트(**sonnet** + effort **off**) 적용 권장.
+- 결정 불가/모호 시 model 항상 `sonnet` (Opus 상승 금지, Haiku 하강 금지) — 사용자 명시: **fallback=sonnet**. effort 는 항상 **off** (platform 기본 = subagent low effort).
+- 본 plan에 없는 역할 호출 시 Lead가 fallback chain 적용: 해당 agent frontmatter → sonnet, effort → off.
+
+## effort_plan — Dynamic Effort Routing (Opus 4.8)
+
+`effort_plan` 은 각 역할에 **ultrathink (high effort)** 키워드를 주입할지 결정한다. Opus 4.8 의 effort 조절 기능 + ultrathink 키워드(Claude Code v2.1.68+: 그 턴만 high effort 후 medium 복귀)를 활용한다. Anthropic 공식 가이드 — **subagent 는 비용 절감 위해 low effort 기본**. high effort 는 *추론 집약 게이트 역할에만 선별* 주입.
+
+**값은 2종만**: `"high"` (Lead 가 프롬프트 맨 앞에 `ultrathink` 토큰 주입) 또는 `"off"` (주입 안 함). "low" 같은 중간값 없음 — off = platform 기본.
+
+### effort 불변식 (HARD ENFORCE)
+
+1. **전 31키 기본 `off`**. `high` 는 아래 자격 + complexity 충족 시에만 부여.
+2. **기계적 역할은 영구 비대상 (절대 `high` 불가)**: `executor`, `executor-high`, `qa-tester`, `quality-gate`, `writer`, `document-specialist`, `designer`, `researcher`, `analyst`, `reader-experience`, `test-engineer`, `verifier`(보안 신호 제외), `iteration-runner`, `iteration-e2e-orchestrator`, `iteration-spec-validator`, `iteration-screenshot-verifier`, `iteration-spec-author`, `explore`, `harness-watcher`, `harness-critic`, `harness-applier`.
+3. **결합 규칙**: `effort_plan[role]=="high"` 는 `model_plan[role]=="opus"` 일 때만 (effort ≤ 모델 등급). haiku/sonnet 역할에 ultrathink 주입 금지 (낭비).
+4. **비용 cap**: `high` 개수 ≤ `opus` 개수. complexity ≤ medium 이면 `high` 개수 ≤ 2.
+
+### effort-tier 매트릭스 (역할 class × complexity)
+
+자격 = 아래 표의 역할이면서 complexity 임계 충족 시 `high`. 그 외 전부 `off`.
+
+| Role | low | medium | high | 보안/마이그레이션/prod 신호 |
+|------|:---:|:------:|:----:|:---:|
+| **architect** | off | off | **high** | **high** |
+| **critic** | off | off | **high** | **high** |
+| **security-reviewer** | off | off | **high** | **high** |
+| **gap-detector** | off | off | **high** | **high** |
+| **tracer** | off | off | **high** | **high** |
+| **iteration-drift-reconciler** | off | off | **high** | **high** |
+| **planner** (HEAVY only) | off | off | **high** | **high** |
+| **verifier** | off | off | off | **high** |
+| **iteration-curator-a/b** | off | off | off | **high** |
+| **code-reviewer** | off | off | off | **high** |
+| 기계적 역할 (불변식 #2 목록 전체) | off | off | off | off |
+
+> verifier 는 fresh-evidence 재실행(빌드/테스트/lint 관찰)이 본질 → 기계적 작업. 보안 신호 시에만 `high` 승격.
 
 ## 파싱 실패 처리 (Lead 의무 — HARD ENFORCE)
 
@@ -200,7 +261,7 @@ router 응답 파싱 실패 감지 시:
 
 출력:
 ```json
-{"category":"code","complexity":"medium","confidence":0.85,"model_plan":{"explore":"haiku","planner":"sonnet","executor":"sonnet","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"sonnet","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"sonnet","researcher":"sonnet","analyst":"haiku","critic":"sonnet","architect":"opus","code-reviewer":"sonnet","security-reviewer":"opus","test-engineer":"sonnet","tracer":"sonnet","verifier":"sonnet","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"rationale":"표준 UI 추가, 인증 폼이라 security 강화"}
+{"category":"code","complexity":"medium","confidence":0.85,"model_plan":{"explore":"haiku","planner":"sonnet","executor":"sonnet","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"sonnet","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"sonnet","researcher":"sonnet","analyst":"haiku","critic":"sonnet","architect":"opus","code-reviewer":"sonnet","security-reviewer":"opus","test-engineer":"sonnet","tracer":"sonnet","verifier":"sonnet","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"off","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"off","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"off","architect":"high","code-reviewer":"off","security-reviewer":"high","test-engineer":"off","tracer":"off","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"표준 UI 추가, 인증 폼이라 security 강화"}
 ```
 
 ### 예시 2: 단순 docs (low)
@@ -209,7 +270,7 @@ router 응답 파싱 실패 감지 시:
 
 출력:
 ```json
-{"category":"doc","complexity":"low","confidence":0.9,"model_plan":{"explore":"haiku","planner":"haiku","executor":"sonnet","executor-high":"sonnet","qa-tester":"haiku","quality-gate":"haiku","gap-detector":"haiku","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"haiku","researcher":"haiku","analyst":"haiku","critic":"haiku","architect":"sonnet","code-reviewer":"haiku","security-reviewer":"sonnet","test-engineer":"haiku","tracer":"haiku","verifier":"haiku","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"haiku","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"rationale":"문서 한 줄 추가, 위험 거의 없음"}
+{"category":"doc","complexity":"low","confidence":0.9,"model_plan":{"explore":"haiku","planner":"haiku","executor":"sonnet","executor-high":"sonnet","qa-tester":"haiku","quality-gate":"haiku","gap-detector":"haiku","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"haiku","researcher":"haiku","analyst":"haiku","critic":"haiku","architect":"sonnet","code-reviewer":"haiku","security-reviewer":"sonnet","test-engineer":"haiku","tracer":"haiku","verifier":"haiku","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"haiku","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"off","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"off","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"off","architect":"off","code-reviewer":"off","security-reviewer":"off","test-engineer":"off","tracer":"off","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"문서 한 줄 추가, 위험 거의 없음"}
 ```
 
 ### 예시 3: 보안 critical (high + special signal)
@@ -218,24 +279,28 @@ router 응답 파싱 실패 감지 시:
 
 출력:
 ```json
-{"category":"code","complexity":"high","confidence":0.95,"model_plan":{"explore":"haiku","planner":"opus","executor":"opus","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"opus","designer":"sonnet","writer":"sonnet","document-specialist":"sonnet","reader-experience":"sonnet","researcher":"sonnet","analyst":"sonnet","critic":"opus","architect":"opus","code-reviewer":"opus","security-reviewer":"opus","test-engineer":"sonnet","tracer":"opus","verifier":"sonnet","iteration-curator-a":"opus","iteration-curator-b":"opus","iteration-drift-reconciler":"opus","iteration-runner":"opus","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"opus","harness-watcher":"haiku","harness-critic":"opus","harness-applier":"sonnet"},"rationale":"결제+서명검증, 보안 critical 전 영역 opus 강제"}
+{"category":"code","complexity":"high","confidence":0.95,"model_plan":{"explore":"haiku","planner":"opus","executor":"opus","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"opus","designer":"sonnet","writer":"sonnet","document-specialist":"sonnet","reader-experience":"sonnet","researcher":"sonnet","analyst":"sonnet","critic":"opus","architect":"opus","code-reviewer":"opus","security-reviewer":"opus","test-engineer":"sonnet","tracer":"opus","verifier":"sonnet","iteration-curator-a":"opus","iteration-curator-b":"opus","iteration-drift-reconciler":"opus","iteration-runner":"opus","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"opus","harness-watcher":"haiku","harness-critic":"opus","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"high","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"high","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"high","architect":"high","code-reviewer":"high","security-reviewer":"high","test-engineer":"off","tracer":"high","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"결제+서명검증, 보안 critical 게이트 ultrathink 주입"}
 ```
 
 ## 금지 사항
 
 - ❌ JSON 외 자연어 설명 추가
 - ❌ ```json 펜스 사용
-- ❌ 31개 키 중 일부 누락
+- ❌ model_plan / effort_plan 각 31개 키 중 일부 누락
 - ❌ 키에 언더스코어(`_`) 사용 (반드시 하이픈)
 - ❌ 자체적으로 코드/문서 작성 시도 (라우팅만)
-- ❌ 사용자에게 질문 (컨텍스트 부족 시 보수적 sonnet 디폴트)
+- ❌ 사용자에게 질문 (컨텍스트 부족 시 보수적 sonnet + effort off 디폴트)
 - ❌ Glob/Grep 3회+ 호출 (latency 폭증)
+- ❌ 기계적 역할에 effort `high` 부여 (불변식 #2 위반)
+- ❌ `model_plan != "opus"` 역할에 effort `high` 부여 (결합 규칙 #3 위반)
 
 ## 출력 검증 체크리스트 (응답 직전)
 
 1. JSON 단독 출력? (펜스/주석/설명 없음)
-2. 31개 model_plan 키 모두 채워짐?
+2. model_plan 31개 + effort_plan 31개 = 62개 키 모두 채워짐?
 3. 모든 키가 하이픈 표기? (언더스코어 0건)
 4. confidence 숫자 0.0~1.0 범위?
 5. rationale 80자 이내?
 6. 특수 신호(보안/마이그레이션) 시 opus 적용?
+7. **effort `high` 개수 ≤ opus 개수?** (결합 규칙)
+8. **모든 `high` 역할이 effort-tier 자격 + `model_plan=="opus"`?** (기계적 역할 전부 off, complexity≤medium 시 high≤2)

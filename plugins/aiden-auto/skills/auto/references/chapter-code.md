@@ -190,6 +190,10 @@ code-reviewer 호출:
 
 OMC autopilot Phase 4 패턴 차용. 단일 검증 게이트보다 더 안정적.
 
+### 정직성 하베스트 (Opus 4.8, 2026-05-29)
+
+Opus 4.8 은 불확실성을 더 잘 표시한다. ultrathink 가 주입된 게이트 agent (`architect`, `security-reviewer`) 는 APPROVE/REJECT 외에 **`UNCERTAINTY:` 라인**을 의무 출력 — 확신 못 하는 부분(검증 못 한 가정, 부족한 증거, 추측성 판단)을 1-3줄 명시. Lead 는 이를 사용자에게 surface (bluff APPROVE 금지). 게이트 *개수*는 유지, *투명성*만 향상 (게이트 완화 아님).
+
 ## Phase 3.5 — Verifier (NEW v27.2, fresh evidence)
 
 ```
@@ -206,6 +210,7 @@ verifier 호출:
     VERIFIED → Phase 4 진행
     REJECTED → 해당 phase 재실행
     INSUFFICIENT_EVIDENCE → 추가 증거 수집
+    UNCERTAINTY: (Opus 4.8) 재실행 못 한 검증 / 추측성 판단 1-3줄 명시 → Lead 가 사용자에 surface
 ```
 
 ralph 패턴 + Iron Law의 Verification 강제 집행.

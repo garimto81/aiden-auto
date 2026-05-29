@@ -612,6 +612,7 @@ Loop (max 5 iterations):
                A7 OOP 설계 위반: 제어 결합도(3+), God Module(응집도 6-7), 순환 의존성, DIP 위반, 공통 결합도
                모든 벡터에서 공격하세요. 약점마다 문제-위치-영향을 명시하세요.
                이해할 수 없거나 도메인 지식이 부족한 부분은 QUESTION으로 표시하세요.
+               (Opus 4.8 정직성) 확신 못 하는 공격 판단 / 추측성 결함은 UNCERTAINTY: 라인에 1-3줄 명시 — bluff 금지.
                반드시 첫 줄에 VERDICT: DESTROYED, VERDICT: QUESTION, 또는 VERDICT: SURVIVED를 출력하세요.
                SURVIVED는 Critical 0건 + Major 0건일 때만. 첫 iteration에서 SURVIVED는 거의 불가능합니다.")
   SendMessage(type="message", recipient="critic-{iteration_count}", content="Plan 공격 시작.")
