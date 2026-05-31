@@ -187,7 +187,8 @@ def check_phase_minus_1_5_schema_version() -> dict:
 
     return {
         "check": "phase_minus_1_5_schema_version",
-        "phase_value": phase_version,
+        "spec_value": phase_version,   # print 줄(spec_value 조회) 정합 — 표시 정상화
+        "phase_value": phase_version,  # 하위호환 유지
         "code_value": code_version,
         "match": phase_version == code_version and phase_version is not None,
     }
