@@ -27,6 +27,26 @@ def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
+def resolve_canonical(p: Path) -> Path:
+    """이사 간 파일 자동 추적 — 파일이 stub(frontmatter canonical:/superseded_by:)이면
+    정본 경로로 따라간다. 파일 이동/stub화 후 audit pointer 가 stale 되는 결함 방지.
+    정본이 부재하거나 stub 가 아니면 원래 경로 반환 (멱등·안전)."""
+    text = _read(p)
+    if not text:
+        return p
+    m = re.search(r'^(?:canonical|superseded_by):\s*(.+)$', text, re.MULTILINE)
+    if not m:
+        return p
+    target = m.group(1).strip().strip('"\'')
+    # device-agnostic 정규화: ~/.claude/ · $HOME/.claude/ 접두 제거 → HOME 기준 상대
+    for pre in ("~/.claude/", "$HOME/.claude/", str(HOME).replace("\\", "/") + "/"):
+        if target.replace("\\", "/").startswith(pre):
+            target = target.replace("\\", "/")[len(pre):]
+            break
+    cand = HOME / target
+    return cand if cand.exists() else p
+
+
 def check_schema_version_drift() -> dict:
     """spec 의 'Output Schema (v{X})' vs 코드 SCHEMA_VERSION 일치 확인."""
     spec_path = HOME / "agents" / "core" / "intake-interviewer.md"
@@ -170,8 +190,8 @@ def check_legacy_map_entries() -> dict:
 
 def check_phase_minus_1_5_schema_version() -> dict:
     """W1 신규: phase-minus-1.5-deep-interview.md 의 schema_version 라벨 ↔ SCHEMA_VERSION."""
-    # 정본 경로 (2026-05-29 stub화 후 top-level references/ 는 stub — 정본은 skills/auto/references/)
-    phase_path = HOME / "skills" / "auto" / "references" / "phase-minus-1.5-deep-interview.md"
+    # 이사 간 파일 자동 추적: top-level 은 stub → resolve_canonical 이 정본(skills/auto/references/)을 따라감.
+    phase_path = resolve_canonical(HOME / "references" / "phase-minus-1.5-deep-interview.md")
     code_path = HOME / "lib" / "goal" / "goal_writer.py"
 
     phase_text = _read(phase_path)

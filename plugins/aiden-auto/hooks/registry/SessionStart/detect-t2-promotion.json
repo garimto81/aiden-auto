@@ -1,0 +1,9 @@
+{
+  "name": "detect-t2-promotion",
+  "command": "python \"$HOME/.claude/scripts/detect-t2-promotion.py\"",
+  "timeout": 20,
+  "blocking": false,
+  "priority": 17,
+  "owner": "global",
+  "comment": "#3 개선 — 반복 문제 자동 승격 후보 탐지. 같은 파일 30일 내 T1 정정 3회+ = 구조 불안정 → T2 검토 후보를 state/t2-promotion-candidates.json 에 기록. 자동 승격 아님(후보 flag, 검토로 거름). rule 21 Tier Progression 자동화."
+}

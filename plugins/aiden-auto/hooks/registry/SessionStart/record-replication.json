@@ -1,0 +1,9 @@
+{
+  "name": "record-replication",
+  "command": "python \"$HOME/.claude/scripts/record-replication.py\"",
+  "timeout": 30,
+  "blocking": false,
+  "priority": 16,
+  "owner": "global",
+  "comment": "#2 개선 — 복제율 자동 측정. 정본 ~/.claude/ vs 배포 패키지(aiden-auto-repo/plugins/aiden-auto) universal 자산 일치율을 state/replication-rate.json 에 기록. dev PC(repo 존재)만 측정, 그 외 graceful skip (universal-safe)."
+}

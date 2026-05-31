@@ -339,7 +339,8 @@ def _maybe_bootstrap() -> None:
         pass  # 부트스트랩 실패해도 dispatcher 본진행 막지 않음 (graceful)
 
 
-def run_hook(event: str, spec: Dict[str, Any], stdin_data: str) -> int:
+def run_hook(event: str, spec: Dict[str, Any], stdin_data: str, collect: bool = False):
+    # collect=True: stdout 을 직접 쓰지 않고 (code, stdout) 반환 — Stop 이벤트 JSON 병합용 (#5).
     start = datetime.now()
     name = spec["name"]
     cmd = os.path.expandvars(os.path.expanduser(spec["command"]))
@@ -374,14 +375,17 @@ def run_hook(event: str, spec: Dict[str, Any], stdin_data: str) -> int:
                 stdout, stderr = "", ""
             duration_ms = int((datetime.now() - start).total_seconds() * 1000)
             log_event(event, name, owner, -1, duration_ms, stderr or "", f"timeout {timeout}s")
-            return SUCCESS
+            return (SUCCESS, "") if collect else SUCCESS
 
         duration_ms = int((datetime.now() - start).total_seconds() * 1000)
         log_event(event, name, owner, proc.returncode, duration_ms, stderr or "", "")
+        code = proc.returncode if blocking else SUCCESS
+        if collect:
+            return (code, stdout or "")
         if stdout:
             sys.stdout.write(stdout)
             sys.stdout.flush()
-        return proc.returncode if blocking else SUCCESS
+        return code
     except Exception as e:
         duration_ms = int((datetime.now() - start).total_seconds() * 1000)
         if proc is not None:
@@ -390,7 +394,7 @@ def run_hook(event: str, spec: Dict[str, Any], stdin_data: str) -> int:
             except Exception:
                 pass
         log_event(event, name, owner, -1, duration_ms, "", f"exception: {e}")
-        return SUCCESS
+        return (SUCCESS, "") if collect else SUCCESS
 
 
 # === Registry generator (one-shot, from existing settings.json) ===
@@ -622,6 +626,29 @@ def run_self_test():
 
 
 # === Main ===
+STOP_EVENTS = {"Stop", "SubagentStop"}
+
+
+def merge_stop_decisions(decisions: list):
+    """#5: 여러 Stop hook 의 JSON decision 을 하나로 병합. block 우선.
+    (jargon_guard 의 {"decision":"block"} 가 다른 hook JSON 과 raw concat 되어
+     깨지던 결함 방지 — best-effort → 신뢰 가능 신호로.)"""
+    dicts = [d for d in decisions if isinstance(d, dict)]
+    if not dicts:
+        return None
+    blocks = [d for d in dicts if d.get("decision") == "block"]
+    if blocks:
+        reasons = " | ".join(
+            str(d.get("reason", "")).strip()
+            for d in blocks if str(d.get("reason", "")).strip()
+        )
+        return {"decision": "block", "reason": reasons or "blocked by Stop hook"}
+    for d in dicts:
+        if "decision" in d or "continue" in d:
+            return d
+    return dicts[0]
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(SUCCESS)
@@ -670,6 +697,32 @@ def main():
     # 외부배포 MED-1 (2026-05-31): blocking hook 이 정당하게 BLOCK(2) 을 반환해도, 다른 hook 이
     # 2 보다 큰 코드(예: powershell ENOENT 127)를 내면 옛 max_exit 로직이 BLOCK 을 SUCCESS 로 강등.
     # → "BLOCK 을 낸 hook 이 하나라도 있으면 BLOCK" 으로 변경 (비-2 에러코드가 차단 신호 못 가림).
+    # #5: Stop/SubagentStop 은 여러 hook 의 JSON decision 을 모아 병합(block 우선)해
+    # 하나만 출력 — raw concat 으로 JSON 이 깨져 block 신호가 유실되던 결함 방지.
+    if event in STOP_EVENTS:
+        block_seen = False
+        decisions = []
+        raw_nonjson = []
+        for spec in hooks:
+            code, out = run_hook(event, spec, stdin_data, collect=True)
+            if code == BLOCK:
+                block_seen = True
+            out = (out or "").strip()
+            if not out:
+                continue
+            try:
+                decisions.append(json.loads(out))
+            except Exception:
+                raw_nonjson.append(out)
+        merged = merge_stop_decisions(decisions)
+        if merged is not None:
+            sys.stdout.write(json.dumps(merged, ensure_ascii=False))
+            sys.stdout.flush()
+        elif raw_nonjson:
+            sys.stdout.write("\n".join(raw_nonjson))
+            sys.stdout.flush()
+        sys.exit(BLOCK if block_seen else SUCCESS)
+
     block_seen = False
     for spec in hooks:
         code = run_hook(event, spec, stdin_data)

@@ -83,6 +83,17 @@ internal_advisors:
     rationale: "Section 2 Deep Interview"
 ```
 
+## 감시 주기 결정 (2026-06-01 검증 — #4 개선 제안)
+
+> **결론: 현행 daily 유지** (premise 검증 결과 주간 전환 불필요).
+>
+> 실측: 채택 이력 0건(critic-decisions 0, APPROVE 0, applier PR 0). 그러나 "매일 비용 worth 줄이기" premise 가 **이미 성립 안 함** —
+> ① 비싼 GitHub-API 표면은 2026-05-26 11→3 정리로 **73% 절감 완료**,
+> ② 매 세션 도는 `harness_cycle_runner` 는 local state 읽고 graceful-skip 하는 **값싼 no-op**(GitHub 미접근),
+> ③ 채택 0 ≠ 가치 0 (진입점 증가 변경을 거르는 **필터** 역할 — 2건 모두 정당 REJECT),
+> ④ 주간 전환 시 절감 미미 + 좋은 update 를 최대 6일 지연.
+> → verify-policy-premise 적용: "최적화(주간)" 종결점 강제 안 함. 향후 추적 framework 증가 또는 update 빈도 상승 시 재검토.
+
 ## 자가개선 사이클
 
 ```
