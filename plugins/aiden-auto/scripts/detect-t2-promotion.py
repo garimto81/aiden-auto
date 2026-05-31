@@ -19,6 +19,15 @@ from pathlib import Path
 
 HOME = Path.home() / ".claude"
 LEDGER = HOME / "audit" / "improvement-ledger.json"
+
+import sys
+sys.path.insert(0, str(HOME / "hooks"))
+try:
+    from path_resolution import is_dev_pc
+except Exception:
+    def is_dev_pc():  # fallback: ledger 부재 graceful-skip 이 안전망
+        return True
+
 WINDOW_DAYS = 30
 MIN_RECUR = 3
 
@@ -44,6 +53,9 @@ def _parse_files(s) -> list:
 
 
 def main() -> int:
+    # 명시 게이트: 반복 패턴 탐지(자가개선)는 정본(dev) PC 만. 배포 PC = 소비만.
+    if not is_dev_pc():
+        return 0
     if not LEDGER.is_file():
         return 0
     try:

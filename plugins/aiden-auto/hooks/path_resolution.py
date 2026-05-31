@@ -123,6 +123,27 @@ def resolve_aiden_auto_repo() -> Optional[Path]:
     return None
 
 
+def is_dev_pc() -> bool:
+    """이 PC 가 정본(dev) PC 인가? (자가개선 *생성* 역할)
+
+    역할 분리 (universal-deployment-checklist.md):
+      - dev PC  : 매일 자가개선 workflow 실행 → 개선 결과를 GitHub 로 배포
+      - 배포 PC : 개선 결과만 소비 (자가개선 *생성* hook 미발동)
+
+    판별 (명시 우선 → 사실 신호 default):
+      1. env AIDEN_AUTO_ROLE == 'dev'                 → True
+         env in ('deployment','deploy','consumer')    → False
+      2. (env 없음) 배포 원본 repo(aiden-auto-repo) 존재 = dev PC
+    device-agnostic (env / Path.home 기반, hardcoded 0).
+    """
+    role = os.getenv("AIDEN_AUTO_ROLE", "").strip().lower()
+    if role == "dev":
+        return True
+    if role in ("deployment", "deploy", "consumer"):
+        return False
+    return resolve_aiden_auto_repo() is not None
+
+
 def resolve_cache_root() -> Optional[Path]:
     """CC plugin cache 의 최신 version 디렉토리.
 

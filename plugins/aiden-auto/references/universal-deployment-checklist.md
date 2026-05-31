@@ -20,6 +20,37 @@
 
 ---
 
+## 정본 PC vs 배포 PC 역할 분리 (2026-06-01 — 명시 게이트)
+
+> **정책**: 자가개선을 **생성**하는 것은 정본(dev) PC 뿐. 배포 PC 는 개선 **결과만 소비**한다.
+
+```
+   정본(dev) PC                         배포 PC
+   ─────────────                        ──────────
+   매일 자가개선 workflow 실행           자가개선 *생성* 미발동
+   → 개선 결과를 GitHub 로 배포    ──→   bootstrap/sync 로 결과 수신·사용
+```
+
+### 판별: `is_dev_pc()` (`hooks/path_resolution.py`)
+1. env `AIDEN_AUTO_ROLE` 우선 — `dev` → True / `deployment`·`consumer` → False (명시 제어)
+2. env 없으면 **배포 원본 repo(aiden-auto-repo) 존재 = 정본 PC** (기존 사실 신호의 공식화)
+
+### 게이트 적용 대상 (자가개선 *생성* hook — 배포 PC 에서 즉시 skip)
+| hook | 역할 |
+|------|------|
+| `harness_cycle_runner.py` | 외부 harness 추적 → critic |
+| `record-replication.py` | 복제율 측정 |
+| `detect-t2-promotion.py` | 반복 패턴(T2) 탐지 |
+| `framework_github_sync.py` | 개선 결과 GitHub 배포 |
+
+### 게이트 **예외** (배포 PC 에도 필요 — 차단 금지)
+- `bootstrap.py` — 배포 PC 가 자산을 **받는** 핵심 (반드시 발동)
+- `reconcile-plugin-mirror.py` / `bidirectional_sync.py` / `machine_framework_watcher.py` — 미러 유지(수신측 cache 동기)
+
+> 옛 상태(2026-06-01 이전): 배포 PC 차단이 "재료 없으면 멈추는" 암묵적 graceful-skip 부산물이었음 → 단일 스위치 `is_dev_pc()` + 본 문서로 **명시화**. 새 자가개선 hook 추가 시 `is_dev_pc()` 게이트 적용 의무.
+
+---
+
 ## 6 기준 평가 표
 
 | # | 기준 | 통과 검증 방법 | 자동화 가능? |

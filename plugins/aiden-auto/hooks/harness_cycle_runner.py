@@ -29,9 +29,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 try:
-    from path_resolution import resolve_global_claude  # type: ignore[import-not-found]
+    from path_resolution import resolve_global_claude, is_dev_pc  # type: ignore[import-not-found]
 except ImportError:
     def resolve_global_claude(): return Path.home() / ".claude"
+    def is_dev_pc(): return True  # fallback: 기존 graceful-skip 이 안전망
 
 GLOBAL_CLAUDE = resolve_global_claude()
 STATE_DIR = GLOBAL_CLAUDE / "state"
@@ -143,6 +144,10 @@ def create_critic_flag(framework_name: str, diff_summary: str) -> None:
 
 
 def main():
+    # 명시 게이트: 자가개선 *생성* 은 정본(dev) PC 만. 배포 PC = 소비만.
+    if not is_dev_pc():
+        log("배포 PC (소비만) — harness 자가개선 cycle 미발동 (명시 게이트)")
+        return 0
     ymd = today()
     updates = load_recent_updates()
 

@@ -32,6 +32,7 @@ try:
     from path_resolution import (  # type: ignore[import-not-found]
         resolve_plugin_source,
         resolve_aiden_auto_repo,
+        is_dev_pc,
     )
 except ImportError:
     # 외부배포 HIGH-1 (2026-05-31): 하드코딩 제거 — cwd 상대 후보 + None (device-agnostic).
@@ -41,6 +42,8 @@ except ImportError:
     def resolve_aiden_auto_repo():
         p = Path.cwd().parent / "aiden-auto-repo"
         return p if p.is_dir() and (p / ".git").is_dir() else None
+    def is_dev_pc():  # fallback: repo-None 게이트가 안전망
+        return resolve_aiden_auto_repo() is not None
 
 # Lazy resolution wrappers (None 가능 — 신규/비-maintainer PC)
 # 외부배포 HIGH-1: 하드코딩 폴백 제거. maintainer 전용 deploy hook — repo None 시 graceful skip.
@@ -266,6 +269,11 @@ def main() -> int:
     # pull 로 관리하므로, github_sync 가 push 하면 같은 remote 에 이중 push/충돌. 옛 "not a git repo"
     # 가정은 오판. 배포는 aiden-auto-repo 단일 경로 → (CC pull) → marketplaces 로 자연 도달.
     # (sync 축 deregister 와 정합 — bidirectional/watcher/reconcile 3 도구 + 본 4번째 writer 모두 marketplaces 제외)
+    # 명시 게이트: GitHub 배포(자가개선 결과 push)는 정본(dev) PC 만. 배포 PC = 소비만.
+    # (사실상 아래 repo-None skip 과 동일 신호이나, sync_global_to_repo 호출 전 명시 차단으로 의도 명확화.)
+    if not is_dev_pc():
+        log("배포 PC (소비만) — framework GitHub sync 미발동 (명시 게이트)")
+        return 0
     # 먼저 글로벌 정본 → repo 내부 mirror 동기화 (rsync 패턴)
     sync_global_to_repo()
 

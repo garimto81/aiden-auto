@@ -21,13 +21,16 @@ HOME = Path.home() / ".claude"
 sys.path.insert(0, str(HOME / "hooks"))
 
 try:
-    from path_resolution import resolve_aiden_auto_repo, resolve_global_claude
+    from path_resolution import resolve_aiden_auto_repo, resolve_global_claude, is_dev_pc
 except Exception:
     # path_resolution 부재/오류 — 안전 skip
     raise SystemExit(0)
 
 
 def main() -> int:
+    # 명시 게이트: 복제율 측정(자가개선)은 정본(dev) PC 만. 배포 PC = 소비만.
+    if not is_dev_pc():
+        return 0
     repo = resolve_aiden_auto_repo()
     target = (repo / "plugins" / "aiden-auto") if repo else None
     if not target or not target.is_dir():
