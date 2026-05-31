@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Paths
-PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "C:/claude")
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()  # 외부배포 HIGH-1: 하드코딩 제거
 RECEIPTS = Path(PROJECT_DIR) / ".claude" / "state" / "absorption-receipts.jsonl"
 LAST_RUN = Path(PROJECT_DIR) / ".claude" / "state" / "daily-loop-last-run.json"
 

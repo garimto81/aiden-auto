@@ -357,7 +357,24 @@ def _esc(s):
 
 
 def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
-    """Resolve a markdown-relative path to Confluence ac:link if mapped, else <code>.
+    """Resolve a markdown-relative path to a clickable Confluence link.
+
+    Resolution order (S11 Cycle 11 — Confluence_Sync_Spec.md v2.0):
+        1. confluence-url present → <a href="{url}"> anchor.
+           URL is page-id-based (e.g. .../pages/3625189547) so it remains
+           valid even when the Confluence page title differs from the file
+           stem (real-world fact: Foundation.md ↔ "EBS 기초 기획서").
+        2. confluence-page-id only (no URL) → ac:link with ri:content-title=stem.
+           Best-effort; the stem must match the live Confluence title or the
+           link will dead-end. confluence-url is the safer field.
+        3. Neither → <code> rendering (no phantom link).
+
+    Why URL-first (changed in Cycle 11):
+        Cycle 10 used ri:content-title=stem assuming "page name = file stem".
+        Live drift_check proved 7/7 Product PRDs violate that invariant — all
+        Confluence pages use descriptive titles ("EBS · Command Center PRD —
+        운영자가 매 순간 머무는 조종석"). URL-based anchors bypass this
+        entirely because the URL embeds the page-id, which is immutable.
 
     path_str: 'Foundation.md (§Ch.4 ...)' or '../Lobby/Overview.md' or 'BS-05-00'
     Strips parenthetical descriptions and anchors before lookup.
@@ -365,15 +382,19 @@ def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
     if not repo_map or not current_dir or not repo_root:
         return f"<code>{_esc(path_str)}</code>"
 
-    # Extract the path portion (before space/parenthesis)
-    raw = str(path_str).strip()
-    path_token = re.split(r"[\s(]", raw, maxsplit=1)[0].rstrip(",;")
-    if "#" in path_token:
-        path_token = path_token.split("#", 1)[0]
-
-    if not path_token.endswith(".md") and "/" not in path_token:
-        # Not a path — return as-is
-        return f"<code>{_esc(path_str)}</code>"
+    # Extract the path portion. Real EBS docs paths contain spaces
+    # (e.g. "2. Development/2.4 Command Center/Overview.md"), so a naive
+    # split-on-whitespace truncates the path. Instead, match everything up to
+    # and including the first '.md', then anything after is description.
+    raw = str(path_str).strip().rstrip(",;")
+    md_match = re.match(r'^(.+?\.md)(?:#\S*)?(?:\s.*)?$', raw)
+    if not md_match:
+        if "/" not in raw:
+            # Not a path — return as-is
+            return f"<code>{_esc(path_str)}</code>"
+        path_token = raw
+    else:
+        path_token = md_match.group(1)
 
     try:
         target = (Path(current_dir) / path_token).resolve()
@@ -384,14 +405,19 @@ def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
         entry = repo_map.get(rel) or repo_map.get(Path(path_token).name)
         if not entry:
             return f"<code>{_esc(path_str)}</code>"
-        page_id, title = entry
-        safe_title = title.replace('"', "'")
-        return (
-            f'<ac:link>'
-            f'<ri:page ri:content-title="{safe_title}"/>'
-            f'<ac:plain-text-link-body><![CDATA[{path_str}]]></ac:plain-text-link-body>'
-            f'</ac:link>'
-        )
+        page_id, title, url = entry
+        # Cycle 11: URL-first (page-id-based, title-mismatch tolerant).
+        if url:
+            return f'<a href="{_esc(url)}">{_esc(path_str)}</a>'
+        if page_id:
+            safe_title = title.replace('"', "'")
+            return (
+                f'<ac:link>'
+                f'<ri:page ri:content-title="{safe_title}"/>'
+                f'<ac:plain-text-link-body><![CDATA[{path_str}]]></ac:plain-text-link-body>'
+                f'</ac:link>'
+            )
+        return f"<code>{_esc(path_str)}</code>"
     except Exception:
         return f"<code>{_esc(path_str)}</code>"
 
@@ -465,7 +491,13 @@ def build_causality_panel(fm, repo_map=None, current_dir=None, repo_root=None):
 
 
 def build_repo_path_to_pageid_map(repo_root):
-    """Walk docs/ for confluence-page-id frontmatter → {relative_path: (page_id, title)}."""
+    """Walk docs/ → {relative_path: (page_id, title, url)}.
+
+    title is always the filename stem (matches the Confluence page-name
+    invariant established by S11 Cycle 10). url is the confluence-url
+    frontmatter value when present; either page_id or url must be truthy
+    for the entry to be emitted — pages with neither are unmapped.
+    """
     out = {}
     docs_root = Path(repo_root) / "docs"
     if not docs_root.exists():
@@ -481,23 +513,39 @@ def build_repo_path_to_pageid_map(repo_root):
         if end == -1:
             continue
         fm_text = text[4:end]
+
         page_m = re.search(r'^confluence-page-id:\s*(\S+)\s*$', fm_text, re.M)
-        if not page_m:
-            continue
-        page_id = page_m.group(1).strip()
+        page_id = page_m.group(1).strip() if page_m else ""
         if page_id in ("null", "None", ""):
+            page_id = ""
+
+        url_m = re.search(r'^confluence-url:\s*(\S+)\s*$', fm_text, re.M)
+        url = url_m.group(1).strip() if url_m else ""
+        if url in ("null", "None", ""):
+            url = ""
+
+        if not page_id and not url:
             continue
-        title_m = re.search(r'^title:\s*"?([^"\n]+)"?\s*$', fm_text, re.M)
-        title = title_m.group(1).strip() if title_m else path.stem
+
+        # Title = filename stem (NEVER the frontmatter `title:`). Confluence
+        # pages are named after the .md file; using the verbose `title:` value
+        # generates dead ac:link targets when the two diverge.
+        title = path.stem
         relpath = str(path.relative_to(repo_root)).replace("\\", "/")
-        out[relpath] = (page_id, title)
-        # Also map basename for fuzzy match
-        out[path.name] = (page_id, title)
+        entry = (page_id, title, url)
+        out[relpath] = entry
+        # Basename fuzzy match (e.g. "Foundation.md" referenced from a sibling)
+        out[path.name] = entry
     return out
 
 
 def transform_cross_links(html, repo_map, current_dir, repo_root):
-    """Convert <a href="../Foundation.md">...</a> to Confluence <ac:link> when target is mapped."""
+    """Convert <a href="../Foundation.md">...</a> to Confluence <ac:link> when target is mapped.
+
+    Mirrors `_linkify_path` resolution order (Cycle 11 v2.0): URL-first because
+    page-id-based URLs survive Confluence title changes; ri:content-title
+    fallback only when no URL is available.
+    """
     if not repo_map:
         return html
 
@@ -517,15 +565,20 @@ def transform_cross_links(html, repo_map, current_dir, repo_root):
             entry = repo_map.get(rel) or repo_map.get(Path(path_part).name)
             if not entry:
                 return match.group(0)
-            page_id, title = entry
-            safe_title = title.replace('"', "'")
+            page_id, title, url = entry
             safe_text = re.sub(r'<[^>]+>', '', text).strip() or title
-            return (
-                f'<ac:link>'
-                f'<ri:page ri:content-title="{safe_title}"/>'
-                f'<ac:plain-text-link-body><![CDATA[{safe_text}]]></ac:plain-text-link-body>'
-                f'</ac:link>'
-            )
+            # Cycle 11: URL-first (page-id-based, title-mismatch tolerant).
+            if url:
+                return f'<a href="{_esc(url)}">{_esc(safe_text)}</a>'
+            if page_id:
+                safe_title = title.replace('"', "'")
+                return (
+                    f'<ac:link>'
+                    f'<ri:page ri:content-title="{safe_title}"/>'
+                    f'<ac:plain-text-link-body><![CDATA[{safe_text}]]></ac:plain-text-link-body>'
+                    f'</ac:link>'
+                )
+            return match.group(0)
         except Exception:
             return match.group(0)
 

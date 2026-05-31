@@ -215,7 +215,7 @@ reader-experience REJECT 트리거:
 |------|------|
 | 4.0 | 파일 저장 위치 확정 (docs/00-prd/, docs/01-plan/) |
 | 4.1 | git commit: `docs(prd): {feature} 요구사항 반영` |
-| 4.2 | **Confluence sync (NEW v28.5 + trigger logic 강화 v28.5.2)**. Trigger: Phase -1.5 Part C 답변 결과로 `active-goal.json.confluence_sync.enabled == true` 자동 설정. 본 Phase 4.2 진입 시 자동 호출 (사용자 확인 Q 없음). `python C:/claude/lib/confluence/md2confluence.py <md_file> <page_id>` 자동 호출. Executive Summary 가 별도 파일이면 child 페이지로 sync. 상세: `references/confluence-sync-flow.md` |
+| 4.2 | **Confluence sync (NEW v28.5 + trigger logic 강화 v28.5.2)**. Trigger: Phase -1.5 Part C 답변 결과로 `active-goal.json.confluence_sync.enabled == true` 자동 설정. 본 Phase 4.2 진입 시 자동 호출 (사용자 확인 Q 없음). `python $HOME/.claude/lib/confluence/md2confluence.py <md_file> <page_id>` 자동 호출 (device-agnostic, 정본=global Cycle11). Executive Summary 가 별도 파일이면 child 페이지로 sync. 상세: `references/confluence-sync-flow.md` |
 | 4.3 | 사용자 보고: 경로 + 줄수 + 다이어그램 N개 + (sync 시) Confluence URL |
 
 ## Phase Cleanup — NEW v27.2

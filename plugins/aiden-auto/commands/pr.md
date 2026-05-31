@@ -166,7 +166,17 @@ gh pr merge #42 --squash --delete-branch
     │
     ├─ Step 4: 사용자 확인 (--auto-approve 없을 시)
     │      │
-    │      └─ "머지를 진행할까요? (Y/N)"
+    │      └─ AskUserQuestion 호출 (머지 승인 — 비가역)
+    │           question: "이 PR을 main 브랜치에 squash merge로
+    │                      합칩니다. 한 번 합치면 되돌리기 어렵습니다.
+    │                      진행할까요?"
+    │           header: "머지 승인"
+    │           multiSelect: false
+    │           options:
+    │             - 예, 머지 진행: "지금 main에 합칩니다.
+    │                 합치면 브랜치가 삭제되고 되돌리기 어렵습니다."
+    │             - 아니오, 보류: "지금은 합치지 않고 멈춥니다.
+    │                 나중에 다시 /pr merge로 진행할 수 있습니다."
     │
     └─ Step 5: 머지 실행
            │
@@ -288,7 +298,11 @@ $ /pr auto
    - 충돌: ✅ 없음
    - 브랜치: ✅ 최신
 
-머지를 진행할까요? (Y/N): Y
+[AskUserQuestion] 머지 승인
+  question: "이 PR을 main 브랜치에 squash merge로 합칩니다.
+             한 번 합치면 되돌리기 어렵습니다. 진행할까요?"
+  options: [예, 머지 진행 (되돌리기 어려움)] / [아니오, 보류]
+  → 사용자 선택: 예, 머지 진행
 
 🎉 PR #42 머지 완료!
    → main 브랜치에 squash merge

@@ -24,8 +24,11 @@ DAILY_PATTERNS = [
     "daily_report_",
 ]
 
-SECRETARY_DIR = Path(r"C:\claude\secretary")  # backward compat
-COOLDOWN_FILE = Path(r"C:\claude\.claude\logs\daily_sample_last.txt")  # backward compat
+# 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 제거 — CLAUDE_PROJECT_DIR env > cwd 상대.
+# maintainer 전용 infra(secretary) — 신규 PC 는 미존재 → 호출부에서 graceful skip.
+_PROJECT_DIR = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
+SECRETARY_DIR = _PROJECT_DIR / "secretary"
+COOLDOWN_FILE = Path.home() / ".claude" / "logs" / "daily_sample_last.txt"
 
 
 def is_daily_file(file_path: str) -> bool:

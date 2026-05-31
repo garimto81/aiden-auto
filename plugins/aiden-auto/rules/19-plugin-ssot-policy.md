@@ -27,6 +27,25 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 >
 > *(v3.13 정정 2026-05-29: Plan B 양방향 폐기. 실측 근거 — 4 개월간 Project source 0건. v3.2 (2026-05-15) Plan B 도입 시 "Project 동시 편집 가정" 이 history 로 미발생 확인 → over-engineering 판정. bidirectional_sync.py:188-201 Project edit 분기 비활성화 (코드 보존, 회복 가능). 회복 조건: 향후 Project 직접 편집 시나리오 발생.)*
 
+> **⚠️ v3.14 진실 정정 (2026-05-29 — 3축 동기화 critic mode, architect opus+ultrathink)**: 본 문서의 3개 주장이 실측과 불일치하여 정정.
+> 1. **"marketplaces = 메타데이터만"** → **거짓**. 실측 — marketplaces 트리는 `settings.json` 의 등록된 plugin `path` (`.../marketplaces/garimto81-aiden-auto`) 이고 1166 파일 전체 사본이며 `bidirectional_sync.py:189` 가 PostToolUse 시 dest 로 동기화한다. autoUpdate / cache 재생성 시 stale 트리가 live 화될 잠복 위험. → reconcile dest 에 포함 (v3.14, `reconcile-plugin-mirror.py`). 단 reconcile 경로는 `MARKETPLACES` 상수(`.../plugins/aiden-auto` 포함) 사용 — `resolve_marketplaces_dir()` 는 suffix 누락이라 142-bug 원인.
+> 2. **"drift 0 / 100/100 PASS"** → **시점 이벤트지 불변식 아님**. 증분 sync 의 정상 상태(steady-state)는 drift 누적이며 주기적 reconcile 필요. 실측(2026-05-29 정정 전) — marketplaces 424 + cache:28.2.0 208 + PluginSrc 2 drift 가 `skip_newer` (mtime footgun) 로 고착돼 있었음. → `sync_one(force=True)` 로 plugin mirror(read-only) 는 Global-SHA 무조건 승 정정 → 전 plugin mirror drift 0 회복.
+> 3. **"Project 가 Global 전부 받음"** → **부분 mirror**. 실측 Project 176 파일 누락 (hooks=74 skills=51 refs=43 rules=8). 단 **의도적** — Project 를 full mirror 하면 dispatcher 가 Global+Project registry 둘 다 스캔해 hook double-fire (P2b 재현). Global 규칙은 전역 적용 + Project 규칙은 additive 이므로 누락 무해. → reconcile dest 에서 Project 제외 유지 (정당).
+> **SYNC_DIRS = 9개** (agents/skills/hooks/rules/references/commands/**lib/hud/scripts**) — v4.0 universal-deployment 확장. 아래 4-Mirror 다이어그램도 9개로 정합 완료 (iter1). 두 sync hook(bidirectional_sync / machine_framework_watcher)은 SYNC_DIRS 를 단일 소스(import)로 공유 — 비대칭 영구 해소.
+
+> **⚠️ v3.15 동기화 축 단순화 (2026-05-30 — 사용자 결정 2단계)**: Step 0 소비자 검증 후 **Plugin-source + Marketplaces 2축 deregister**, **Project + Cache 유지**.
+>
+> **동기화 축 최종 등급 (질문 "정말 몇 축 필요?" 답)**:
+> | 등급 | 축 | 역할 / deregister 사유 |
+> |------|-----|------|
+> | **필수 ①** | Cache (`~/.claude/plugins/cache/.../<버전>/`) | CC 런타임 로드 경로 — 안 맞추면 편집 무효. 직접 sync 유지 |
+> | **필수 ②** | aiden-auto-repo → GitHub | 신규 PC 자기복제 배포 (Universal Deployment). github_sync 담당 |
+> | 유지 ③ | Project (`C:\claude\.claude`) | **CC 활성 추가 로드 경로** (project+global 둘 다 로드 — 공식 확인). framework 부분 미러 + 고유 콘텐츠(command 25, Global 0). sync 끊으면 낡은 사본이 Global 최신과 충돌 → **유지** (사용자 결정 2026-05-30) |
+> | ~~deregister ④~~ | ~~Marketplaces~~ | **CC 관리 git clone** (origin=github.com/garimto81/aiden-auto). `marketplace update` 시 CC 가 GitHub서 pull → 우리 sync 덮어씀(tug-of-war, 실측 509 재sync). 런타임은 cache 로드 → 직접 sync 불필요+충돌. 배포는 aiden-auto-repo→GitHub→(CC pull)→marketplaces 경로. READ 소비자 0. → **2026-05-30 sync 중단** |
+> | ~~deregister ⑤~~ | ~~Plugin-source~~ (`C:\claude\plugins\aiden-auto`) | CC 안 읽음(cache 로드) + git 아님(ls-files=0). 소비자 repoint(spec-verify→cache / inject_model_param→Global) 후 sync 중단. → **2026-05-30** |
+>
+> **실효 sync dest (Global edit 시): {Project, cache 버전들}** — plugin-source + marketplaces 제외. 두 deregister 모두 폴더·내용 **보존** (deregister≠delete, edit_guard 보호 유지). bidirectional_sync `determine_source_and_dests` + machine_framework_watcher + reconcile-plugin-mirror 세 곳에서 PLUGIN_SOURCE/MARKETPLACES dest 제거. (옛 v3.14 "marketplaces reconcile 포함" 정정은 CC-managed git clone 임을 모른 판단 — 본 v3.15 재정정.)
+
 ---
 
 ## 도서관 비유
@@ -45,9 +64,9 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 ```
   ┌─────────────────────────────────────────┐
   │  정본 (SSOT)                            │
-  │  ~/.claude/                             │
+  │  ~/.claude/   (SYNC_DIRS = 9)           │
   │  agents/ skills/ hooks/ rules/          │
-  │  commands/ references/                  │
+  │  commands/ references/ lib/ hud/ scripts/│
   └──────────────┬──────────────────────────┘
                  │
         자동 sync (machine_framework_watcher.py)
@@ -62,7 +81,8 @@ v2.0은 이 실제 구조를 정책에 반영한다.
               aiden-auto/     plugins/aiden-auto/
               aiden-auto/
               <latest>/
-              (CC 실제 로드)   (메타데이터만)
+              (CC 실제 로드)   (등록 plugin path,
+                               전체 사본 — v3.14)
 ```
 
 ---
@@ -72,28 +92,31 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 | 위치 | 역할 | 편집 가능? | 비고 |
 |------|------|:---------:|------|
 | `~/.claude/` | 정본 | **YES** | 모든 변경의 시작점 |
-| `C:\claude\plugins\aiden-auto\` | Mirror 1 — auto-sync 수신 전용 (git-free) | READ-ONLY | **git 추적 안 됨** (ls-files=0, 자체 .git 없음). 실제 git 배포 repo 는 `C:\aiden-auto-repo` (origin=garimto81/aiden-auto.git) — framework_github_sync.py 가 사용 |
-| `~/.claude/plugins/cache/…/<latest>/` | Mirror 2 — CC 로드 | READ-ONLY | auto-sync 수신 전용 (`get_active_cache_versions()` 동적 탐색) |
-| `~/.claude/plugins/marketplaces/…/` | Mirror 3 — 메타 | READ-ONLY | marketplace.json만 관리 |
+| `~/.claude/plugins/cache/…/<latest>/` | Mirror 2 — **CC 로드 (유일 활성 plugin mirror)** | READ-ONLY | auto-sync 수신 전용 (`get_active_cache_versions()` 동적 탐색). **v3.15 이후 유일하게 sync 받는 plugin mirror** |
+| `C:\claude\plugins\aiden-auto\` | ~~Mirror 1~~ — **deregistered (v3.15)** | READ-ONLY | CC 안 읽음 + git-free. 2026-05-30 sync 중단 (폴더 보존). 실제 git 배포 repo 는 `C:\aiden-auto-repo` |
+| `~/.claude/plugins/marketplaces/…/plugins/aiden-auto/` | ~~Mirror 3~~ — **deregistered (v3.15)** | READ-ONLY | **CC 관리 git clone** (origin=garimto81/aiden-auto.git). CC 가 `marketplace update` pull 로 관리 → 우리 sync 불필요+충돌. 2026-05-30 sync 중단 (폴더 보존) |
 
-`framework_edit_guard.py`가 Mirror 1/2/3에 대한 직접 Edit/Write를 자동 차단한다.
+`framework_edit_guard.py`가 Mirror 1/2/3 직접 Edit/Write 를 자동 차단 (deregister 후에도 보호 유지 — 폴더 보존이므로 수동 편집 방지).
 
 ---
 
 ## Sync 메커니즘 (v3.13 정합 — Plan B 양방향 폐기 반영)
 
-| 도구 | 발동 시점 | 방향 | 책임 |
+| 도구 | 발동 시점 | 방향 (v3.15) | 책임 |
 |------|----------|------|------|
-| `bidirectional_sync.py` v3 | PostToolUse Edit/Write (Plan B 양방향 분기 폐기 v3.13) | Global → Project + Plugin (**단방향**) | 5 mirror 단독 처리 (v3.3 도입, v3.13 양방향 폐기) |
-| `machine_framework_watcher.py` | PostToolUse Edit/Write/MultiEdit | Global → Mirror 1/2/3 (백업 layer) | "제거 ≠ 답" 정책으로 보존 |
+| `bidirectional_sync.py` | PostToolUse Edit/Write | Global → **Project + cache** (단방향) | v3.15: plugin-source + marketplaces dest 제거 |
+| `machine_framework_watcher.py` | PostToolUse Edit/Write/MultiEdit | Global → **cache** (백업 layer) | v3.15: 동일 정합 (cache 만) |
+| `reconcile-plugin-mirror.py` | SessionStart + 명시 | Global → **cache** (전체 reconcile) | v3.15: cache 만 (force) |
+| `framework_github_sync.py` | SessionEnd | Global → **aiden-auto-repo → GitHub** (배포) | v3.15: marketplaces push 제거 (단일 배포 경로) |
 | `framework_edit_guard.py` | PreToolUse Edit/Write | — | Mirror 직접 편집 차단 |
-| `plugin-ssot-audit` skill | 명시 호출 또는 audit-loop cycle 1 | 보고만 | drift 감지 + JSON 보고 |
 
-**sync 방향 (v3.13 정의 — 단방향 폐기 후)**:
-- **Global → Project**: **단방향** (Global 정본 → Project 자동 mirror 수신)
-- **Project → Global**: **폐기 (v3.13)** — `bidirectional_sync.py:188-201` Project edit 분기 비활성화 (코드 보존, 회복 가능). 4 개월간 발생 0건 실측 근거
-- **Global → Plugin (source / cache / marketplaces)**: 단방향
-- **Plugin → Global / Project**: 없음 (Plugin layer 는 read-only)
+**sync 방향 (v3.15 — 동기화 축 단순화 후)**:
+- **Global → Project**: 단방향 (CC 활성 추가 로드 경로라 유지)
+- **Global → cache**: 단방향 (CC 런타임 로드 — 필수 ①)
+- **Global → aiden-auto-repo → GitHub**: 배포 (필수 ②). 신규 PC + (CC pull) → marketplaces 자연 도달
+- **Project → Global**: 폐기 (v3.13, 4개월 0건)
+- **Global → plugin-source / marketplaces 직접 sync**: **폐기 (v3.15)** — plugin-source(미사용) + marketplaces(CC 관리 git clone) deregister
+- **Plugin → Global / Project**: 없음 (read-only)
 
 > v3.2 (2026-05-15) Plan B 양방향 도입 → v3.13 (2026-05-29) **양방향 폐기**. 가정 "Project 동시 편집 시나리오" 가 4 개월 history 검증 결과 발생 0건 → over-engineering. 회복 조건: 향후 Project 직접 편집 시나리오 발생 시 hook line 188-201 주석 해제로 즉시 복원.
 
@@ -406,6 +429,8 @@ spec-verify: 100.0 / 100 PASS
 | 2026-05-29 | v3.11 | **Multi-SSOT 결함 해소** — 실측 결과 Project-only hooks "4개" → 실제 33개 (8배 drift) 발견. 5 iteration autonomous: 21개 registry-body 분리 + 5개 P2b doublefire + 11개 scripts 모두 Global 이전, notify_voice 까지 정리 → **Project-only active = 0** 달성. 책임 매트릭스 line 191 정정 (project-only hooks 분류 폐기, Global = 정본 SSOT 명시). Global registry hook 38개 phantom = 0 검증 | /goal autonomous iteration — critic verdict 7결함 H4 (multi-SSOT) 자율 해소. (A) Universal-only 실측 적용 (Plan B 양방향 자체 변경은 다음 cycle) |
 | 2026-05-29 | v3.12 | **Iter 6 critic 후속** — N3 line 191 자기 모순 정정 (단일 정의 "Global mirror layer", project audit skills 도 Global mirror 로 통일) + N5 _disabled hardcoded path → $HOME + N4 _disabled 23개 `owner: project → archived` + N2 notify_voice.py SHA256 양쪽 일치 검증(`2122d5f5...`) + H4-residual tmp 정리. **rule 21 4 case 적용**: Case 1 (설계) PASS (line 191 자기 모순 해소) / Case 2 (구현) PASS (Project-only active=0, hardcoded=0) / Case 3 (QA) PASS (SHA 일치, phantom=0) / Case 4 (리뷰) PASS (본 entry inline 인용) | /goal autonomous Iter 6 — critic 7 잔여 결함 자율 흡수, framework-critic T2 승격 후보(H1) + H7 self-reliability 는 사용자 결정 영역 분리 |
 | 2026-05-29 | v3.13 | **Plan B 양방향 폐기 — Global 단일 정본 + Project 단방향 mirror**. 도입 (v3.2 2026-05-15) 의 전제 "Project 동시 편집 시나리오" 가 4 개월간 history 검증 결과 **발생 0건** (bidirectional-sync.log Project source 0건 / git log .claude/ 14 commit 모두 framework 정합 작업 / 본 세션 10 turn Edit tool 100% Global) → over-engineering 판정. `bidirectional_sync.py:188-201` Project edit 분기 비활성화 (주석 처리 — 코드 보존, 향후 Project 직접 편집 시나리오 발생 시 주석 해제로 회복). 한 줄 정책 + 도서관 비유 정정. 책임 매트릭스 line 191 = "Project = 단방향 수신 mirror" 단일 정의 | 사용자 가르침 #2 (2026-05-29) — "정책 도입 시 가정한 시나리오가 실제 발생했는지 history 검증 의무" 적용. feedback_verify_policy_premise.md 신규 보존 |
+| 2026-05-29 | v3.14 | **3축 동기화 critic mode 정정 (architect opus+ultrathink)**. 실측 3축 SHA 스캔 → 3개 문서 거짓 정정 (① marketplaces "메타데이터만" → 등록 plugin path 전체 사본 1166 파일 ② "drift 0" 불변식 → 증분 sync steady-state 는 drift 누적, 주기 reconcile 필요 ③ Project "전부 받음" → 176 누락, 단 double-fire 회피 위한 의도적 부분 mirror). **근본 fix 2건**: (a) `reconcile-plugin-mirror.py` 에 marketplaces dest 추가 (`MARKETPLACES` 상수 사용 — `resolve_marketplaces_dir()` suffix 누락 142-bug 회피) (b) `sync_one(force=True)` — plugin mirror read-only 라 Global-SHA 무조건 승, `skip_newer` mtime footgun 우회. 결과: marketplaces 424 + cache:28.2.0 208 + PluginSrc 2 drift 고착 해소 → 전 plugin mirror **drift 0 / canon_only 0** 실측 검증. Project 제외 유지 (double-fire 정당). 잔여 escalate: 내부 SSOT 중복 (`references/` vs `skills/auto/references/` 의 chapter-code·phase-1-plan 등 — canonical 위치 사용자 결정 필요, 자동 병합 금지) | 사용자 "3축 동기화 critic mode 검토" 요청 → 자율 안전 정정 + 근본 fix 결정 |
+| 2026-05-30 | v3.15 | **동기화 축 단순화 — Plugin-source + Marketplaces deregister (2단계)**. 사용자 질문 "정말 몇 축이 sync 필요한가(내 생각 2축)" → 실측: 기능상 필수 = **2축(Cache 런타임 + aiden-auto-repo 배포)**. root cause = "혹시 필요할까" 방어적 추가 + "제거≠답" 비제거 + 가정 미검증. **Step 0 안전 게이트가 매 축 진단 정정**: ① Plugin-source "역할 0" → 실은 spec-verify/inject_model_param/edit_guard 가 참조 → 소비자 repoint(spec-verify→cache 활성버전+device경로 제거 / inject_model_param→Global) 후 PLUGIN_SOURCE dest 3곳 제거. ② Marketplaces → **CC 관리 git clone**(origin github.com/garimto81/aiden-auto, marketplace update 시 pull 로 우리 sync 덮어씀=tug-of-war 509 재sync) → 직접 sync 불필요+충돌, READ 소비자 0 → MARKETPLACES dest 3곳 제거. ③ Project → **CC 활성 추가 로드 경로 확인**(공식 docs + 세션 실증) + 고유 콘텐츠(command 25/Global 0) → pure deregister 시 낡은 충돌 → **유지 결정**. 검증: determine_source_and_dests dest=Project+cache(plugin-source+marketplaces 0) + reconcile 2 mirror + architect SAFE 판정 + 전 import OK. 두 deregister 폴더 보존(≠delete) | 사용자 "global↔aiden-auto 정말 필요한 sync 축?" + "marketplaces·project 도 같은 단순화" → Step 0 검증 후 plugin-source+marketplaces deregister, project 유지 |
 
 ---
 

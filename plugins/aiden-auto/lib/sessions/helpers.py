@@ -17,7 +17,7 @@ session_registry + agent_view_adapter + event_schema 를 하나의 호출로 묶
             scope="frontend",
             goal_title="홈페이지 리디자인",
             estimated_effort_days=3.0,
-            user="bs.group@braceletstudio.com",
+            user="user@example.com",
         ),
     )
     if result.success:

@@ -109,17 +109,22 @@ SendMessage(type="message", recipient="reporter", content="보고서 생성 요�
 | 코드 품질 회귀 감시 | 30분 간격 린트 스캔 | `/loop 30m /check --lint` |
 
 ```python
-# /loop 스케줄 제안 (Phase 4 완료 시)
+# /loop 스케줄 제안 (Phase 4 완료 시) — 가르침 #6: AskUserQuestion tool 직접 호출
 if pr_open or deploy_pending:
-    print(f"""
-=== /loop 스케줄 제안 ===
-모니터링이 필요한 항목이 감지되었습니다.
-제안: /loop 10m /pr review
-수락하려면 'y', 건너뛰려면 Enter를 입력하세요.
-==========================
-""")
-    # AskUserQuestion으로 수락 여부 확인
-    # 수락 시 백그라운드 /loop 등록
+    AskUserQuestion(questions=[{
+        "question": "모니터링이 필요한 항목이 감지됐습니다. 자동 감시(/loop)를 켤까요?",
+        "header": "자동 감시",
+        "multiSelect": False,
+        "options": [
+            {"label": "제안대로 켜기 (권장)",
+             "description": "감지된 시나리오에 맞는 주기로 백그라운드 감시 등록 (예: PR 오픈 → 10분 간격 /pr review). 작업 중 자동으로 상태를 봐줍니다."},
+            {"label": "주기 직접 정하기",
+             "description": "감시는 켜되 간격을 다르게 지정 (예: 5분/30분). 사용자가 주기를 말하면 그 값으로 등록."},
+            {"label": "켜지 않음",
+             "description": "자동 감시 없이 마무리. 나중에 필요하면 직접 /loop 호출."},
+        ],
+    }])
+    # "켜기" 선택 시 백그라운드 /loop 등록 (최대 50개, 3일 만료)
 ```
 
 **주의**: `/loop`은 최대 50개 동시 스케줄, 3일 자동 만료. 과도한 등록 방지.

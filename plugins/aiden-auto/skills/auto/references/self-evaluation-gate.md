@@ -118,16 +118,28 @@ fit_score: 35/100 — 🔴 부적합
   - complexity: 8/25 (typo fix, overkill)
   - domain_fit: 5/25 (의료 컴플라이언스, 도메인 특수)
 
-⛔ /auto 권장하지 않음. 대안:
-  1. 직접 처리 — Claude 일반 도구 (Edit, Bash 등)
-  2. /iteration — 반복 cycle이 필요한 경우 (drift, 미구현 list)
-  3. 그래도 /auto 진행 — 'force' 입력
-
-선택: _
+⛔ /auto 권장하지 않음.
 ═══════════════════════════════════
 ```
 
-사용자가 'force' 입력 시에만 Phase 0 진입.
+이어서 **AskUserQuestion tool 직접 호출** (가르침 #6 — chat inline 번호 나열 금지):
+
+```
+AskUserQuestion(
+  question="이 작업은 /auto 자동화 흐름과 잘 안 맞아요 (적합도 50점 미만). 어떻게 진행할까요?",
+  header="진행 방식",
+  multiSelect=false,
+  options=[
+    {label: "직접 처리", description: "Claude 일반 도구(파일 편집, 명령 실행 등)로 바로 작업. 작은 수정·단발 작업에 가장 잘 맞음. (권장)"},
+    {label: "/iteration 사용", description: "같은 점검을 여러 번 반복해야 할 때(미구현 목록 훑기, 변경 누락 추적 등) 적합. 반복 cycle 작업이면 권장."},
+    {label: "그래도 /auto 진행", description: "적합도가 낮아도 /auto 5단계 흐름을 그대로 태움. 부적합 axis 영향을 감수하고 진행하려는 경우만 선택."}
+  ]
+)
+```
+
+- "직접 처리" 선택 → /auto 중단, Claude 일반 도구로 작업.
+- "/iteration 사용" 선택 → /iteration 흐름으로 전환.
+- "그래도 /auto 진행" 선택 시에만 Phase 0 진입.
 
 ## 본 보고서의 적용 예시
 

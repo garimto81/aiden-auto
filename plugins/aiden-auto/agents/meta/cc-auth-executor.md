@@ -22,7 +22,7 @@ Claude Code OAuth 토큰 상태의 빠른 1차 게이트.
 - escalate 결정은 본 agent가 못함. 신호 수집만 → flag 설정 → advisor가 결정
 
 # Input
-1. `C:\Users\AidenKim\.claude\.credentials.json`의 `claudeAiOauth` 섹션
+1. `~/.claude/.credentials.json`의 `claudeAiOauth` 섹션 (device-agnostic)
 2. `state/cc-auth-failures-{date}.json` (있을 때만, 401 실패 누적 추적)
 3. `state/cc-auth-scopes-snapshot.json` (직전 세션 scopes snapshot)
 

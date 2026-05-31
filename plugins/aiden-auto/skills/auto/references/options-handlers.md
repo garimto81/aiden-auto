@@ -42,8 +42,21 @@
 
 프로젝트 CLAUDE.md에 "ASCII 목업" 또는 "UI Design Workflow" 규칙이 존재하면 자동 활성화:
 1. Lead가 터미널에 ASCII 와이어프레임 직접 출력 (65자 폭 제한)
-2. 사용자 승인 대기 (AskUserQuestion)
-3. 승인 → Step 1 진행 / 거부 → ASCII 수정 후 재출력
+2. 사용자 승인 대기 — AskUserQuestion tool 직접 호출 (가르침 #6 의무):
+
+```python
+AskUserQuestion(
+  question="화면 뼈대(글자만으로 그린 화면 그림)를 보여드렸어요. 이대로 실제 목업을 만들까요, 아니면 배치를 고칠까요?",
+  header="목업 승인",   # <=12 chars
+  multiSelect=False,
+  options=[
+    {label: "승인", description: "지금 보이는 뼈대 그대로 실제 목업(HTML/이미지) 제작을 진행합니다. (권장 — 배치가 맞으면 바로 진행)"},
+    {label: "수정 요청", description: "배치나 요소를 바꿔서 뼈대를 다시 그려 드립니다. 어디를 고칠지 알려주세요. (배치가 어색할 때)"},
+  ]
+)
+```
+
+3. "승인" 선택 → Step 1 진행 / "수정 요청" 선택 → ASCII 수정 후 재출력
 
 ### Step 1: 라우팅 + 기본 HTML 생성 (Lead 직접 Python 호출)
 
@@ -465,8 +478,17 @@ Agent(subagent_type="executor-high", name="figma-connector", description="Figma 
              1. 인증 확인 (seat=Full 필수)
              2. 기존 매핑 확인: get_code_connect_map(fileKey, nodeId)
              3. AI 매핑 제안: get_code_connect_suggestions(fileKey, nodeId)
-             4. 사용자 검토 요청 (AskUserQuestion)
-             5. 승인된 매핑 저장: send_code_connect_mappings(fileKey, nodeId, mappings)")
+             4. 사용자 검토 요청 — AskUserQuestion tool 직접 호출 (가르침 #6 의무):
+                AskUserQuestion(
+                  question='AI가 Figma 디자인 요소를 우리 코드 부품과 짝지어 봤어요(어떤 디자인이 어떤 코드 조각인지 연결). 이 짝짓기를 그대로 저장할까요?',
+                  header='Figma 매핑',   # <=12 chars
+                  multiSelect=False,
+                  options=[
+                    {label: '매핑 승인', description: '제안한 디자인-코드 연결을 그대로 저장합니다. 이후 같은 디자인은 이 코드로 자동 연결됩니다. (권장 — 제안이 맞으면)'},
+                    {label: '거부·재제안', description: '연결을 저장하지 않고 다시 제안받습니다. 어떤 부분이 틀렸는지 알려주면 더 맞게 다시 짝지어 드립니다.'},
+                  ]
+                )
+             5. '매핑 승인' 선택 시 매핑 저장: send_code_connect_mappings(fileKey, nodeId, mappings) / '거부·재제안' 선택 시 3번부터 재실행")
 ```
 
 ### rules 모드
@@ -483,8 +505,18 @@ Agent(subagent_type="executor", name="figma-rules", description="디자인 시�
 ### capture 모드 (Lead 직접 실행 — interactive)
 
 ```python
-# Step 1: outputMode 결정 → AskUserQuestion
-#   선택지: newFile (planKey 필요), existingFile (fileKey 필요), clipboard
+# Step 1: outputMode 결정 → AskUserQuestion tool 직접 호출 (가르침 #6 의무)
+#   AskUserQuestion(
+#     question="캡처한 화면 그림을 어디에 담을까요? (Figma 새 파일 / 기존 파일 / 임시 복사)",
+#     header="출력 위치",   # <=12 chars
+#     multiSelect=False,
+#     options=[
+#       {label: "새 파일", description: "Figma에 새 파일을 만들어 담습니다(outputMode=newFile). 새 파일이 들어갈 작업공간 키(planKey)가 필요합니다. (깨끗하게 새로 시작할 때)"},
+#       {label: "기존 파일", description: "이미 있는 Figma 파일에 추가합니다(outputMode=existingFile). 그 파일 키(fileKey)가 필요합니다. (기존 작업에 이어 붙일 때)"},
+#       {label: "클립보드", description: "파일로 저장하지 않고 임시 복사(clipboard)만 합니다. 바로 다른 곳에 붙여넣을 때 편합니다."},
+#     ]
+#   )
+#   → "새 파일"=newFile(planKey 필요) / "기존 파일"=existingFile(fileKey 필요) / "클립보드"=clipboard
 # Step 2: captureId 발급
 #   generate_figma_design(outputMode="newFile", fileName="...", planKey="...")
 # Step 3: 캡처 대상 준비

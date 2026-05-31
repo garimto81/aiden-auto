@@ -9,6 +9,7 @@ agents:
   - writer
   - reader-panel
   - doc-critic
+  - prose-critic
   - architect
   - content-critic
   - document-specialist
@@ -75,9 +76,11 @@ model_preference: opus
    ↓ ALL APPROVE
 ─────────────────────────────────────────────
 [Phase 3.5 Reader Panel] (NEW v1.0)
-   ├ Primary Reader (audience-target 매칭)
-   ├ Secondary Reader (18세 일반인 default)
+   ├ Primary Reader (audience-target 매칭)   ← 명료성 (블로킹)
+   ├ Secondary Reader (18세 일반인 default)  ← 명료성 (블로킹)
+   ├ Advisory Reader (P6 문예 에디터 = prose-critic)  ← 글맛 (MINOR 한정) 🆕 v2.1
    └ Aggregator → Verdict
+        (글맛 verdict 는 MINOR 이상 격상 불가 — 명료성 우선)
    ↓
 ─────────────────────────────────────────────
 [Phase 3.6 Autonomous Writer Self-Fix] (NEW v2.0)
@@ -164,9 +167,16 @@ writer 가 본문 작성 중 다음 패턴 감지 시 자동 ASCII mockup 생성
 
 ### Secondary Reader (default = 18세 일반인)
 
-상세: `references/reader-agent-personas.md`
+### Advisory Reader (P6 문예 에디터 = prose-critic) 🆕 v2.1
 
-## 평가 지표 (5종 객관)
+DOC 문서에 항상 동반 호출. **글맛(서사·리듬·비유·몰입·기억) 전담**. 명료성은 평가 안 함.
+**MINOR 한정** — 글맛 부족만으로 문서를 MAJOR/REJECT 시키지 못함 (명료성이 바닥, 글맛이 천장).
+
+상세: `references/reader-agent-personas.md` (P6) + `agents/creative/prose-critic.md`
+
+## 평가 지표 (명료성 5종 + 글맛 2종)
+
+**명료성 (블로킹 — MAJOR/REJECT 가능)**
 
 | 지표 | 측정 방법 | PASS 기준 |
 |------|---------|----------|
@@ -176,16 +186,26 @@ writer 가 본문 작성 중 다음 패턴 감지 시 자동 ASCII mockup 생성
 | **identity** | 챕터 메시지 ↔ 정체성 | =5/5 |
 | **artifice** | 작위적 삽입 | =0 항목 |
 
-상세: `references/evaluation-schema.md`
+**글맛 (advisory — MINOR 한정, 비블로킹) 🆕 v2.1**
+
+| 지표 | 측정 방법 | 권고 기준 |
+|------|---------|----------|
+| **emotional_engagement** | 끝까지 읽고 싶은 몰입·재미 | ≥3/5 (미만 시 MINOR 권고) |
+| **memorability** | 24시간 후 한 컷 회상 | ≥3/5 (미만 시 MINOR 권고) |
+
+상세: `references/evaluation-schema.md` (v2.0)
 
 ## Verdict 룰 (3-tier + REJECT)
 
 | Verdict | 조건 | 후속 (v2.0 autonomous) |
 |---------|------|---------------------|
-| **APPROVE** | 5 지표 모두 PASS | Phase 4 진입 |
-| **MINOR** | 1-2 지표 약한 FAIL | 자율 minor edit + Phase 4 |
+| **APPROVE** | 명료성 5 지표 PASS + 글맛 OK | Phase 4 진입 |
+| **MINOR** | 명료성 1-2 지표 약한 FAIL | 자율 minor edit + Phase 4 |
+| **LITERARY_MINOR** 🆕 | 명료성 PASS + 글맛만 FLAT | **권고 기록만 + Phase 4 (자동 수정 X)** |
 | **MAJOR** | 3+ FAIL OR identity/artifice 위반 | **자동 writer 호출 + 재평가 (max 3 iter)** |
 | **REJECT** | 5 모두 FAIL OR 회복 불가 | 즉시 사용자 escalation |
+
+> **글맛 지표(emotional_engagement·memorability)는 MINOR 한정 (v2.1)**: 명료성이 PASS인데 글맛만 낮으면 verdict = MINOR (자율 minor edit + Phase 4). 글맛 부족은 MAJOR/REJECT 를 절대 유발하지 않음 — 명료성 게이트(identity/artifice)만 블로킹 권한 보유. "글맛 때문에 명료한 문서가 막히는 일" 없음.
 
 ## Circuit Breaker (CLAUDE.md Iron Law 4 정합)
 
@@ -205,9 +225,10 @@ writer 가 본문 작성 중 다음 패턴 감지 시 자동 ASCII mockup 생성
 | L2 micro 평가 | doc-critic skill | 단락별 이해도 (18세 일반인) |
 | L2 챕터 평가 | content-critic agent | 챕터별 ★ + 강/약 문장 인용 |
 | **L3 macro 평가 + auto fix** | **본 skill (Reader Panel + Autonomous Writer)** | **전체 narrative + 작위/정체성 + 자율 정합** |
+| **L3 글맛 평가 (advisory)** | **prose-critic agent (P6)** | **서사·리듬·비유·몰입·기억 — MINOR 권고 한정** |
 | L4 사용자 검증 | 사용자 review | REJECT 또는 max iter 도달 시만 |
 
-→ doc-critic = micro / Reader Panel = macro. **보완적 (대체 X)**.
+→ doc-critic = micro 명료성 / Reader Panel = macro 명료성 / **prose-critic = 글맛 (advisory)**. 셋 다 **보완적 (대체 X)**. 명료성이 항상 우선, 글맛은 그 위에 더해지는 품질.
 
 ## CLAUDE.md Core Philosophy 정합
 
@@ -282,7 +303,7 @@ writer self-fix 가 회복 불가능. 사용자 결정 필요:
 - `references/reader-panel-workflow.md` — Phase 3.5 + 3.6 상세
 - `references/reader-agent-personas.md` — 5 audience 페르소나
 - `references/evaluation-schema.md` — 5 지표 + verdict 판정
-- 글로벌 chapter-doc reference: `C:/claude/plugins/aiden-auto/skills/auto/references/chapter-doc.md`
+- 글로벌 chapter-doc reference: aiden-auto plugin 의 `skills/auto/references/chapter-doc.md` (device-agnostic)
 
 ## 직전 사고 SSOT (영구 학습)
 
@@ -304,3 +325,4 @@ writer self-fix 가 회복 불가능. 사용자 결정 필요:
 |------|:----:|--------|------|
 | 2026-05-06 | v1.0 | 사용자 directive — 신설 | project-local skill 신설 (`.claude/skills/chapter-doc/`) |
 | 2026-05-06 | v2.0 | 사용자 directive — 글로벌 + 자율 iteration + ASCII mockup | 글로벌 이전 (`~/.claude/skills/chapter-doc/`) + Phase 3.6 Autonomous Writer Self-Fix + ASCII mockup writer 신규 + sample 사용자 진입점 0 default |
+| 2026-06-01 | v2.1 | 문학적 매력 전담 장치 추가 (사용자 결정) | Advisory Reader P6(prose-critic) 연동 + 글맛 지표 2종(emotional_engagement·memorability) advisory 추가. MINOR 한정 — 명료성 게이트 불변. "명료성=바닥, 글맛=천장" 원칙 명문화 |

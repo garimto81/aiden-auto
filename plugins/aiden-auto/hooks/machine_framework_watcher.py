@@ -16,8 +16,6 @@ import time
 from pathlib import Path
 
 USER_CLAUDE = Path.home() / ".claude"
-SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib"}
-
 # ⭐ Universal Deployment Layer B (2026-05-23, v4.0):
 # hardcoded path 제거. path_resolution 모듈로 위임.
 import sys as _sys
@@ -25,19 +23,37 @@ _sys.path.insert(0, str(Path(__file__).parent))
 try:
     from path_resolution import resolve_plugin_source  # type: ignore[import-not-found]
 except ImportError:
-    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None
+    # 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 제거 — cwd 상대 후보 + None.
+    def resolve_plugin_source():
+        c = Path.cwd() / "plugins" / "aiden-auto"
+        return c if c.is_dir() else None
 
 # P5 (B-018 critic 2026-05-28): layer-독립 파일 누출 차단.
-# bidirectional_sync 의 EXCLUDE 정책을 재사용 (단일 소스 — EXCLUDE drift 방지).
+# bidirectional_sync 의 EXCLUDE 정책 + SYNC_DIRS 를 재사용 (단일 소스 — drift 방지).
 # settings.json / CLAUDE.md / .env / _silent_wrap.cmd 등이 watcher 로 전파되지 않도록.
+# SYNC_DIRS 단일 소스화 (2026-05-29 3축 동기화 critic iter1): 옛 watcher 로컬 정의는 7개(hud/scripts 누락)라
+#   bidirectional(9개)과 비대칭 → 백업 sync layer 가 hud/scripts 를 미동기화하던 결함. import 로 영구 정합.
 try:
-    from bidirectional_sync import is_excluded_path as _is_excluded  # type: ignore[import-not-found]
+    from bidirectional_sync import is_excluded_path as _is_excluded, SYNC_DIRS, get_active_cache_versions  # type: ignore[import-not-found]
 except ImportError:
     def _is_excluded(rel):  # graceful fallback (bidirectional 부재 시 기존 동작)
         return (False, "")
+    SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts"}  # fallback = 9개 (bidirectional 정합)
+    def get_active_cache_versions():  # fallback — junction dedup + 버전명 정렬 (3축 critic iter1 정합)
+        if not CACHE_ROOT.exists():
+            return []
+        seen, uniq = set(), []
+        for p in CACHE_ROOT.iterdir():
+            if p.is_dir() and p.resolve() not in seen:
+                seen.add(p.resolve()); uniq.append(p)
+        def _vk(x):
+            try: return tuple(int(i) for i in x.name.split("."))
+            except ValueError: return (0,)
+        uniq.sort(key=_vk, reverse=True); return uniq
 
-# Lazy + backward compat (legacy code 참조 시)
-PROJECT_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+# Lazy + backward compat (legacy code 참조 시 — 현재 미사용, None 가능)
+# 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 폴백 제거.
+PROJECT_SOURCE = resolve_plugin_source()
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 
@@ -56,13 +72,8 @@ def log(msg: str) -> None:
         pass
 
 
-def get_active_cache_versions() -> list[Path]:
-    """cache의 모든 버전 디렉토리 반환 (mtime 최신 우선)."""
-    if not CACHE_ROOT.exists():
-        return []
-    versions = [p for p in CACHE_ROOT.iterdir() if p.is_dir()]
-    versions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    return versions
+# get_active_cache_versions: bidirectional_sync 에서 import (단일 소스 — 위 import 블록).
+# 옛 로컬 def (mtime 정렬) 제거 (2026-05-29 3축 critic iter1): junction dedup + 버전명 정렬로 단일화.
 
 
 def is_self_edit(rel_parts: tuple) -> bool:
@@ -85,9 +96,9 @@ def sync_to_mirrors(source: Path, rel: Path) -> tuple[int, list[str]]:
     ts = time.strftime("%Y%m%d_%H%M%S")
     backup_dir = USER_CLAUDE / ".backup" / ts
 
-    targets = [PROJECT_SOURCE / rel]
-    targets.extend((cache_v / rel) for cache_v in get_active_cache_versions())
-    targets.append(MARKETPLACES / rel)
+    # Plugin-source + Marketplaces deregister — 2026-05-30. cache(런타임 로드)만 mirror.
+    # marketplaces 는 CC 관리 git clone (GitHub pull 로 덮어씀 → 직접 sync 불필요+충돌). Project 는 bidirectional_sync 담당.
+    targets = [(cache_v / rel) for cache_v in get_active_cache_versions()]
 
     success = 0
     errors = []

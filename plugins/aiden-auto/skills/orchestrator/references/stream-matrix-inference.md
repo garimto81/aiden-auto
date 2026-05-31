@@ -164,14 +164,24 @@ def validate_matrix(matrix):
 | S4     | Shared Stream      | shared/          | P2     | S1       |
 | S5     | Integration Test   | integration-tests/ | P3   | S2,S3,S4 |
 +--------+--------------------+------------------+--------+----------+
-
-이대로 진행할까요? 
-  - 진행: "진행" 또는 그냥 OK
-  - 수정: "S5 제외" / "S6 추가: QA" 등
-  - 취소: "취소"
 ```
 
-수정 사항 있으면 매트릭스 갱신 후 재확인. 없으면 즉시 Phase 0 Step 3로.
+위 매트릭스(작업 갈래 나누기 표)를 보여준 뒤 AskUserQuestion 으로 승인 받는다:
+
+```
+AskUserQuestion(
+  question="여러 세션이 동시에 나눠서 일할 작업 갈래(Stream)를 위 표처럼 자동으로 나눠봤어요. 이대로 시작할까요?",
+  header="Stream 승인",
+  multiSelect=false,
+  options=[
+    {label: "진행", description: "위 표 그대로 승인 — 각 작업 갈래대로 세션 폴더를 만들고 바로 시작합니다. (권장: 표가 맞으면 이걸 고르세요)"},
+    {label: "수정", description: "작업 갈래를 더하거나 뺍니다 — 예: 검수(QA) 갈래 추가, 통합 테스트 갈래 제외 등. 무엇을 바꿀지 알려주면 표를 다시 만들어 보여드립니다."},
+    {label: "취소", description: "지금은 갈래 나누기를 멈춥니다 — 세션 폴더를 만들지 않고 작업을 시작하지 않습니다."}
+  ]
+)
+```
+
+"수정" 선택 시 매트릭스 갱신 후 재확인. "진행" 선택 시 즉시 Phase 0 Step 3로.
 
 ## 추론 실패 케이스 + 대응
 

@@ -93,8 +93,20 @@ execution_command: '/mockup "화면명" --options'
 ExitPlanMode 승인 후:
 1. 계획 파일에서 `mockup-spec` 블록 자동 감지
 2. 각 spec의 `execution_command` 추출
-3. "목업을 생성할까요?" 자동 제안
-4. 승인 시 `/mockup` 순차 실행
+3. 목업 생성 여부를 묻습니다 (가르침 #6 — AskUserQuestion tool 직접 호출):
+
+```
+AskUserQuestion(
+  question="계획에서 화면 설계(목업) 블록을 찾았어요. 지금 바로 화면 그림(목업)을 만들어 볼까요?",
+  header="목업 생성",
+  multiSelect=false,
+  options=[
+    {label: "예, 목업 생성", description: "찾은 화면 설계대로 /mockup 을 순차 실행해 실제 화면 그림(HTML/PNG)을 만듭니다. (권장)"},
+    {label: "아니오, 건너뛰기", description: "목업은 만들지 않고 계획 단계로 마칩니다. 나중에 /mockup 으로 직접 만들 수 있습니다."}
+  ]
+)
+```
+4. "예" 선택 시 `/mockup` 순차 실행
 
 ## Plan Mode 제약
 

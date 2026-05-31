@@ -170,7 +170,8 @@ def check_legacy_map_entries() -> dict:
 
 def check_phase_minus_1_5_schema_version() -> dict:
     """W1 신규: phase-minus-1.5-deep-interview.md 의 schema_version 라벨 ↔ SCHEMA_VERSION."""
-    phase_path = HOME / "references" / "phase-minus-1.5-deep-interview.md"
+    # 정본 경로 (2026-05-29 stub화 후 top-level references/ 는 stub — 정본은 skills/auto/references/)
+    phase_path = HOME / "skills" / "auto" / "references" / "phase-minus-1.5-deep-interview.md"
     code_path = HOME / "lib" / "goal" / "goal_writer.py"
 
     phase_text = _read(phase_path)

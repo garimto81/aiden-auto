@@ -56,7 +56,7 @@ Targets:
       │
       ▼
 ┌─────────────────────────────────┐
-│ 1. 대화형 질문 (A/B/C/D 형식)   │
+│ 1. 대화형 질문 (AskUserQuestion)   │
 │    - Target Users               │
 │    - Core Features              │
 │    - Technical Stack            │
@@ -95,35 +95,43 @@ Targets:
 └─────────────────────────────────┘
 ```
 
-### 대화형 질문
+### 대화형 질문 (AskUserQuestion 도구 의무 — 가르침 #6)
 
-Claude Code가 3-8개 명확화 질문 (A/B/C/D 형식):
+> 옛 A/B/C/D 인라인 텍스트 형식 폐기. **각 명확화 차원 = AskUserQuestion 도구 1회 호출** (가르침 #6). 차원과 선택지는 PRD 주제에 따라 동적 — 아래는 대표 패턴. 비전문어 풀이 의무(가르침 #1).
+
+질문 개수는 템플릿이 결정: `minimal` 3개 · `standard` 4-5개 · `junior`/`deep` 6-8개. 각 차원을 순차로 AskUserQuestion 호출 (한 번에 하나, 답을 받아 다음 차원으로).
 
 ```
-/create prd user-authentication
+# 차원 1 — 대상 사용자 (예시; 실제 선택지는 PRD 주제 따라 동적 생성)
+AskUserQuestion(
+  question="이 기능을 실제로 쓸 사람은 누구인가요?",
+  header="대상 사용자",
+  multiSelect=false,
+  options=[
+    {label: "일반 사용자만", description: "서비스를 쓰는 최종 사용자 대상. 가장 흔한 경우."},
+    {label: "관리자만", description: "내부 운영·관리 화면 전용."},
+    {label: "둘 다", description: "일반 사용자 + 관리자 모두. 권한 분리 설계 필요."},
+    {label: "외부 API 사용자", description: "다른 시스템이 API로 연동. 인증·문서화 비중 큼."},
+  ]
+)
 
-Let's create a PRD. I'll ask some questions:
+# 차원 2 — 인증 방식
+AskUserQuestion(
+  question="로그인·인증은 어떤 방식인가요?",
+  header="인증 방식",
+  multiSelect=false,
+  options=[
+    {label: "이메일/비밀번호", description: "가장 기본. 직접 계정 관리."},
+    {label: "OAuth2 (소셜 로그인)", description: "구글·카카오 등 외부 계정으로 로그인."},
+    {label: "SSO (통합 로그인)", description: "사내 단일 계정 체계. 기업용."},
+    {label: "인증 불필요", description: "로그인 없이 누구나 사용."},
+  ]
+)
 
-A. Target Users
-   A) End users only
-   B) Admins only
-   C) Both
-   D) External API consumers
-
-B. Authentication Method
-   A) Email/Password
-   B) OAuth2
-   C) SSO
-   D) No auth needed
-
-C. Core Features
-   A) Login/Logout only
-   B) + Password reset
-   C) + MFA
-   D) Full auth suite
-
-...
+# 차원 3+ — 핵심 기능, 기술 스택, 성공 지표 … (동일 패턴으로 차원별 AskUserQuestion)
 ```
+
+각 차원의 선택지(label/description)는 PRD 주제·요청 맥락에서 동적으로 구성하되, 항상 비전문어 풀이 + 결과를 description 에 담는다. multiSelect 는 "여러 개 동시 선택 가능" 차원(예: 핵심 기능 복수 선택)에서만 true.
 
 ### 템플릿 옵션
 
@@ -235,7 +243,7 @@ C. Core Features
       ▼
 ┌─────────────────────────────────┐
 │ 1. PRD 섹션별 질문 응답         │
-│    (A/B/C/D 형식)               │
+│    (AskUserQuestion)               │
 │    + 시각화 대상 화면 선택      │
 │    - 어떤 화면을 시각화할지?    │
 │    - 레이아웃 스타일 선호?      │
@@ -319,7 +327,7 @@ docs/
       ▼
 ┌─────────────────────────────────┐
 │ 1. PRD 섹션별 질문 응답         │
-│    (A/B/C/D 형식)               │
+│    (AskUserQuestion)               │
 │    + 시각화 대상 화면 선택      │
 └─────────────────────────────────┘
       │

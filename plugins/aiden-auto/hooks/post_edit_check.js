@@ -7,7 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || 'C:/claude';
+// 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 제거 — env > cwd (device-agnostic)
+const PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 const FATIGUE_LOG = path.join(PROJECT_DIR, '.claude', 'logs', 'fatigue_signals.jsonl');
 const BURST_WINDOW_MS = 5 * 60 * 1000;  // 5분

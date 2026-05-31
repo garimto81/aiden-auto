@@ -78,8 +78,17 @@ def autodetect_plugin_root() -> Optional[Path]:
     cache_base = GLOBAL_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
     if not cache_base.is_dir():
         return None
+
+    # 외부배포 LOW-1 (2026-05-31): semver 정렬. 문자열 reverse 정렬은 '28.9.0' > '28.10.0' 오판.
+    # 숫자 튜플 키로 정렬 (packaging 미가용 환경 대비 수동 파싱, 비숫자 토큰은 -1 로 강등).
+    def _ver_key(d: Path):
+        parts = []
+        for tok in d.name.split("."):
+            parts.append(int(tok) if tok.isdigit() else -1)
+        return parts
     versions = sorted(
         [d for d in cache_base.iterdir() if d.is_dir() and not d.name.startswith(".")],
+        key=_ver_key,
         reverse=True,
     )
     return versions[0] if versions else None
@@ -125,12 +134,15 @@ def copy_recursive(src: Path, dst: Path) -> tuple[int, int]:
     개인화 격리: EXCLUDE 패턴 (premise #6).
 
     Returns:
-        (copied_count, skipped_count)
+        (copied_count, skipped_count, failed_count)
+        외부배포 HIGH-4 (2026-05-31): failed_count 분리 — 복사 실패(PermissionError 등)를
+        skipped 에 섞지 않고 별도 집계 → main() 이 부분-install 을 감지해 sentinel 미기록.
     """
     copied = 0
     skipped = 0
+    failed = 0
     if not src.is_dir():
-        return (0, 0)
+        return (0, 0, 0)
     for sp in src.rglob("*"):
         if not sp.is_file():
             continue
@@ -148,32 +160,71 @@ def copy_recursive(src: Path, dst: Path) -> tuple[int, int]:
             copied += 1
         except (OSError, PermissionError) as e:
             log(f"copy fail {rel}: {e}")
-            skipped += 1
-    return (copied, skipped)
+            failed += 1
+    return (copied, skipped, failed)
+
+
+SENTINEL = GLOBAL_CLAUDE / "state" / ".bootstrap-complete"
+LOCK = GLOBAL_CLAUDE / "state" / ".bootstrap.lock"
 
 
 def main() -> int:
+    # 외부배포 HIGH-4: 완료 sentinel 존재 → 재실행 불필요 (빠른 idempotent skip).
+    if SENTINEL.exists():
+        return 0
+
     plugin_root = get_plugin_root()
     if not plugin_root:
-        log("bootstrap: plugin root 부재 (CC cache 미존재) — graceful skip")
+        # HIGH-3: env+autodetect 모두 실패 → sentinel 미기록(다음 이벤트 재시도). graceful.
+        log("bootstrap: plugin root 부재 (CC cache 미존재) — graceful skip (sentinel 미기록)")
         return 0
 
     GLOBAL_CLAUDE.mkdir(parents=True, exist_ok=True)
-    pristine = is_pristine_install()
+    (GLOBAL_CLAUDE / "state").mkdir(parents=True, exist_ok=True)
 
-    total_copied = 0
-    total_skipped = 0
-    for d in SYNC_DIRS:
-        src = plugin_root / d
-        if not src.is_dir():
-            continue
-        dst = GLOBAL_CLAUDE / d
-        copied, skipped = copy_recursive(src, dst)
-        total_copied += copied
-        total_skipped += skipped
+    # 외부배포 MED-2: single-flight lock. 신규 PC 첫 SessionStart bootstrap(느림) 도중 2번째
+    # 이벤트가 동시 진입 → 같은 $HOME 동시 copy → ERROR_SHARING_VIOLATION/부분파일.
+    # atomic create(O_CREAT|O_EXCL) 로 lock 선점, 이미 있으면 다른 인스턴스 진행 중 → skip.
+    try:
+        fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        log("bootstrap: 다른 인스턴스 진행 중 (lock 존재) — skip")
+        return 0
+    except OSError:
+        pass  # lock 생성 실패해도 진행 (best-effort 단일화)
 
-    state = "pristine install" if pristine else "existing install (idempotent)"
-    log(f"bootstrap: {state}, copied={total_copied}, skipped={total_skipped}")
+    try:
+        pristine = is_pristine_install()
+        total_copied = total_skipped = total_failed = 0
+        for d in SYNC_DIRS:
+            src = plugin_root / d
+            if not src.is_dir():
+                continue
+            dst = GLOBAL_CLAUDE / d
+            copied, skipped, failed = copy_recursive(src, dst)
+            total_copied += copied
+            total_skipped += skipped
+            total_failed += failed
+
+        state = "pristine install" if pristine else "existing install (idempotent)"
+        log(f"bootstrap: {state}, copied={total_copied}, skipped={total_skipped}, failed={total_failed}")
+
+        # HIGH-4: 실패 0 일 때만 완료 sentinel 기록. 부분-install 이면 미기록 → 다음 이벤트 재복사.
+        if total_failed == 0:
+            try:
+                SENTINEL.write_text(
+                    f"version={plugin_root.name}\ncopied={total_copied}\n", encoding="utf-8"
+                )
+            except OSError:
+                pass
+        else:
+            log(f"bootstrap: {total_failed} 파일 복사 실패 → sentinel 미기록 (다음 이벤트 재시도)")
+    finally:
+        try:
+            LOCK.unlink()
+        except OSError:
+            pass
     return 0
 
 

@@ -107,8 +107,20 @@ Subcommands:
 
 ## 핵심 컨텍스트
 - src/auth/handler.py - 메인 로직 파일
+```
 
-이어서 작업하시겠습니까? (Y/n)
+요약 출력 후, 다음 단계를 묻습니다 (가르침 #6 — AskUserQuestion tool 직접 호출):
+
+```
+AskUserQuestion(
+  question="저장된 이전 세션을 불러왔어요. 멈췄던 그 작업을 이어서 할까요, 아니면 새 작업으로 시작할까요?",
+  header="세션 이어가기",
+  multiSelect=false,
+  options=[
+    {label: "예, 이어서 진행", description: "위에 보이는 미완료 작업과 핵심 컨텍스트를 그대로 살려서 멈춘 지점부터 계속합니다. (권장)"},
+    {label: "아니오, 새로 시작", description: "이전 세션 내용은 참고만 하고, 새로운 작업을 처음부터 시작합니다."}
+  ]
+)
 ```
 
 ---

@@ -51,9 +51,14 @@ try:
         resolve_marketplaces_dir,
     )
 except ImportError:
-    # path_resolution.py 부재 시 graceful fallback (backward compat)
-    def resolve_plugin_source(): return Path(r"C:\claude\plugins\aiden-auto") if Path(r"C:\claude\plugins\aiden-auto").is_dir() else None  # backward compat fallback
-    def resolve_project_claude(): return Path(r"C:\claude\.claude") if Path(r"C:\claude\.claude").is_dir() else None  # backward compat fallback
+    # path_resolution.py 부재 시 graceful fallback (device-agnostic: cwd 기반 + None).
+    # 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 제거 — cwd 후보 + graceful None 만.
+    def resolve_plugin_source():
+        c = Path.cwd() / "plugins" / "aiden-auto"
+        return c if c.is_dir() else None
+    def resolve_project_claude():
+        c = Path.cwd() / ".claude"
+        return c if c.is_dir() and c.resolve() != (Path.home() / ".claude").resolve() else None
     def _resolve_cache_root_latest(): return None
     def resolve_marketplaces_dir(): return None
 
@@ -62,8 +67,10 @@ USER_CLAUDE = Path.home() / ".claude"
 def _get_project_claude(): return resolve_project_claude()
 def _get_plugin_source(): return resolve_plugin_source()
 # Backward compat constants (legacy code 참조 시 graceful — None 일 수 있음)
-PROJECT_CLAUDE = resolve_project_claude() or Path(r"C:\claude\.claude")  # backward compat
-PLUGIN_SOURCE = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+# 외부배포 HIGH-1 (2026-05-31): 하드코딩 device 경로 폴백 제거. dev PC 는 cwd 후보로 resolve,
+# 신규 PC 는 None (dest 에서 필터됨). device-path 는 per-PC settings.json env(AIDEN_AUTO_*)로 위임.
+PROJECT_CLAUDE = resolve_project_claude()  # None 가능 (신규 PC)
+PLUGIN_SOURCE = resolve_plugin_source()    # None 가능 (deprecated 분기에서만 참조)
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 
@@ -160,12 +167,34 @@ def is_self_edit(rel_parts: tuple) -> bool:
 
 
 def get_active_cache_versions() -> list[Path]:
-    """cache의 모든 버전 디렉토리 (mtime 최신 우선)."""
+    """cache의 모든 버전 디렉토리 (버전명 최신 우선, junction 중복 제거).
+
+    (2026-05-29 3축 동기화 critic iter1): 28.2.0 은 28.3.0 으로의 NTFS junction →
+    같은 물리 디렉토리. 옛 mtime 정렬은 junction 의 갱신된 mtime 이 [0] 을 stale 로
+    오염(live=28.7.0 인데 [0]=28.2.0=28.3.0) + reconcile 가 같은 dir 를 2회 write.
+    resolve() dedup + 버전명 정렬로 정정 — [0] 항상 최신 버전, 중복 write 제거.
+    """
     if not CACHE_ROOT.exists():
         return []
-    versions = [p for p in CACHE_ROOT.iterdir() if p.is_dir()]
-    versions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    return versions
+    seen: set[Path] = set()
+    uniq: list[Path] = []
+    for p in CACHE_ROOT.iterdir():
+        if not p.is_dir():
+            continue
+        rp = p.resolve()
+        if rp in seen:  # junction/symlink 중복 제거
+            continue
+        seen.add(rp)
+        uniq.append(p)
+
+    def _vkey(path: Path):
+        try:
+            return tuple(int(x) for x in path.name.split("."))
+        except ValueError:
+            return (0,)
+
+    uniq.sort(key=_vkey, reverse=True)  # 버전명 기준 (mtime 아님 — junction mtime 오염 회피)
+    return uniq
 
 
 def determine_source_and_dests(p: Path) -> tuple[Path | None, list[Path], Path | None]:
@@ -184,9 +213,17 @@ def determine_source_and_dests(p: Path) -> tuple[Path | None, list[Path], Path |
             excluded, reason = is_excluded_path(rel)
             if excluded:
                 return None, [], None
-            dests = [PROJECT_CLAUDE, PLUGIN_SOURCE]
+            # Plugin-source (legacy mirror) deregister — 2026-05-30 사용자 결정 (동기화 축 단순화).
+            # 사유: CC 가 안 읽음(cache 가 런타임 로드) + git 아님(배포는 aiden-auto-repo). 소비자(spec-verify/
+            #       inject_model_param) repoint 후 sync dest 에서 제거. 폴더·내용 보존(deregister≠delete).
+            #       필수 축 = cache(런타임) + aiden-auto-repo(배포). Project=git기록, Marketplaces=잠복대비.
+            # Marketplaces deregister — 2026-05-30 사용자 결정. marketplaces 는 CC 관리 git clone
+            # (origin=github.com/garimto81/aiden-auto, `marketplace update` 시 CC 가 GitHub서 pull → 우리 sync 덮어씀).
+            # 런타임은 cache 가 로드 → marketplaces 직접 sync 는 불필요+충돌(tug-of-war). 배포는 aiden-auto-repo→GitHub
+            # →(CC pull)→marketplaces 경로로 자연 도달. READ 소비자 0 확인.
+            # PROJECT_CLAUDE None(신규 PC) 시 필터 — cache(home기반)만 dest (HIGH-1 정합)
+            dests = [d for d in [PROJECT_CLAUDE] if d is not None]
             dests.extend(get_active_cache_versions())
-            dests.append(MARKETPLACES)
             return USER_CLAUDE, dests, rel
     except ValueError:
         pass
@@ -216,20 +253,28 @@ def determine_source_and_dests(p: Path) -> tuple[Path | None, list[Path], Path |
     return None, [], None
 
 
-def sync_one(source: Path, dest: Path) -> str:
+def sync_one(source: Path, dest: Path, force: bool = False) -> str:
     """단일 파일 sync. Loop 방지 + atomic + mtime newest.
+
+    Args:
+        force: True 면 mtime(skip_newer) 검사 우회 — SHA 불일치 시 무조건 덮어씀.
+               read-only plugin mirror(cache/source/marketplaces) reconcile 전용.
+               그 mirror 들은 정책상(framework_edit_guard) 편집 불가 → "mirror 가 더 최신"은
+               항상 anomaly 이므로 Global-SHA 무조건 승. skip_same(SHA 동일)은 유지 → idempotent.
+               기본 False = 기존 PostToolUse 동작 그대로 (Project 보존 위한 skip_newer 유효).
+               (2026-05-29 3축 동기화 critic MED-1 — skip_newer 가 reconcile 를 무력화하던 footgun 해소)
 
     Returns: status string ("synced", "skip_same", "skip_newer", "error")
     """
     if not source.exists():
         return "skip_deleted"
 
-    # Loop 방지: SHA 동일하면 skip
+    # Loop 방지: SHA 동일하면 skip (force 여부 무관 — 동일 파일 재쓰기 0)
     if dest.exists() and sha256_file(source) == sha256_file(dest):
         return "skip_same"
 
-    # Race condition: dest mtime 이 source 보다 newer 면 skip
-    if dest.exists():
+    # Race condition: dest mtime 이 source 보다 newer 면 skip (force=True 면 우회)
+    if dest.exists() and not force:
         try:
             if dest.stat().st_mtime > source.stat().st_mtime + 1:  # 1초 tolerance
                 return "skip_newer"

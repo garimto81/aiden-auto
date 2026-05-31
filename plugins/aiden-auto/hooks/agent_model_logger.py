@@ -20,7 +20,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-LOG_FILE = Path(os.environ.get("CLAUDE_PROJECT_DIR", "C:/claude")) / ".claude" / "state" / "agent_model_decisions.jsonl"
+LOG_FILE = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()) / ".claude" / "state" / "agent_model_decisions.jsonl"  # 외부배포 HIGH-1: 하드코딩 제거
 
 
 def main() -> None:

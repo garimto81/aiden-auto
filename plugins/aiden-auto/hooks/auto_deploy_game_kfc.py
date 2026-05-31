@@ -72,7 +72,7 @@ def main():
         pass
 
     # 0. Deployment Freeze 확인
-    freeze_path = os.path.join("C:/claude/.claude/config", "deploy-freeze.json")
+    freeze_path = os.path.join(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd(), ".claude", "config", "deploy-freeze.json")  # 외부배포 HIGH-1: 하드코딩 제거
     if os.path.exists(freeze_path):
         try:
             with open(freeze_path, "r", encoding="utf-8") as f:

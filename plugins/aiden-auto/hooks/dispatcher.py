@@ -39,6 +39,9 @@ import os
 import sys
 import json
 import re
+import time
+import shutil
+import hashlib
 import sqlite3
 import subprocess
 from pathlib import Path
@@ -47,6 +50,11 @@ from typing import List, Dict, Any
 
 # === Configuration ===
 HOME = Path(os.path.expanduser("~"))
+# 외부배포 CRIT-2 (2026-05-31, 6관점 검증): 네이티브 Windows(cmd/PowerShell)는 HOME 환경변수
+# 부재(USERPROFILE 만 존재). registry 39/40 command 가 리터럴 "$HOME/..." 사용 →
+# os.path.expandvars 가 HOME 미설정 시 $HOME 을 못 펴 깨진 리터럴 경로로 전부 실패.
+# setdefault 로 HOME 보장 (이미 set 시 미변경 — git-bash/Unix 무영향, idempotent, cross-OS).
+os.environ.setdefault("HOME", str(HOME))
 GLOBAL_REGISTRY = HOME / ".claude" / "hooks" / "registry"
 PROJECT_REGISTRY = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")) / ".claude" / "hooks" / "registry"
 PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
@@ -54,9 +62,70 @@ PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
 LOG_DB = HOME / ".claude" / "logs" / "hook-events.db"
 LOG_DB.parent.mkdir(parents=True, exist_ok=True)
 
-VERSION = "1.0.0"
+# 이벤트당 1회 락 (2026-06-01, double-fire root cause fix):
+# settings.json(직접 python 진입) + plugin hooks.json(node shim 진입) 두 등록이 같은
+# 이벤트에 각각 dispatcher 프로세스를 spawn → registry(reconcile/session_init/사운드 등)가
+# 매 이벤트 2회 실행. scan_registry 의 _deduped 는 "한 프로세스 안" registry 중복만 막아
+# "프로세스 자체가 2회 spawn" 되는 건 못 막음. → cross-process 파일 락으로 첫 진입만 진행.
+LOCK_DIR = HOME / ".claude" / "state" / "dispatch-locks"
+DISPATCH_LOCK_TTL = 5.0  # 초. 거의 동시(<1s)인 double-fire 차단용 — 정상 반복 호출은 통과
+
+VERSION = "1.1.0"
 SUCCESS = 0
 BLOCK = 2
+
+
+# === Event-level cross-process lock (double-fire 차단) ===
+def _cleanup_stale_locks(now: float) -> None:
+    """TTL*12(=60s) 초과한 lock 파일 정리. 저빈도(키 prefix 확률)로만 호출 — 누적 방지."""
+    try:
+        for p in LOCK_DIR.glob("*.lock"):
+            try:
+                if now - p.stat().st_mtime > DISPATCH_LOCK_TTL * 12:
+                    p.unlink()
+            except OSError:
+                pass
+    except Exception:
+        pass
+
+
+def acquire_event_lock(event: str, stdin_data: str) -> bool:
+    """같은 (event, payload)가 TTL 내 두 번째로 진입하면 False(중복 — skip).
+
+    첫 dispatcher 프로세스만 True(진행). 두 진입점이 거의 동시에 spawn 하므로
+    payload 해시 + 짧은 TTL 로 double-fire 만 정확히 차단하고 정상 반복 호출은 통과.
+    락 메커니즘 자체가 실패하면 True 반환 → 기존 동작(진행) 유지 (graceful, fail-open).
+    """
+    try:
+        LOCK_DIR.mkdir(parents=True, exist_ok=True)
+        key = hashlib.sha256(
+            (event + "\x00" + (stdin_data or "")).encode("utf-8", "replace")
+        ).hexdigest()[:32]
+        if key.startswith("0"):  # ~1/16 확률 저빈도 청소
+            _cleanup_stale_locks(time.time())
+        lock_path = LOCK_DIR / f"{key}.lock"
+        now = time.time()
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)  # atomic
+            try:
+                os.write(fd, str(now).encode())
+            finally:
+                os.close(fd)
+            return True  # 첫 진입 — 진행
+        except FileExistsError:
+            try:
+                age = now - lock_path.stat().st_mtime
+            except OSError:
+                return True  # 상태 못 읽으면 안전하게 진행
+            if age < DISPATCH_LOCK_TTL:
+                return False  # 방금 다른 dispatcher 가 처리 — 중복 차단
+            try:
+                lock_path.write_text(str(now))  # stale — 갱신 후 take over
+            except OSError:
+                pass
+            return True
+    except Exception:
+        return True  # fail-open
 
 # === Logger (SQLite WAL — single-writer auto-serialized) ===
 def _conn():
@@ -126,15 +195,37 @@ def scan_registry(event: str) -> List[Dict[str, Any]]:
             try:
                 with open(json_file, encoding="utf-8") as f:
                     spec = json.load(f)
+                # 외부배포 HIGH-2 (2026-05-31): OS 전용 hook(예: powershell userpromptsubmit-drain,
+                # spec["os"]=="nt")을 다른 OS 에서 skip → mac/linux 매 이벤트 ENOENT 실패 + 머신특화
+                # 자산 cross-OS 누출 방지. spec 에 "os" 필드 없으면 모든 OS 적용(기존 동작).
+                spec_os = spec.get("os")
+                if spec_os and spec_os != os.name:
+                    continue
                 spec.setdefault("priority", 50)
                 spec.setdefault("timeout", 10)
                 spec.setdefault("blocking", False)
                 spec.setdefault("name", json_file.stem)
                 spec.setdefault("owner", axis_name)
                 spec["_source"] = str(json_file)
+                spec["_axis"] = axis_name  # 발견된 실제 axis (json 의 owner 필드와 무관)
                 hooks.append(spec)
             except Exception as e:
                 log_event(event, json_file.name, axis_name, -1, 0, "", f"registry parse error: {e}")
+
+    # 외부배포 critic — DOUBLE-FIRE 차단 (2026-05-31, 신규 PC 모래상자 실측):
+    # 신규 PC 는 plugin hook context 라 CLAUDE_PLUGIN_ROOT 설정됨 → global(bootstrap 복사본)
+    # + plugin registry 가 같은 hook 을 중복 보유 → 매 hook 2회 실행. 작업 PC 는
+    # CLAUDE_PLUGIN_ROOT 미설정이라 global 단일축 → 무영향.
+    # rule 19 Resolution Priority (Project > Global > Plugin) 로 이름당 1개만 유지.
+    _axis_rank = {"project": 0, "global": 1, "plugin": 2}
+    _deduped: Dict[str, Dict[str, Any]] = {}
+    for spec in hooks:
+        nm = spec.get("name", "")
+        rank = _axis_rank.get(spec.get("_axis", "global"), 1)
+        prev = _deduped.get(nm)
+        if prev is None or rank < _axis_rank.get(prev.get("_axis", "global"), 1):
+            _deduped[nm] = spec
+    hooks = list(_deduped.values())
 
     hooks.sort(key=lambda h: (h.get("priority", 50), h.get("name", "")))
     return hooks
@@ -171,10 +262,88 @@ def _kill_tree(pid: int) -> None:
             pass
 
 
+def _resolve_python() -> str:
+    """현재 OS에서 실재하는 Python 3 실행기 토큰을 반환.
+
+    외부배포 critic B2 (2026-05-31): registry command 는 `python X.py` 형태로
+    고정되어 있으나, 신규 PC(특히 mac/linux)는 `python` 이 없고 `python3` 만 있는
+    경우가 흔하다(대칭 문제). 이 helper 가 OS 별로 실재 실행기를 골라준다.
+
+    Windows: `python` 우선 → 기존 동작 그대로(무변경 보장). 없으면 py 런처/python3.
+    Unix:    `python3` 우선 → 신규 PC 자동 정합. 없으면 python.
+    """
+    candidates = ["python", "py", "python3"] if os.name == "nt" else ["python3", "python"]
+    for c in candidates:
+        if shutil.which(c):
+            return "py -3" if c == "py" else c  # py 런처는 -3 로 Python 3 강제
+    return "python" if os.name == "nt" else "python3"  # 최후 fallback = 기존 동작
+
+
+_PYTHON = _resolve_python()
+
+
+def _rewrite_interpreter(cmd: str) -> str:
+    """registry command 의 선두 interpreter 토큰(python/python3)만 resolved 실행기로 치환.
+
+    - Windows + `python` 실재 → `python` 그대로 (zero live regression).
+    - Unix + `python` 부재 → `python3` 로 자동 치환.
+    - node/기타 토큰은 그대로 (cross-platform 일관 → 손대지 않음).
+    """
+    stripped = cmd.lstrip()
+    lead = len(cmd) - len(stripped)  # 보존할 선행 공백 길이
+    for tok in ("python3", "python"):  # python3 먼저 — python 이 prefix 로 오인 매칭되지 않도록
+        if stripped.startswith(tok + " "):
+            return cmd[:lead] + _PYTHON + stripped[len(tok):]
+    return cmd
+
+
+def _maybe_bootstrap() -> None:
+    """신규 PC(pristine install) + plugin context 감지 시 dispatcher 시작에서 1회 자가 부트스트랩.
+
+    외부배포 (2026-05-31, 신규 PC 모래상자 실측): plugin hooks.json 이 모든 이벤트를
+    dispatcher 로 라우팅하므로, 신규 PC 첫 이벤트에서 registry 가 참조하는
+    `$HOME/.claude/hooks/*.py` 가 아직 부재(pristine). 여기서 bootstrap.py(plugin 동봉)를
+    먼저 실행해 9개 디렉토리를 $HOME 로 복사 → registry 명령 경로 실존 보장 (race-free).
+
+    게이트 (HIGH-3/HIGH-4 정합, 2026-05-31 6관점 검증):
+    · sentinel(state/.bootstrap-complete) 존재 → 완료 상태 → return.
+    · PLUGIN_ROOT 빈값 + marker 존재 → 작업/설치완료 PC → return (cache→SSOT 역오염 방지).
+      (CC SessionStart CLAUDE_PLUGIN_ROOT 빈값 버그 빌드라도, pristine[marker 부재]이면 아래서 진행)
+    · 그 외(PLUGIN_ROOT set, 또는 pristine) → bootstrap.py 실행.
+      bootstrap.py 가 plugin root 자동탐지(env>autodetect, HIGH-3) + 완료 시에만 sentinel 기록(HIGH-4).
+    · half-install(중단)은 sentinel 부재라 다음 이벤트에 재시도. lock 으로 동시실행 방지(MED-2).
+    """
+    try:
+        claude = HOME / ".claude"
+        sentinel = claude / "state" / ".bootstrap-complete"
+        if sentinel.exists():
+            return  # 이미 완료 (정상 상태) — 작업 PC 포함 매 이벤트 빠른 skip
+        marker = claude / "skills" / "auto" / "SKILL.md"
+        # live PC 보호: plugin context 아님(PLUGIN_ROOT 없음) + 이미 설치됨(marker)
+        #   → cache→SSOT 역오염 방지 위해 bootstrap 미실행 (단 sentinel 은 1회 기록해 차후 skip)
+        if not PLUGIN_ROOT and marker.exists():
+            try:
+                sentinel.parent.mkdir(parents=True, exist_ok=True)
+                sentinel.write_text("preexisting-install\n", encoding="utf-8")
+            except OSError:
+                pass
+            return
+        bootstrap_py = Path(__file__).resolve().parent / "bootstrap.py"
+        if not bootstrap_py.exists():
+            return
+        subprocess.run(
+            [sys.executable, str(bootstrap_py)],
+            timeout=120, capture_output=True, text=True,
+        )
+    except Exception:
+        pass  # 부트스트랩 실패해도 dispatcher 본진행 막지 않음 (graceful)
+
+
 def run_hook(event: str, spec: Dict[str, Any], stdin_data: str) -> int:
     start = datetime.now()
     name = spec["name"]
     cmd = os.path.expandvars(os.path.expanduser(spec["command"]))
+    cmd = _rewrite_interpreter(cmd)  # 외부배포 critic B2: OS별 python/python3 정합 (Windows 무변경)
     timeout = spec.get("timeout", 10)
     blocking = spec.get("blocking", False)
     owner = spec.get("owner", "?")
@@ -190,6 +359,10 @@ def run_hook(event: str, spec: Dict[str, Any], stdin_data: str) -> int:
             text=True,
             encoding="utf-8",
             errors="replace",
+            # 외부배포 critic M3 (2026-05-31): 자체 process group 격리.
+            # POSIX 에서 _kill_tree 의 os.killpg 가 dispatcher/부모(CC) 자신을 SIGKILL 하는 사고 방지.
+            # POSIX 에서만 의미(setsid), Windows 는 무시 — cross-platform 안전.
+            start_new_session=(os.name != "nt"),
         )
         try:
             stdout, stderr = proc.communicate(input=stdin_data, timeout=timeout)
@@ -403,7 +576,7 @@ def run_self_test():
     print("\n[T7] Timeout handling (1s timeout vs 3s sleep)...")
     spec_to = {
         "name": "timeout_test",
-        "command": "cmd /c ping -n 4 127.0.0.1 > nul",  # ~3 seconds
+        "command": "cmd /c ping -n 7 127.0.0.1 > nul",  # ~6 seconds (timeout 1s 가 끊어야)
         "timeout": 1,
         "blocking": False,
         "owner": "test",
@@ -411,11 +584,34 @@ def run_self_test():
     start = time.time()
     code = run_hook("__selftest__", spec_to, "")
     elapsed = time.time() - start
-    if code == 0 and elapsed < 2.5:
+    # 외부배포 (2026-05-31): T7 마진 완화 — 로드된 Windows 의 process teardown 지연(~2.6s)에도
+    # timeout(1s) 이 6s 명령을 끊었음을 판별. broken-timeout(~6s)은 여전히 > 3.5 로 FAIL.
+    if code == 0 and elapsed < 3.5:
         print(f"  [PASS] timeout enforced ({elapsed:.1f}s), returned 0 (non-blocking)")
         results["pass"] += 1
     else:
         print(f"  [FAIL] elapsed={elapsed:.1f}s code={code}")
+        results["fail"] += 1
+
+    # T8: Event-level double-fire lock
+    print("\n[T8] Event-level double-fire lock...")
+    _ev, _data = "__locktest__", '{"session_id":"selftest","x":1}'
+    # 사전 정리 (이전 self-test 잔재 제거 — 결정적 결과 보장)
+    try:
+        _k = hashlib.sha256((_ev + "\x00" + _data).encode("utf-8", "replace")).hexdigest()[:32]
+        _lp = LOCK_DIR / f"{_k}.lock"
+        if _lp.exists():
+            _lp.unlink()
+    except Exception:
+        pass
+    first = acquire_event_lock(_ev, _data)          # 첫 진입 → True
+    second = acquire_event_lock(_ev, _data)         # 즉시 재진입(double-fire) → False
+    diff = acquire_event_lock(_ev, '{"session_id":"selftest","x":2}')  # 다른 payload → True
+    if first and not second and diff:
+        print(f"  [PASS] first={first} second={second} diff_payload={diff}")
+        results["pass"] += 1
+    else:
+        print(f"  [FAIL] first={first} second={second} diff_payload={diff}")
         results["fail"] += 1
 
     # Summary
@@ -442,12 +638,19 @@ def main():
         return
 
     event = arg
+    _maybe_bootstrap()  # 외부배포: 신규 PC 첫 이벤트 시 self-bootstrap (작업 PC pristine 아님 → skip)
     stdin_data = ""
     try:
         if not sys.stdin.isatty():
             stdin_data = sys.stdin.read()
     except Exception:
         stdin_data = ""
+
+    # 이벤트당 1회 락: settings.json + plugin hooks.json 두 진입점이 같은 이벤트에
+    # 각각 dispatcher 를 spawn 하는 double-fire 차단. 두 번째 프로세스는 여기서 즉시 종료.
+    if not acquire_event_lock(event, stdin_data):
+        log_event(event, "_dispatcher", "system", 0, 0, "", f"v{VERSION} skipped (double-fire lock)")
+        sys.exit(SUCCESS)
 
     tool_name = ""
     try:
@@ -464,13 +667,16 @@ def main():
     if not hooks:
         sys.exit(SUCCESS)
 
-    max_exit = SUCCESS
+    # 외부배포 MED-1 (2026-05-31): blocking hook 이 정당하게 BLOCK(2) 을 반환해도, 다른 hook 이
+    # 2 보다 큰 코드(예: powershell ENOENT 127)를 내면 옛 max_exit 로직이 BLOCK 을 SUCCESS 로 강등.
+    # → "BLOCK 을 낸 hook 이 하나라도 있으면 BLOCK" 으로 변경 (비-2 에러코드가 차단 신호 못 가림).
+    block_seen = False
     for spec in hooks:
         code = run_hook(event, spec, stdin_data)
-        if code > max_exit:
-            max_exit = code
+        if code == BLOCK:
+            block_seen = True
 
-    sys.exit(BLOCK if max_exit == BLOCK else SUCCESS)
+    sys.exit(BLOCK if block_seen else SUCCESS)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+{
+  "name": "jargon_guard",
+  "command": "python \"$HOME/.claude/hooks/jargon_guard.py\"",
+  "timeout": 8,
+  "blocking": true,
+  "priority": 60,
+  "owner": "global"
+}

@@ -136,4 +136,4 @@ dispatcher가 이를 받아:
 - Anthropic 공식 advisor-tool 패턴 (Advisor 역할)
 - 기존 패턴: `agents/meta/cc-auth-advisor.md` (sonnet, READ-ONLY, weighted 평가) — 본 agent의 직접 복제 베이스
 - 본 executor 페어: `agents/meta/atlassian-auth-executor.md`
-- PRD: `C:\claude\docs\00-prd\aiden-auto-atlassian-mcp-auth-automation.prd.md`
+- PRD: `docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md`

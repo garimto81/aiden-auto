@@ -110,6 +110,47 @@
 
 ---
 
+### 6. emotional_engagement (몰입·재미) 🆕 advisory
+
+**정의**: 문서를 끝까지 읽고 싶게 만드는가? (글맛)
+
+> ⚠️ **advisory 지표**: 명료성 지표(1~5)와 달리 **MAJOR/REJECT 를 유발하지 않는다**. 명료한 문서가 밋밋하면 MINOR 개선 권고만. 명료성이 항상 바닥(floor), 글맛은 천장(ceiling).
+
+**측정**:
+- 서사 흐름: 도입→전개→마무리가 끌고 가는가
+- 문체 리듬: 문장 길이 변주 / 목소리(voice) 존재
+- 비유 신선도: 진부 관용구 0, 살아있는 비유
+
+**점수**: 5점 척도
+
+| 점수 | 기준 |
+|:---:|------|
+| 5/5 | 손을 못 떼게 함 (탁월) |
+| 4/5 | 읽는 맛 분명 (PASS 경계) |
+| 3/5 | 정확하나 밋밋 |
+| 2/5 | 단조·흐름 끊김 |
+| 1/5 | 글맛 전무 |
+
+**advisory PASS 기준**: 3/5 이상이면 충분. 2/5 이하 → MINOR 권고 (블로킹 X).
+
+---
+
+### 7. memorability (기억에 남음) 🆕 advisory
+
+**정의**: 24시간 후 한 장면/문장이 또렷이 남는가?
+
+> ⚠️ **advisory 지표**: emotional_engagement 와 동일 — MAJOR/REJECT 권한 없음.
+
+**측정**:
+- read 직후가 아닌 "하루 뒤 떠오르는 한 컷" 가정
+- 또렷한 장면/비유/문장 1개 이상 → 높음
+
+**점수**: 5점 척도 (5=또렷한 한 컷 / 1=읽자마자 증발)
+
+**advisory PASS 기준**: 3/5 이상. 2/5 이하 → MINOR 권고 (블로킹 X).
+
+---
+
 ## 출력 schema (Reader Agent 응답 형식)
 
 ```json
@@ -124,7 +165,9 @@
     "ambiguity": 2,
     "cognitive": 4,
     "identity": 3,
-    "artifice": 1
+    "artifice": 1,
+    "emotional_engagement": 3,
+    "memorability": 2
   },
   "ambiguity_points": [
     {
@@ -184,9 +227,14 @@ def determine_verdict(scores, identity_violations, artifice_points):
 
     # 2. recall / cognitive 둘 다 PASS
     if scores["recall"] >= 4 and scores["cognitive"] >= 4 and scores["ambiguity"] <= 5:
-        # 3. 모든 지표 PASS → APPROVE
+        # 2b. 글맛 advisory 검사 (MINOR 한정 — 절대 MAJOR/REJECT 유발 안 함)
+        #     명료성은 바닥(floor), 글맛은 천장(ceiling). 글맛 낮음 = 개선 권고일 뿐.
+        lit_low = scores.get("emotional_engagement", 3) <= 2 or scores.get("memorability", 3) <= 2
+        # 3. 명료성 완벽(만점)일 때만 글맛이 verdict 를 좌우한다.
+        #    (명료성이 약한 PASS면 어차피 아래 4번 MINOR — 글맛 무관.
+        #     즉 글맛 강등은 "명료성 만점인데 글맛만 낮은" 좁은 교집합에서만 발동. 의도된 동작.)
         if scores["recall"] == 5 and scores["cognitive"] == 5 and scores["ambiguity"] == 0:
-            return "APPROVE"
+            return "MINOR" if lit_low else "APPROVE"
         # 4. 일부 약한 PASS → MINOR
         return "MINOR"
 
@@ -204,8 +252,12 @@ def determine_verdict(scores, identity_violations, artifice_points):
 
 ## Aggregator 룰 (Primary + Secondary 합)
 
+> **운영 SSOT = `reader-panel-workflow.md` 의 aggregate()** (v2.1, advisory 3-인자 + 글맛 MINOR clamp 포함). 아래 가중평균 버전은 점수 환산 참고용. **glmat advisory(P6)는 두 버전 모두에서 MINOR 천장** — 명료성을 누르지 못함.
+
 ```python
-def aggregate(primary_verdict, secondary_verdict):
+def aggregate(primary_verdict, secondary_verdict, advisory_verdict=None):
+    # advisory_verdict(POLISHED/READABLE/FLAT)는 MINOR 이상 격상 불가 (clamp).
+    # 명료성(primary/secondary)만 MAJOR/REJECT 권한 보유.
     # 우선순위: REJECT > MAJOR > MINOR > APPROVE
     priority = {"REJECT": 4, "MAJOR": 3, "MINOR": 2, "APPROVE": 1}
 
@@ -266,16 +318,19 @@ aggregated_action: "writer 재호출 (iter 1/3)"
 
 ## Schema 진화
 
-추후 추가 가능 지표 (현재 5 종 외):
-- **emotional_engagement** — 감정 몰입도 (재미)
-- **memorability** — 24시간 후 회상도
+**활성 지표 (현재 7 종)**: recall · ambiguity · cognitive · identity · artifice (명료성 5) + emotional_engagement · memorability (글맛 advisory 2 — v2.0 활성화).
+
+추후 추가 가능 지표:
 - **actionability** — 읽은 후 다음 행동 명확성
 - **trust** — 문서 신뢰도 (출처 / 근거)
 
 신규 지표 추가 시 본 schema 갱신 + version bump.
+
+> **지표 등급 (v2.0)**: 명료성 5종 = **블로킹(MAJOR/REJECT 가능)**. 글맛 2종 = **advisory(MINOR 한정)**. 글맛은 명료성을 누르지 못한다 — 명료한 문서를 글맛 부족만으로 reject 금지. prose-critic agent 가 글맛 2종을 전담 평가.
 
 ## Edit History
 
 | 날짜 | 버전 | 트리거 | 변경 |
 |------|:----:|--------|------|
 | 2026-05-06 | v1.0 | /chapter-doc skill 신설 | 5 객관 지표 + Verdict 룰 + Aggregator 최초 정의 |
+| 2026-06-01 | v2.0 | 문학적 매력 전담 장치 추가 (사용자 결정) | emotional_engagement · memorability 를 "추후 추가" → 활성 지표 #6·#7 승격 (advisory/MINOR 한정). determine_verdict 에 글맛 강등 분기 추가 (명료성 게이트 불변). prose-critic agent 신설 연동 |

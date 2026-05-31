@@ -33,8 +33,27 @@ from datetime import datetime
 
 USER_CLAUDE = Path(os.path.expanduser("~")) / ".claude"
 PROJECT_CLAUDE = Path("C:/claude/.claude")
-PLUGIN_SOURCE = Path("C:/claude/plugins/aiden-auto")
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
+
+
+# PLUGIN_SOURCE: 2026-05-30 — plugin-source(C:\claude\plugins\aiden-auto) deregister 후
+# spec-verify 의 "plugin" 축 검증 대상을 실제 CC 런타임 = cache 활성 버전으로 repoint.
+# (이전 하드코딩 device 경로도 제거 → device-agnostic). cache 부재 시 Global fallback (false drift 0).
+def _cache_active() -> Path:
+    if CACHE_ROOT.is_dir():
+        vers = [p for p in CACHE_ROOT.iterdir() if p.is_dir()]
+        def _vk(p: Path):
+            try:
+                return tuple(int(x) for x in p.name.split("."))
+            except ValueError:
+                return (0,)
+        vers.sort(key=_vk, reverse=True)
+        if vers:
+            return vers[0]
+    return USER_CLAUDE
+
+
+PLUGIN_SOURCE = _cache_active()
 
 LAYER_WEIGHTS = {
     "L1_Physical":       0.20,

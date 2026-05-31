@@ -1,18 +1,23 @@
 """One-shot generator: Project settings.json wrapper hooks → registry JSON.
 
-Reads C:/claude/.claude/settings.json.bak.silent-wrap-removal, strips _silent_wrap.cmd
+Reads <project>/.claude/settings.json.bak.silent-wrap-removal, strips _silent_wrap.cmd
 wrapper from each command, derives a hook name, and writes a dispatcher-compatible
-registry JSON file under C:/claude/.claude/hooks/registry/{event}/.
+registry JSON file under <project>/.claude/hooks/registry/{event}/.
 
 This removes the wrapper layer entirely — dispatcher.py handles execution natively
 with subprocess.Popen, stderr captured into hook-events.db, no shell expansion quirks.
+
+외부배포 HIGH-1 (2026-05-31): maintainer 전용 one-shot 도구. 하드코딩 경로 제거 —
+CLAUDE_PROJECT_DIR env > cwd 기반 (device-agnostic). 정본 PC 는 cwd=프로젝트 루트.
 """
 
+import os
 import json
 from pathlib import Path
 
-SOURCE = Path(r"C:\claude\.claude\settings.json.bak.silent-wrap-removal")
-REGISTRY_ROOT = Path(r"C:\claude\.claude\hooks\registry")
+_PROJ = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+SOURCE = _PROJ / ".claude" / "settings.json.bak.silent-wrap-removal"
+REGISTRY_ROOT = _PROJ / ".claude" / "hooks" / "registry"
 WRAPPER_TOKEN = "_silent_wrap.cmd "
 
 

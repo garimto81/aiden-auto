@@ -15,7 +15,7 @@ Atlassian MCP Auth Executor (on-demand)
 SessionStart hook registry 에서는 비활성 (_disabled/ 격리됨).
 
 Pairs with agent spec: ~/.claude/agents/meta/atlassian-auth-executor.md
-PRD: C:/claude/docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md
+PRD: docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md
 
 Spec contract:
   - READ: state/atlassian-auth-failures-{date}.json,

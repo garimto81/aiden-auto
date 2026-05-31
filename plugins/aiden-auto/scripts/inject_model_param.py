@@ -10,7 +10,8 @@ import re
 import sys
 from pathlib import Path
 
-REF_DIR = Path(r"C:\claude\plugins\aiden-auto\references")  # backward compat
+# 2026-05-30: plugin-source deregister 후 정본(Global) references 로 repoint (device-agnostic).
+REF_DIR = Path.home() / ".claude" / "references"
 
 
 def find_agent_calls(content):

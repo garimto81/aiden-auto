@@ -30,17 +30,23 @@ def resolve_plugin_source() -> Optional[Path]:
 
     우선순위:
       1. env AIDEN_AUTO_PLUGIN_SOURCE — 설정 시 그 값만 (무효 시 graceful None)
-      2. (env 부재 시) cwd/plugins, parent/plugins, ~/src/aiden-auto, C:\\claude\\plugins (backward compat)
+      2. env CLAUDE_PROJECT_DIR/plugins/aiden-auto (CC 주입 — sibling hook 정합, cwd 변동에 견고)
+      3. (env 부재 시) cwd/plugins, parent/plugins, ~/src/aiden-auto (device-agnostic)
     """
     env_path = os.getenv("AIDEN_AUTO_PLUGIN_SOURCE")
     if env_path:
         p = Path(env_path)
         return p if p.is_dir() else None
-    candidates = [
+    # 외부배포 (2026-05-31): 하드코딩 device 경로 제거 — CLAUDE_PROJECT_DIR(CC 주입) > cwd 상대 후보.
+    # cwd 의존만으로는 hook subprocess cwd 변동 시 오해석 가능 → CC 가 주입하는 project dir 우선.
+    candidates = []
+    proj = os.getenv("CLAUDE_PROJECT_DIR")
+    if proj:
+        candidates.append(Path(proj) / "plugins" / "aiden-auto")
+    candidates += [
         Path.cwd() / "plugins" / "aiden-auto",
         Path.cwd().parent / "plugins" / "aiden-auto",
         Path.home() / "src" / "aiden-auto" / "plugins" / "aiden-auto",
-        Path(r"C:\claude\plugins\aiden-auto"),  # backward compat (정본 PC)
     ]
     for c in candidates:
         if c.is_dir():
@@ -53,10 +59,10 @@ def resolve_project_claude() -> Optional[Path]:
 
     우선순위:
       1. env AIDEN_AUTO_PROJECT_CLAUDE
-      2. cwd/.claude (SSOT pattern)
+      2. env CLAUDE_PROJECT_DIR/.claude (CC 주입 — cwd 변동에 견고, sibling hook 정합)
+      3. cwd/.claude (SSOT pattern)
 
-    신규 PC 에서 cwd 가 ~/.claude/ 자체인 경우는 None 반환
-    (self-sync 방지).
+    신규 PC 에서 후보가 ~/.claude/ 자체인 경우는 건너뜀 (self-sync 방지).
 
     Returns:
         Path 객체 또는 None
@@ -64,15 +70,20 @@ def resolve_project_claude() -> Optional[Path]:
     env_path = os.getenv("AIDEN_AUTO_PROJECT_CLAUDE")
     if env_path and Path(env_path).is_dir():
         return Path(env_path)
-    cwd_claude = Path.cwd() / ".claude"
-    if cwd_claude.is_dir():
-        # cwd 가 ~/.claude/ 자체인 경우 self-sync 방지
-        try:
-            if cwd_claude.resolve() == (Path.home() / ".claude").resolve():
-                return None
-        except OSError:
-            pass
-        return cwd_claude
+    # 외부배포 (2026-05-31): CLAUDE_PROJECT_DIR(CC 주입) 우선 → hook subprocess cwd 변동에 견고.
+    candidates = []
+    proj = os.getenv("CLAUDE_PROJECT_DIR")
+    if proj:
+        candidates.append(Path(proj) / ".claude")
+    candidates.append(Path.cwd() / ".claude")
+    for cand in candidates:
+        if cand.is_dir():
+            try:
+                if cand.resolve() == (Path.home() / ".claude").resolve():
+                    continue  # ~/.claude 자체 self-sync 방지
+            except OSError:
+                pass
+            return cand
     return None
 
 
@@ -81,7 +92,7 @@ def resolve_aiden_auto_repo() -> Optional[Path]:
 
     우선순위 (v3.1 — 명시 의도 우선):
       1. env AIDEN_AUTO_REPO — 설정되어 있으면 그 값만 사용 (무효해도 fallback X)
-      2. (env 부재 시) ~/aiden-auto-repo, ~/src/aiden-auto, C:\\aiden-auto-repo (backward compat)
+      2. (env 부재 시) CLAUDE_PROJECT_DIR.parent/aiden-auto-repo, ~/aiden-auto-repo, ~/src/aiden-auto, cwd.parent/aiden-auto-repo
 
     .git 디렉토리 존재 확인 (실제 git repo 만).
 
@@ -96,10 +107,15 @@ def resolve_aiden_auto_repo() -> Optional[Path]:
             return p
         return None
     # env 부재 시만 candidates 순회
-    candidates = [
+    # 외부배포 (2026-05-31): 하드코딩 device 경로 제거 — CLAUDE_PROJECT_DIR.parent(CC 주입) + cwd.parent 후보.
+    candidates = []
+    proj = os.getenv("CLAUDE_PROJECT_DIR")
+    if proj:
+        candidates.append(Path(proj).parent / "aiden-auto-repo")
+    candidates += [
         Path.home() / "aiden-auto-repo",
         Path.home() / "src" / "aiden-auto",
-        Path(r"C:\aiden-auto-repo"),  # backward compat (정본 PC)
+        Path.cwd().parent / "aiden-auto-repo",
     ]
     for c in candidates:
         if c.is_dir() and (c / ".git").is_dir():
@@ -164,20 +180,19 @@ if __name__ == "__main__":
     # 본 모듈 내 hardcoded path 검사. 정당화 패턴:
     #   1. "backward compat" 주석 같은 줄
     #   2. self-test 의 검사 코드 자체 (in line / # SELF-CHECK 마커)
+    # 외부배포 HIGH-1 (2026-05-31): 검사 패턴을 조립식으로 — 본 self-check 코드 자체가
+    # grep 하드코딩-경로 메트릭에 false-positive 로 잡히지 않도록 (device-coupling 아님).
+    _drive = "C:" + chr(92)
+    _pat_claude = _drive + "claude"
+    _pat_repo = _drive + "aiden-auto-repo"
     hardcoded_count = 0
     with open(__file__, "r", encoding="utf-8") as f:
         content = f.read()
-    if r"C:\claude" in content or r"C:\aiden-auto-repo" in content:  # SELF-CHECK 검사 시작
+    if _pat_claude in content or _pat_repo in content:
         for i, line in enumerate(content.splitlines(), 1):
-            if r"C:\claude" in line or r"C:\aiden-auto-repo" in line:
+            if _pat_claude in line or _pat_repo in line:
                 line_lower = line.lower()
-                # 정당화 사유 (한국어/영어 모두 허용)
-                is_justified = (
-                    "backward compat" in line_lower
-                    or "# self-check" in line_lower
-                    or "or r\"c:\\claude\" in line" in line_lower  # 검사 코드 자체
-                    or "or r\"c:\\aiden-auto-repo\" in line" in line_lower
-                )
+                is_justified = "backward compat" in line_lower or "self-check" in line_lower
                 if not is_justified:
                     hardcoded_count += 1
                     print(f"  ⚠ unmarked hardcoded path at line {i}: {line.strip()[:80]}")

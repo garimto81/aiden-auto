@@ -13,21 +13,45 @@ plugin/cache/marketplaces 위치는 read-only auto-mirror.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
-USER_CLAUDE = Path(r"C:\Users\AidenKim\.claude").resolve()
+USER_CLAUDE = (Path.home() / ".claude").resolve()  # device-agnostic (2026-05-31, 외부배포 critic M1 — 옛 하드코딩 C:\Users\AidenKim 제거)
+
+
+def _legacy_plugin_dir() -> Path | None:
+    """옛 mirror 위치(deregistered) backward-compat 보호 — device-agnostic.
+
+    외부배포 HIGH-1 (2026-05-31, 6관점 검증): 옛 하드코딩 `C:\\claude\\plugins` 리터럴 제거.
+    이제 CLAUDE_LEGACY_PLUGIN_DIR env 가 set + 실재할 때만 보호 대상(미설정/부재 시 inert).
+    → 다른 드라이브/macOS/Linux 신규 PC 에서 premise② hardcoded-path 0 충족.
+    """
+    raw = os.environ.get("CLAUDE_LEGACY_PLUGIN_DIR", "")
+    if not raw:
+        return None
+    try:
+        p = Path(raw).resolve()
+        return p if p.exists() else None
+    except Exception:
+        return None
+
+
+_LEGACY_PLUGINS_DIR = _legacy_plugin_dir()  # 1회 평가 (env-gated, 보통 None)
 
 PROTECTED_PATHS = [
-    Path(r"C:\claude\plugins").resolve(),  # backward compat
-    USER_CLAUDE / "plugins" / "cache",
-    USER_CLAUDE / "plugins" / "marketplaces",
+    p for p in (
+        _LEGACY_PLUGINS_DIR,                        # backward compat (env-gated, 부재 시 None)
+        USER_CLAUDE / "plugins" / "cache",
+        USER_CLAUDE / "plugins" / "marketplaces",
+    ) if p is not None
 ]
 
 # Plugin 루트 파일: ~/.claude/ mirror 없는 plugin 배포 메타데이터.
 # guard 차단 범위(plugin 전체) > watcher sync 범위(SYNC_DIRS 7개) 사각지대 해소.
 # Edit 허용 조건: parent == PLUGIN_ROOT AND filename in WHITELIST (하위 디렉토리 보호 유지).
-PLUGIN_ROOT = Path(r"C:\claude\plugins\aiden-auto").resolve()  # backward compat
+# 외부배포 HIGH-1: 하드코딩 device 경로 제거 — legacy mirror env 설정 시에만 활성(부재 시 None).
+PLUGIN_ROOT = (_LEGACY_PLUGINS_DIR / "aiden-auto") if _LEGACY_PLUGINS_DIR else None
 ROOT_FILE_WHITELIST = {
     ".gitignore",
     "CLAUDE.md",
@@ -76,7 +100,7 @@ def main() -> int:
         return 0
 
     # Plugin distribution metadata bypass: ~/.claude/ mirror 없으므로 in-place edit 허용
-    if target.parent == PLUGIN_ROOT and target.name in ROOT_FILE_WHITELIST:
+    if PLUGIN_ROOT is not None and target.parent == PLUGIN_ROOT and target.name in ROOT_FILE_WHITELIST:
         return 0
 
     for protected in PROTECTED_PATHS:

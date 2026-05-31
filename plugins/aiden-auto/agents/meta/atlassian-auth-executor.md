@@ -132,4 +132,4 @@ state/atlassian-auth-advisor-pending.flag 생성
 - Anthropic 공식 advisor-tool 패턴 (Executor 역할)
 - 기존 패턴: `agents/meta/cc-auth-executor.md` (haiku, 빠른 1차 게이트) — 본 agent의 직접 복제 베이스
 - 본 advisor 페어: `agents/meta/atlassian-auth-advisor.md`
-- PRD: `C:\claude\docs\00-prd\aiden-auto-atlassian-mcp-auth-automation.prd.md`
+- PRD: `docs/00-prd/aiden-auto-atlassian-mcp-auth-automation.prd.md`

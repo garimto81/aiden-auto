@@ -4,5 +4,6 @@
   "timeout": 5,
   "blocking": true,
   "priority": 50,
-  "owner": "global"
+  "owner": "global",
+  "os": "nt"
 }

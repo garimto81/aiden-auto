@@ -642,13 +642,20 @@ Loop (max 5 iterations):
   if iteration_count >= 5 and not SURVIVED:
       → # 설계 자체에 근본적 문제가 있음 — 강제 통과 금지
       → 미해결 약점 요약 보고서 작성 (남은 Critical/Major 약점 전체 목록)
-      → AskUserQuestion으로 사용자에게 보고:
-        "Critic 5회 반복 후에도 다음 약점이 해결되지 않았습니다: {남은 약점 요약}.
-         설계 자체에 근본적 문제가 있을 수 있습니다."
-        옵션:
-        1. "요구사항 재정의" → Phase 1 처음부터 재시작 (PRD 재검토)
-        2. "미해결 약점 수용 후 진행" → Plan에 WARNING 섹션 추가 + Phase 2 진입
-        3. "작업 중단" → wip 커밋 + TeamDelete + 세션 종료
+      → AskUserQuestion(
+          question="검토를 5번 반복했지만 다음 약점들이 계속 남아 있습니다: {남은 약점 요약}. 계획 자체에 근본 문제가 있을 수 있습니다. 어떻게 진행할까요?",
+          header="Critic 한계",
+          multiSelect=false,
+          options=[
+            {label: "요구사항 재정의", description: "무엇을 만들지부터 다시 정합니다. 계획 단계 맨 처음(요구사항 문서 재검토)으로 돌아갑니다. 약점 원인이 요구사항 자체에 있을 때 권장."},
+            {label: "약점 수용 후 진행", description: "남은 약점을 인정한 채로 다음 단계(구현)로 넘어갑니다. 계획 문서에 '주의(WARNING)' 항목을 추가해 흔적을 남깁니다. 약점이 사소하거나 일정이 급할 때 선택."},
+            {label: "작업 중단", description: "지금까지 작업을 임시 저장(wip 커밋)하고 세션을 종료합니다. 되돌리기 어렵지는 않지만 진행이 멈춥니다. 방향을 다시 고민하고 싶을 때 선택."}
+          ]
+        )
+      # 응답 처리:
+      #   "요구사항 재정의" → Phase 1 처음부터 재시작 (PRD 재검토)
+      #   "약점 수용 후 진행" → Plan에 WARNING 섹션 추가 + Phase 2 진입
+      #   "작업 중단" → wip 커밋 + TeamDelete + 세션 종료
 ```
 
 **Critic 판정 파싱 규칙:**
@@ -901,17 +908,26 @@ Design: {design_path}
 ==================================
 """)
     # 2. AskUserQuestion으로 승인 요청
-    approval = AskUserQuestion("Phase 2 BUILD 진입을 승인하시겠습니까? (y/n/수정사항)")
+    approval = AskUserQuestion(
+        question="계획이 다 짜였습니다. 이대로 실제 만들기(구현) 단계로 들어갈까요?",
+        header="Plan 승인",
+        multiSelect=False,
+        options=[
+            {label: "승인", description: "이 계획대로 구현 단계(Phase 2)로 바로 들어갑니다. 계획에 동의할 때 선택. (권장)"},
+            {label: "거부", description: "계획이 마음에 들지 않아 처음부터 다시 짭니다. 계획 수립(Step 1.3)으로 돌아갑니다. 방향이 틀렸을 때 선택."},
+            {label: "수정 후 재승인", description: "고치고 싶은 부분을 알려주면 그 부분만 반영해 계획을 다듬고 다시 확인받습니다(최대 2회). 큰 틀은 맞지만 세부 조정이 필요할 때 선택."}
+        ]
+    )
 
-    if approval.lower() in ["n", "no", "아니오"]:
+    if approval == "거부":
         # 계획 수정 → Step 1.3 재실행
         print("[Plan Approval] 거부됨. Phase 1.3 계획 수립으로 복귀.")
-    elif approval.lower() in ["y", "yes", "예", "ㅇ"]:
+    elif approval == "승인":
         # Phase 2 진입
         print("[Plan Approval] 승인됨. Phase 2 BUILD 진입.")
-    else:
-        # 수정사항 반영 후 재승인
-        print(f"[Plan Approval] 수정 요청: {approval}")
+    else:  # "수정 후 재승인"
+        # 수정사항 반영 후 재승인 — 사용자에게 수정 내용을 추가로 확인
+        print("[Plan Approval] 수정 요청 접수.")
         # planner에게 수정사항 전달 → 계획 업데이트 → 재승인 (max 2회)
 ```
 

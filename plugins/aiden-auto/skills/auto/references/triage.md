@@ -147,20 +147,25 @@ confidence 계산:
 
 ## Step -2.3: 카테고리 명확화 질문 (confidence < 0.7)
 
+confidence 가 0.7 미만이면 작업 종류를 1회만 묻는다. **AskUserQuestion tool 직접 호출** (가르침 #6 — chat inline 표 / 자유 텍스트 질문 금지):
+
 ```
-사용자에게 1회만 질문:
-
-"어떤 종류의 작업인지 확인할게요:
-
-  ① 기획서/PRD 작성       (예: '결제 모듈 기획해줘')
-  ② 기능 구현/수정         (예: '로그인 추가해줘')
-  ③ 테스트/검증           (예: 'E2E 돌려줘')
-  ④ 반복 작업/drift 검증   (예: '미구현 5개 처리')
-  ⑤ 조사/분석             (예: '최신 트렌드 알아봐')
-  ⑥ UI 목업/디자인         (예: '화면 와이어프레임')
-
-번호 또는 자유 입력으로 알려주세요."
+AskUserQuestion(
+  question="어떤 종류의 작업인지 확인할게요. 가까운 걸 하나 골라주세요.",
+  header="작업 종류",
+  multiSelect=false,
+  options=[
+    {label: "기획·PRD 작성", description: "무엇을 만들지 정리하는 기획 문서를 씁니다. 예: '결제 모듈 기획해줘'"},
+    {label: "기능 구현·수정", description: "실제 코드를 새로 만들거나 고칩니다. 예: '로그인 추가해줘'"},
+    {label: "테스트·검증", description: "이미 만든 것이 잘 도는지 확인합니다. 예: 'E2E 돌려줘'"},
+    {label: "반복·drift 검증", description: "빠뜨린 부분을 반복해서 찾아 채웁니다. 예: '미구현 5개 처리'"},
+    {label: "조사·분석", description: "자료를 찾아보고 정리해 드립니다. 예: '최신 트렌드 알아봐'"},
+    {label: "UI 목업·디자인", description: "화면이 어떻게 생길지 그림으로 보여드립니다. 예: '화면 와이어프레임'"}
+  ]
+)
 ```
+
+선택된 label 로 카테고리 확정 (기획·PRD 작성→DOC / 기능 구현·수정→CODE / 테스트·검증→QA / 반복·drift 검증→ITERATION / 조사·분석→RESEARCH / UI 목업·디자인→MEDIA).
 
 ---
 
@@ -208,18 +213,29 @@ TriageContract:
 
 ## Step -2.6: 사용자 1줄 확인
 
-```
-[Triage 완료]
+Triage 결과를 보여주고 진행 여부를 확인한다. **AskUserQuestion tool 직접 호출** (가르침 #6):
 
-  카테고리: CODE (기능 구현)
-  팀: executor + architect + code-reviewer + qa-tester
+```
+AskUserQuestion(
+  question="""정리했어요. 이렇게 진행할게요:
+
+  무엇: CODE (기능 구현)
+  누가: executor + architect + code-reviewer + qa-tester
   순서: 계획 → 구현 → 검증 → 보고서
-  종료: e2e 통과까지 자동 반복
+  언제 끝: e2e 통과까지 자동 반복
 
-  진행할까요? (y/수정사항)
+이대로 진행할까요?""",
+  header="Triage 확인",
+  multiSelect=false,
+  options=[
+    {label: "이대로 진행", description: "위 계획 그대로 시작합니다. (권장 — 바꿀 게 없으면 이걸 고르세요)"},
+    {label: "수정 후 진행", description: "바꾸고 싶은 부분을 알려주시면 반영한 뒤 시작합니다."}
+  ]
+)
 ```
 
-→ y 입력 또는 5초 무응답 시 Phase -1 진입.
+→ "이대로 진행" 선택 시 Phase -1 진입. "수정 후 진행" 선택 시 수정사항을 받아 Triage 갱신 후 재확인.
+→ **5초 무응답 자동진입 보존**: AskUserQuestion 응답이 5초 안에 없으면 "이대로 진행" 으로 간주하고 Phase -1 자동 진입 (사용자 흐름을 막지 않기 위함 — 무응답 = 동의).
 
 ---
 

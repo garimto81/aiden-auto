@@ -57,6 +57,7 @@ from bidirectional_sync import (  # type: ignore[import-not-found]
     sync_one,
     get_active_cache_versions,
     EXCLUDE_DIR_NAMES,
+    # MARKETPLACES 제거 (v3.15 2026-05-30) — marketplaces deregister 후 dest 미사용
 )
 
 import os
@@ -80,18 +81,18 @@ def collect_dests() -> list[tuple[str, Path]]:
     # Plugin source / cache / marketplaces 만 글로벌 전체 mirror 대상 (aiden-auto 배포 mirror).
     # (증분 양방향 sync 는 bidirectional_sync 가 Project↔Global 편집분만 처리 — 별개)
 
-    plugin = resolve_plugin_source()
-    if plugin is not None:
-        dests.append(("plugin-source", plugin))
+    # Plugin-source (C:\claude\plugins\aiden-auto) deregister — 2026-05-30 사용자 결정.
+    # CC 안 읽음(cache 로드) + git 아님(배포=aiden-auto-repo). reconcile dest 에서 제외.
+    # 폴더·내용 보존(deregister≠delete). resolve_plugin_source 는 다른 호출처 위해 import 유지.
 
     for cache_ver in get_active_cache_versions():
         dests.append((f"cache:{cache_ver.name}", cache_ver))
 
-    # marketplaces 는 reconcile dest 에서 제외 (2026-05-28 정정).
-    # 이유: rule 19 — marketplaces 는 "메타데이터만"(.git + marketplace.json) 저장소.
-    #       전체 자산 mirror 가 아니므로 reconcile 로 채우면 정책 위배 + 비대.
-    #       (bidirectional_sync 가 marketplaces 를 dest 에 포함하는 것은 별개 — P4 backlog)
-    # 실제 plugin mirror 는 plugin-source(git 백업) + cache(CC 로드) 만.
+    # Marketplaces deregister — 2026-05-30 사용자 결정. marketplaces 는 CC 관리 git clone
+    # (origin=github.com/garimto81/aiden-auto). `marketplace update` 시 CC 가 GitHub 에서 pull 하여
+    # 우리 sync 를 덮어씀 → 직접 sync 는 불필요(런타임은 cache 로드)+충돌(tug-of-war, 실측 509 재sync).
+    # 배포 경로: 정본 → aiden-auto-repo → GitHub → (CC pull) → marketplaces. READ 소비자 0 확인.
+    # (옛 2026-05-29 "reconcile 포함" 정정은 marketplaces 가 CC-managed git clone 임을 모른 상태의 판단 — v3.15 재정정.)
 
     return dests
 
@@ -143,7 +144,7 @@ def main() -> int:
                 if not dest.exists():
                     totals[label]["missing"] += 1
                 continue
-            st = sync_one(sp, dest)
+            st = sync_one(sp, dest, force=True)  # plugin mirror read-only → Global-SHA 무조건 승 (skip_newer 우회, skip_same 유지)
             if st == "synced":
                 totals[label]["synced"] += 1
             elif st == "error":

@@ -1,7 +1,7 @@
 ---
 name: cc-auth-advisor
 description: >
-  cc-auth-executor가 모호/위험 신호 감지 시 escalate되는 2차 advisor. opus 모델로
+  cc-auth-executor가 모호/위험 신호 감지 시 escalate되는 2차 advisor. sonnet 모델로
   5-질문 정가중 평가하여 verdict 4종(AUTO_REFRESH/PROMPT_USER/BLOCK/DEFER) 반환.
   READ-ONLY (판정만, 코드 변경 없음). Anthropic advisor-tool 패턴의 "Advisor" 역할.
 model: sonnet
@@ -126,7 +126,7 @@ hook 스크립트가 이를 받아:
 # 출처 / 영감
 
 - Anthropic 공식 advisor-tool 패턴 (Advisor 역할)
-- 기존 패턴: `agents/meta/harness-critic.md` (opus, READ-ONLY, weighted 평가)
+- 기존 패턴: `agents/meta/harness-critic.md` (sonnet, READ-ONLY, weighted 평가)
 - 본 executor 페어: `agents/meta/cc-auth-executor.md`
 - protocol: `references/cc-auth-advisor-protocol.md`
 - critic-protocol-unified.md (§2 매핑 매트릭스에 본 advisor 등록)

@@ -20,7 +20,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "C:/claude")
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()  # 외부배포 HIGH-1: 하드코딩 제거
 STATE_DIR = Path(PROJECT_DIR) / ".claude" / "state"
 RETRY_STATE = STATE_DIR / "stage-3-retry-state.json"
 CIRCUIT_BREAKER_LOG = STATE_DIR / "circuit-breaker-events.jsonl"

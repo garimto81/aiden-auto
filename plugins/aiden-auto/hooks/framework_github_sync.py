@@ -8,7 +8,7 @@ v5: 두 git repo 모두 자동 sync.
 자율 sync 흐름:
 1. spec-code drift audit 자동 실행
 2. drift == 0 시 auto-APPROVE flag 생성 (critic 우회, 안전 검증된 정본)
-3. Mirror 1 (main repo, C:/claude/) commit + push
+3. Mirror 1 (main repo, <project root>) commit + push
 4. Mirror 3 (marketplaces, garimto81/aiden-auto) commit + push
 5. log + state 기록
 
@@ -34,18 +34,20 @@ try:
         resolve_aiden_auto_repo,
     )
 except ImportError:
+    # 외부배포 HIGH-1 (2026-05-31): 하드코딩 제거 — cwd 상대 후보 + None (device-agnostic).
     def resolve_plugin_source():
-        p = Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+        p = Path.cwd() / "plugins" / "aiden-auto"
         return p if p.is_dir() else None
     def resolve_aiden_auto_repo():
-        p = Path(r"C:\aiden-auto-repo")  # backward compat
+        p = Path.cwd().parent / "aiden-auto-repo"
         return p if p.is_dir() and (p / ".git").is_dir() else None
 
-# Lazy resolution wrappers + backward compat constants
-PLUGIN_DIR = resolve_plugin_source() or Path(r"C:\claude\plugins\aiden-auto")  # backward compat
+# Lazy resolution wrappers (None 가능 — 신규/비-maintainer PC)
+# 외부배포 HIGH-1: 하드코딩 폴백 제거. maintainer 전용 deploy hook — repo None 시 graceful skip.
+PLUGIN_DIR = resolve_plugin_source()
 MARKETPLACES_DIR = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto"  # v5 legacy (not git repo)
-AIDEN_AUTO_REPO = resolve_aiden_auto_repo() or Path(r"C:\aiden-auto-repo")  # backward compat
-GLOBAL_PLUGIN_SOURCE_FOR_REPO = AIDEN_AUTO_REPO / "plugins" / "aiden-auto"  # repo 내부 plugin 위치
+AIDEN_AUTO_REPO = resolve_aiden_auto_repo()
+GLOBAL_PLUGIN_SOURCE_FOR_REPO = (AIDEN_AUTO_REPO / "plugins" / "aiden-auto") if AIDEN_AUTO_REPO else None  # repo 내부 plugin 위치
 STATE_DIR = USER_CLAUDE / "state"
 LOG_FILE = STATE_DIR / "framework-github-sync.log"
 
@@ -79,10 +81,17 @@ def sync_global_to_repo() -> None:
     framework_github_sync 가 commit/push 하기 전에 글로벌 변경물을 repo working tree에 반영.
     bidirectional_sync.py 가 cache 까지만 처리하고 aiden-auto-repo는 처리 안 함 → v6에서 추가.
 
-    대상 디렉토리: skills, agents, hooks, hud, references, rules, commands, lib, scripts, state
+    대상 디렉토리: skills, agents, hooks, hud, references, rules, commands, lib, scripts
+    (= bidirectional_sync.SYNC_DIRS 9개와 정합. 2026-05-29 3축 critic iter1: 옛 docstring 의 'state' 잔재 제거 — 실제 line 88 목록에 없음)
     """
     import shutil
-    if not GLOBAL_PLUGIN_SOURCE_FOR_REPO.parent.is_dir():
+    try:
+        from bidirectional_sync import is_excluded_path as _gh_is_excluded  # canonical EXCLUDE 단일 소스 (2026-05-29 3축 critic iter2)
+    except ImportError:
+        def _gh_is_excluded(rel):  # graceful fallback
+            return (False, "")
+    # 외부배포 HIGH-1: repo 미해결(None, 비-maintainer/신규 PC) 시 graceful skip (deploy 안 함)
+    if GLOBAL_PLUGIN_SOURCE_FOR_REPO is None or not GLOBAL_PLUGIN_SOURCE_FOR_REPO.parent.is_dir():
         log(f"v6 mirror: repo dir 없음 ({AIDEN_AUTO_REPO}) — skip")
         return
     sync_dirs = ["skills", "agents", "hooks", "hud", "references", "rules", "commands", "lib", "scripts"]
@@ -96,8 +105,12 @@ def sync_global_to_repo() -> None:
         for sp in src.rglob("*"):
             if not sp.is_file():
                 continue
-            # 제외: __pycache__, .pyc, .log, state/runtime.yml
-            if "__pycache__" in sp.parts or sp.suffix in (".pyc", ".pyo", ".log", ".swp"):
+            # 제외: bidirectional_sync canonical EXCLUDE 재사용 (단일 소스, 2026-05-29 3축 critic iter2).
+            # 옛 narrow 목록(__pycache__/.pyc/.log/.swp)은 settings.json / CLAUDE.md / .env /
+            # _silent_wrap.cmd / .bak / .credentials.json 을 배포 repo(신규 PC 복제 원천)로 누출 →
+            # rule 19 v3.7 lock-bomb + layer-독립/secret 정책 위배. is_excluded_path 로 정합.
+            _ex, _ = _gh_is_excluded(sp.relative_to(USER_CLAUDE))
+            if _ex:
                 continue
             rel = sp.relative_to(src)
             dp = dst / rel
@@ -243,22 +256,25 @@ def main() -> int:
         return 0
     log(f"SAFETY: {drift_reason}")
 
-    # v5.1 (2026-05-19): main-repo (C:/claude/) 자동 sync 제거.
+    # v5.1 (2026-05-19): main-repo (정본 PC 프로젝트 루트) 자동 sync 제거.
     # 사유: main-repo는 사용자 작업 영역. 자동 commit 시 사용자 작업 중 파일까지
     # 같이 commit될 위험. 사용자 명시 /commit 슬래시로만 처리.
-    # v6 (2026-05-23): MARKETPLACES_DIR이 git repo가 아님이 확인됨.
-    # 진짜 정본은 C:\aiden-auto-repo (origin = garimto81/aiden-auto.git).
-    # v6은 ~/.claude/ → C:\aiden-auto-repo/plugins/aiden-auto/ 자동 mirror 후 commit/push 추가.
+    # v6 (2026-05-23): 진짜 정본은 aiden-auto-repo (origin = garimto81/aiden-auto.git).
+    # v6은 ~/.claude/ → aiden-auto-repo/plugins/aiden-auto/ 자동 mirror 후 commit/push 추가.
+    # v3.15 정정 (2026-05-30): MARKETPLACES_DIR push 제거 — marketplaces 는 git repo 가 맞고
+    # (origin = garimto81/aiden-auto.git, aiden-auto-repo 와 동일 remote!) CC 가 `marketplace update`
+    # pull 로 관리하므로, github_sync 가 push 하면 같은 remote 에 이중 push/충돌. 옛 "not a git repo"
+    # 가정은 오판. 배포는 aiden-auto-repo 단일 경로 → (CC pull) → marketplaces 로 자연 도달.
+    # (sync 축 deregister 와 정합 — bidirectional/watcher/reconcile 3 도구 + 본 4번째 writer 모두 marketplaces 제외)
     # 먼저 글로벌 정본 → repo 내부 mirror 동기화 (rsync 패턴)
     sync_global_to_repo()
 
     results = []
     for repo_dir, repo_name, prefix in [
-        (MARKETPLACES_DIR, "aiden-auto-marketplace", "marketplace-sync"),  # legacy, dir 없으면 skip
-        (AIDEN_AUTO_REPO, "aiden-auto-repo", "framework-sync"),              # v6 신규 — 진짜 정본
+        (AIDEN_AUTO_REPO, "aiden-auto-repo", "framework-sync"),              # v6 — 진짜 정본 (단일 배포 경로)
     ]:
-        if not repo_dir.is_dir():
-            log(f"{repo_name}: dir 없음 ({repo_dir}) — skip")
+        if repo_dir is None or not repo_dir.is_dir():
+            log(f"{repo_name}: dir 없음 ({repo_dir}) — skip")  # 외부배포 HIGH-1: None(비-maintainer PC) graceful skip
             continue
         r = sync_repo(repo_dir, repo_name, prefix)
         results.append(r)
