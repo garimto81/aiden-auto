@@ -63,12 +63,23 @@ async function main() {
   const queue = Array.isArray(state.processes) ? state.processes : [];
   if (queue.length === 0) return;
 
+  // stale 가드: 갱신이 오래되면 진행 신호 신뢰 불가 → 마지막 태그를 cyan(진행중)으로
+  // 안 칠하고 dim + "·유휴?" 표기. ("진행중인데 끝난 것처럼" / "끝났는데 진행중처럼" 오신호 완화)
+  const STALE_MS = 10 * 60 * 1000; // 10분
+  let stale = false;
+  if (state.updated_at) {
+    const age = Date.now() - new Date(state.updated_at).getTime();
+    if (Number.isFinite(age) && age > STALE_MS) stale = true;
+  }
+  const last = queue.length - 1;
   const colored = queue.map((tag, i) =>
-    i === queue.length - 1
-      ? `${c.cyan}${tag}${c.reset}`
+    i === last
+      ? (stale ? `${c.dim}${tag}${c.reset}` : `${c.cyan}${tag}${c.reset}`)
       : `${c.dim}${tag}${c.reset}`
   );
-  process.stdout.write(colored.join(ARROW));
+  let out = colored.join(ARROW);
+  if (stale) out += `${c.dim} ·유휴?${c.reset}`;
+  process.stdout.write(out);
 }
 
 main();

@@ -19,7 +19,7 @@
  *   no data at all     → ?% placeholder (dim)
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, normalize } from "node:path";
 import { readCredentials, fetchUsageFromApi, parseUsageResponse, readCache, writeSuccessCache, writeErrorCache } from "./usage-common.mjs";
@@ -199,10 +199,49 @@ function renderUsage(cached) {
 
   const prefix = stale ? "~" : "";
 
-  const fivePart = `5h:${fiveColor}${prefix}${fivePct}%${colors.reset}`;
+  // 연료 카운트다운 — 5시간 quota 가 언제 회복되는지 (% 보다 행동가능)
+  const cd = fmtCountdown(usage.fiveHourResetsAt);
+  const cdStr = cd ? `${colors.dim}(${cd})${colors.reset}` : "";
+  const fivePart = `5h:${fiveColor}${prefix}${fivePct}%${colors.reset}${cdStr}`;
   const wkPart = `wk:${wkColor}${prefix}${wkPct}%${colors.reset}`;
 
   return `${fivePart} | ${wkPart}`;
+}
+
+// reset 시각(ISO) → 남은 시간 "1h23m" / "23m". 과거/부재 → "".
+function fmtCountdown(iso) {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (!(ms > 0)) return "";
+  const mins = Math.floor(ms / 60000);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `${h}h${m}m` : `${m}m`;
+}
+
+// 자율 목표 진행도 — active-goal*.json(최신) 거울. live goal 만 표시 (ended → 생략).
+function getGoalSegment() {
+  try {
+    const dir = join(homedir(), ".claude", "state");
+    if (!existsSync(dir)) return "";
+    const files = readdirSync(dir).filter(
+      (f) => f.startsWith("active-goal") && f.endsWith(".json")
+    );
+    if (!files.length) return "";
+    let newest = "", newestM = -1;
+    for (const f of files) {
+      const m = statSync(join(dir, f)).mtimeMs;
+      if (m > newestM) { newestM = m; newest = f; }
+    }
+    const g = JSON.parse(readFileSync(join(dir, newest), "utf8"));
+    if (g.ended_at) return "";  // 종료된 goal 은 계기판에 안 띄움 (live goal 만)
+    const cycles = Array.isArray(g.cycles_completed) ? g.cycles_completed.length : 0;
+    const st = String(g.convergence_status || g.trip_status || "RUNNING");
+    const stKr = /ACHIEV|CONVERG|DONE|COMPLETE/i.test(st) ? "달성" : "진행중";
+    const cyc = cycles > 0 ? `${cycles}주기·` : "";
+    return `${colors.yellow}🎯 ${cyc}${stKr}${colors.reset}`;
+  } catch {
+    return "";
+  }
 }
 
 // --- Main ---
@@ -240,14 +279,14 @@ async function main() {
       stdinObj.workspace?.current_dir ||
       process.cwd();
 
-    // 1. Usage (cache + 5min TTL polling with exponential backoff)
+    // 1. 자율 목표 진행 + alive (거울 — active-goal 최신, live goal 만)
+    const goalPart = getGoalSegment();
+
+    // 2. Usage (cache + 5min TTL polling) + 연료 카운트다운
     const cached = await getUsage();
     const usageStr = renderUsage(cached);
 
-    // 2. Context
-    const ctxPct = getContextPercent(stdinObj);
-    const ctxColor = getContextColor(ctxPct);
-    const ctxPart = `ctx:${ctxColor}${ctxPct}%${colors.reset}`;
+    // (context % 제거 — CC 빌트인이 자체 표시. 중복 제거 2026-06-01)
 
     // 3. Folder + Branch
     const folder = getProjectFolder(cwd);
@@ -257,7 +296,10 @@ async function main() {
       branch ? `${colors.magenta}🌿 ${branch}${colors.reset}` : "",
     ].filter(Boolean).join("  ");
 
-    const mainParts = [modelPart, usageStr, ctxPart];
+    // 계기판 줄1: 모델 | 🎯목표진행 | 연료 | 폴더/branch
+    const mainParts = [modelPart];
+    if (goalPart) mainParts.push(goalPart);
+    mainParts.push(usageStr);
     if (hubStr) mainParts.push(hubStr);
     console.log(mainParts.join(" | "));
   } catch {

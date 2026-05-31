@@ -65,16 +65,16 @@ function callChild(cmd, args, input) {
 
 async function main() {
   const stdin = await readStdin();
-  const [telemetryOut, hudOut, modelsOut, atlassianOut] = await Promise.all([
+  // model-usage-line.py(모델별 토큰 덤프) deregister — 비개발자 무의미 (2026-06-01 계기판 재정렬).
+  // 파일은 보존(삭제 X), 호출만 제거. HUD_PY 상수도 보존.
+  const [telemetryOut, hudOut, atlassianOut] = await Promise.all([
     callChild("node",   [HUD_TELEMETRY], stdin),
     callChild("node",   [HUD_NODE],      stdin),
-    callChild("python", [HUD_PY],        stdin),
     callChild("node",   [HUD_ATLASSIAN], stdin),
   ]);
   const lines = [];
   if (telemetryOut) lines.push(telemetryOut.replace(/\s+$/g, ""));
   if (hudOut)       lines.push(hudOut.replace(/\s+$/g, ""));
-  if (modelsOut)    lines.push(modelsOut.replace(/\s+$/g, ""));
   if (atlassianOut) lines.push(atlassianOut.replace(/\s+$/g, ""));
   if (lines.length) process.stdout.write(lines.join("\n") + "\n");
 }
