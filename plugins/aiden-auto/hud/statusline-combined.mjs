@@ -21,7 +21,8 @@ const __dirname = dirname(__filename);
 // 같은 디렉토리의 sibling 파일 참조 (이식성 보장)
 const HUD_TELEMETRY = join(__dirname, "aiden-auto-telemetry.mjs");
 const HUD_NODE      = join(__dirname, "hybrid-statusline.mjs");
-const HUD_PY        = join(__dirname, "model-usage-line.py");
+const HUD_PY        = join(__dirname, "model-usage-line.py");      // 옛 토큰 덤프 (보존, 미사용)
+const HUD_MIX       = join(__dirname, "model-mix-line.mjs");       // 읽기 쉬운 모델 mix (재복귀 2026-06)
 const HUD_ATLASSIAN = join(__dirname, "atlassian-auth-line.mjs");
 const CHILD_TIMEOUT_MS = 7000;
 
@@ -65,16 +66,19 @@ function callChild(cmd, args, input) {
 
 async function main() {
   const stdin = await readStdin();
-  // model-usage-line.py(모델별 토큰 덤프) deregister — 비개발자 무의미 (2026-06-01 계기판 재정렬).
-  // 파일은 보존(삭제 X), 호출만 제거. HUD_PY 상수도 보존.
-  const [telemetryOut, hudOut, atlassianOut] = await Promise.all([
+  // 모델 mix 재복귀 (사용자 결정 2026-06): 옛 model-usage-line.py 의 라벨 없는 토큰 덤프 대신
+  // model-mix-line.mjs 가 "🤖 Opus N · Sonnet N · Haiku N" 읽기 쉬운 라인 출력.
+  // Sonnet/Haiku 가 실제로 라우팅되는지 검증용. HUD_PY(옛 도구) 는 보존하되 미사용.
+  const [telemetryOut, hudOut, mixOut, atlassianOut] = await Promise.all([
     callChild("node",   [HUD_TELEMETRY], stdin),
     callChild("node",   [HUD_NODE],      stdin),
+    callChild("node",   [HUD_MIX],       stdin),
     callChild("node",   [HUD_ATLASSIAN], stdin),
   ]);
   const lines = [];
   if (telemetryOut) lines.push(telemetryOut.replace(/\s+$/g, ""));
   if (hudOut)       lines.push(hudOut.replace(/\s+$/g, ""));
+  if (mixOut)       lines.push(mixOut.replace(/\s+$/g, ""));
   if (atlassianOut) lines.push(atlassianOut.replace(/\s+$/g, ""));
   if (lines.length) process.stdout.write(lines.join("\n") + "\n");
 }
