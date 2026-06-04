@@ -38,7 +38,7 @@ try:
 except ImportError:
     def _is_excluded(rel):  # graceful fallback (bidirectional 부재 시 기존 동작)
         return (False, "")
-    SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts"}  # fallback = 9개 (bidirectional 정합)
+    SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts", "workflows"}  # fallback = 10개 (bidirectional 정합, +workflows v28.9)
     def get_active_cache_versions():  # fallback — junction dedup + 버전명 정렬 (3축 critic iter1 정합)
         if not CACHE_ROOT.exists():
             return []

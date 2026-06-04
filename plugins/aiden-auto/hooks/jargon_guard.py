@@ -136,6 +136,39 @@ def main() -> int:
 
     session_id = payload.get("session_id", "unknown")
     text = payload.get("transcript_excerpt", "") or payload.get("last_assistant_message", "")
+    # 2026-06-04 cross-project robustness: 일부 환경/프로젝트는 Stop payload 에 인라인 본문
+    # (transcript_excerpt/last_assistant_message) 을 주지 않고 transcript_path(JSONL) 만 준다.
+    # 그 경우 본 hook 이 조용히 무력화(return 0)되어 "다른 프로젝트에선 easy-explanation 안 먹힘"
+    # 증상 발생. → transcript_path 에서 마지막 assistant 텍스트를 fallback 추출.
+    # 전체 try/except — 어떤 실패든 기존 동작(no-op)으로 안전 강등 (regression 불가능, additive).
+    if not text:
+        try:
+            tp = payload.get("transcript_path", "")
+            if tp and Path(tp).is_file():
+                last_assistant = ""
+                for line in Path(tp).read_text(encoding="utf-8", errors="replace").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        ev = json.loads(line)
+                    except Exception:
+                        continue
+                    msg = ev.get("message", ev) if isinstance(ev, dict) else {}
+                    if not isinstance(msg, dict):
+                        continue
+                    if ev.get("type") == "assistant" or msg.get("role") == "assistant":
+                        content = msg.get("content", "")
+                        if isinstance(content, list):
+                            content = "\n".join(
+                                b.get("text", "") for b in content
+                                if isinstance(b, dict) and b.get("type") == "text"
+                            )
+                        if isinstance(content, str) and content.strip():
+                            last_assistant = content  # 계속 덮어써 최종 = 마지막 assistant 메시지
+                text = last_assistant
+        except Exception:
+            text = ""
     if not text:
         return 0
 

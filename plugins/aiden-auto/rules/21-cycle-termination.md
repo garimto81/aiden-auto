@@ -84,6 +84,28 @@
 
 design 자체에 paradox / self-referential 결함이 있는 경우 (예: rule 이 자기 자신을 정정하는 무한 루프) → **framework-critic 의 6th lens (self_referential_check) 적용** → "intentional residue" 분류 → 결함 카운트 제외.
 
+### 5. Confirmed 비파괴 findings 는 종료 전 적용 (Continuation forcing-function — 2026-06-04)
+
+자율 cycle 이 산출한 **confirmed (critic·adversarial 검증 통과) 비파괴 개선** 은 *같은 cycle 내* 적용해야 종료 가능:
+
+| tier | 종료 전 의무 |
+|:----:|------------|
+| **T1** (≤3파일·비파괴 additive·행위 무변경) | **즉시 적용** (정본 ~/.claude 편집 → SessionEnd 자동 배포). backlog 불가 |
+| **T2** (범위 한정 의미 변경) | **즉시 적용 또는 Draft PR**. backlog 불가 |
+| **T3** (아키텍처/정책/모호/설계 필요) | backlog 허용 — 단 **premise-verified 사유 inline 명시 의무** |
+
+**금지 패턴 (agentic laziness)**: confirmed T1/T2 를 "보고 후 사용자 지시 대기" 또는 backlog 로 미루는 것. = Iron Law 3 (Continuation) 위배 + Core Philosophy (자율 = 의도 정합 위한 수단) 위배.
+
+> **근거 (premise 검증, 2026-06-04)**: blog 증분 cycle 에서 confirmed LOW 개선(blog 증분 #3 — PRD Surfaced Assumptions 섹션)을 적용 안 하고 backlog 후 사용자 지시 대기 → 사용자가 결함 지적. 블로그 "A harness for every task" 가 명명한 **agentic laziness** 실패 모드 실측 1건. → 본 clause 신설. 반대 결함(검증 안 된 큰 변경 무분별 적용)도 금지 — T3 는 backlog 정당.
+>
+> 상세: `~/.claude/projects/C--claude/memory/feedback_apply_verified_findings.md`
+
+**'confirmed' 정의 (verdict-binding + fail-closed, 2026-06-04 design-critic-convergence 결과)**: confirmed = 검증자(verifier)가 *실제로 실행되어* Lead 가 *이번 cycle 안에서 PASS verdict 를 관찰*한 경우만 (harness-critic APPROVE≥95 / blog adversarial-skeptic confirmed:true / design-critic-convergence converged:true). verdict 관찰 없음 = **'unknown'** — §5 강제 apply 대상 아님. unknown 은 bounded retry 후에도 verdict 없으면 backlog 'verifier-unavailable' (genuine T3 와 구분 — 검증 실패가 조용히 apply 면제로 둔갑하는 perverse incentive 차단).
+
+**Trigger edge (orphan 방지)**: T3 (파괴적/아키텍처/정책) 자율 개선은 apply 전 **design-critic-convergence 를 수렴(또는 no-change)까지 먼저 실행** (Lead 가 호출 — 이게 엔진의 정식 caller). converged:true → 자율 구현. circuit_breaker_hit / no-change → **이번 cycle 보류 (forgo — 사용자 결정 2026-06-04: "검토해도 확신이 안 서면 안 고치는 것도 정답"). 억지 변경 금지.** design-critic-convergence 는 audit-loop 의 RESOLVED/PLATEAU 와 **다른 기계** — 자체 {converged, circuit_breaker_hit} 반환만 사용 (문자열 homograph 혼동 금지).
+
+> **자기검증 사례 (2026-06-04)**: design-critic-convergence 를 자가개선 아키텍처 자신에 4 round 돌린 결과 converged=false (circuit_breaker_hit). 검토자들이 **이전 round 들의 over-engineering 을 스스로 잡아냄** (meta-enforcer/quorum subsystem 등 — 실측 발생 0건). 정직한 결론 = 거창한 재설계 폐기, 검증된 최소 수정만. → 본 forgo 원칙의 실증. 단 진짜 코드 버그 1건 발견: 엔진의 `filter(Boolean)` 가 실패한 lens 를 "문제 없음" 으로 오인 → 거짓 수렴 (수정 완료).
+
 ---
 
 ## audit-loop SKILL 의 종료 조건 (R2 정합)

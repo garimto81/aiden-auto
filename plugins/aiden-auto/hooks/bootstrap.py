@@ -40,7 +40,7 @@ LOG_FILE = GLOBAL_CLAUDE / "state" / "bootstrap.log"
 # Universal 자산만 sync (개인화 영역 제외)
 SYNC_DIRS = [
     "agents", "skills", "hooks", "commands", "rules",
-    "references", "hud", "lib", "scripts",
+    "references", "hud", "lib", "scripts", "workflows",
 ]
 
 # Personalization 자산 (PC 별 독립) — sync 절대 안 함

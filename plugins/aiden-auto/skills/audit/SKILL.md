@@ -46,7 +46,13 @@ triggers:
     │
     ├─ [Phase 2] 웹 리서치 기반 트렌드 분석 (Lead 직접 실행)
     │       ├─ 현재 워크플로우 인벤토리 수집
-    │       ├─ Lead가 WebSearch 직접 호출 (3-tier 쿼리 8개, 병렬 권장)
+    │       ├─ [2a] Anthropic 블로그 증분 스캔 (blog-watcher) ← v28.9 신규
+    │       │       ├─ blog-watcher agent: claude.com/blog 인덱스 fetch
+    │       │       ├─ state/blog-tracker.json seen-cache 와 diff → 신규 글만
+    │       │       ├─ 신규 글 후보 추출 → blog-incremental-analysis workflow
+    │       │       │       (fan-out 갭분석 → adversarial 검증)
+    │       │       └─ confirmed → 아래 갭 분석/tier 파이프라인에 합류
+    │       ├─ [2b] Lead가 WebSearch 직접 호출 (3-tier 쿼리 8개, 병렬 권장)
     │       ├─ Lead가 갭 분석 (아티클 vs 인벤토리, 3분류 + 복잡도 태그)
     │       ├─ 개선 아이디어 출력
     │       └─ 결과 캐싱 (.claude/research/audit-trend-<date>.md)
@@ -56,7 +62,8 @@ triggers:
 
 **핵심 규칙:**
 - Phase 1은 항상 실행
-- Phase 2는 WebSearch 타임아웃 시에만 스킵 (설정 점검 결과만 출력)
+- Phase 2a(블로그 증분 스캔)는 항상 시도. 신규 글 0건 시 즉시 종료(증분이라 비용 0에 수렴). 신규 글 있으면 blog-incremental-analysis workflow로 fan-out 분석 → confirmed 후보를 Phase 2 갭 분석 결과에 병합
+- Phase 2b는 WebSearch 타임아웃 시에만 스킵 (설정 점검 결과만 출력)
 - 결과 없으면 "관련 아티클 없음" 표시 후 Phase 3으로 진행
 - Phase 3에서 설정 점검 + 트렌드 결과 통합 출력
 - **Agent Teams 미사용**: #140 blocker 대응으로 2026-04-21부터 Lead 직접 실행 구조

@@ -1,4 +1,5 @@
 ---
+name: agent-view
 description: 백그라운드에서 돌아가는 작업들 상태 확인. 공식 `claude agents` CLI로 위임
 ---
 

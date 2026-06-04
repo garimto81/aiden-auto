@@ -31,7 +31,7 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 > 1. **"marketplaces = 메타데이터만"** → **거짓**. 실측 — marketplaces 트리는 `settings.json` 의 등록된 plugin `path` (`.../marketplaces/garimto81-aiden-auto`) 이고 1166 파일 전체 사본이며 `bidirectional_sync.py:189` 가 PostToolUse 시 dest 로 동기화한다. autoUpdate / cache 재생성 시 stale 트리가 live 화될 잠복 위험. → reconcile dest 에 포함 (v3.14, `reconcile-plugin-mirror.py`). 단 reconcile 경로는 `MARKETPLACES` 상수(`.../plugins/aiden-auto` 포함) 사용 — `resolve_marketplaces_dir()` 는 suffix 누락이라 142-bug 원인.
 > 2. **"drift 0 / 100/100 PASS"** → **시점 이벤트지 불변식 아님**. 증분 sync 의 정상 상태(steady-state)는 drift 누적이며 주기적 reconcile 필요. 실측(2026-05-29 정정 전) — marketplaces 424 + cache:28.2.0 208 + PluginSrc 2 drift 가 `skip_newer` (mtime footgun) 로 고착돼 있었음. → `sync_one(force=True)` 로 plugin mirror(read-only) 는 Global-SHA 무조건 승 정정 → 전 plugin mirror drift 0 회복.
 > 3. **"Project 가 Global 전부 받음"** → **부분 mirror**. 실측 Project 176 파일 누락 (hooks=74 skills=51 refs=43 rules=8). 단 **의도적** — Project 를 full mirror 하면 dispatcher 가 Global+Project registry 둘 다 스캔해 hook double-fire (P2b 재현). Global 규칙은 전역 적용 + Project 규칙은 additive 이므로 누락 무해. → reconcile dest 에서 Project 제외 유지 (정당).
-> **SYNC_DIRS = 9개** (agents/skills/hooks/rules/references/commands/**lib/hud/scripts**) — v4.0 universal-deployment 확장. 아래 4-Mirror 다이어그램도 9개로 정합 완료 (iter1). 두 sync hook(bidirectional_sync / machine_framework_watcher)은 SYNC_DIRS 를 단일 소스(import)로 공유 — 비대칭 영구 해소.
+> **SYNC_DIRS = 10개** (agents/skills/hooks/rules/references/commands/**lib/hud/scripts/workflows**) — v4.0 universal-deployment 확장 + v28.9 (2026-06-04) workflows 추가 (Dynamic Workflow 스크립트 실행 자산 — 신규 PC 자기복제 보장, framework-critic MED fix). 아래 4-Mirror 다이어그램도 정합 완료 (iter1). 두 sync hook(bidirectional_sync / machine_framework_watcher)은 SYNC_DIRS 를 단일 소스(import)로 공유 — 비대칭 영구 해소.
 
 > **⚠️ v3.15 동기화 축 단순화 (2026-05-30 — 사용자 결정 2단계)**: Step 0 소비자 검증 후 **Plugin-source + Marketplaces 2축 deregister**, **Project + Cache 유지**.
 >
@@ -64,9 +64,10 @@ v2.0은 이 실제 구조를 정책에 반영한다.
 ```
   ┌─────────────────────────────────────────┐
   │  정본 (SSOT)                            │
-  │  ~/.claude/   (SYNC_DIRS = 9)           │
+  │  ~/.claude/   (SYNC_DIRS = 10)          │
   │  agents/ skills/ hooks/ rules/          │
-  │  commands/ references/ lib/ hud/ scripts/│
+  │  commands/ references/ lib/ hud/        │
+  │  scripts/ workflows/                    │
   └──────────────┬──────────────────────────┘
                  │
         자동 sync (machine_framework_watcher.py)

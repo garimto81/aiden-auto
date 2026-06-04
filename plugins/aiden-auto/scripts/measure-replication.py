@@ -28,8 +28,9 @@ CANONICAL = Path.home() / ".claude"
 # Universal 자산 디렉토리 (모든 PC 동일해야 함)
 UNIVERSAL_DIRS = [
     "agents", "skills", "hooks", "commands", "rules",
-    "references", "hud", "lib", "scripts",
-]
+    "references", "hud", "lib", "scripts", "workflows",
+]  # v28.9 (2026-06-04): workflows 추가 — Dynamic Workflow 스크립트도 universal 자산.
+   # SYNC_DIRS(sync hooks) 와 정합 — 자기복제율 측정이 workflows 누락을 못 잡던 갭 해소.
 
 # 자산 카운트 제외 (개인화 / 임시 파일)
 EXCLUDE_PARTS = {

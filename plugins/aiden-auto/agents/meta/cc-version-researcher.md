@@ -40,7 +40,8 @@ Claude Code CLI 자체 변화를 자동 추적. 새 release 시 우리 워크플
 |------|-----|----------|
 | anthropics/claude-code | https://github.com/anthropics/claude-code | release notes, changelog (★120K+) |
 | Anthropic 공식 docs | https://docs.anthropic.com/claude/docs | API 변경 |
-| Anthropic 블로그 | https://www.anthropic.com/news | 메이저 발표 |
+| Anthropic 블로그 (메이저 발표) | https://www.anthropic.com/news | 메이저 발표 (회사 차원) |
+| Claude 블로그 (워크플로우/기법) | https://claude.com/blog | **`blog-watcher` agent 가 증분 추적** — 본 agent 는 중복 추적 안 함 (release 전용). 기법/스킬/워크플로우 글은 blog-watcher → blog-incremental-analysis workflow 가 담당 |
 | GitHub issues/PRs | repos/anthropic-ai/claude-code/issues | 임박한 변화 |
 
 </Tracking_Targets>

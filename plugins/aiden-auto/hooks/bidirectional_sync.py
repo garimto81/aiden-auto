@@ -74,8 +74,10 @@ PLUGIN_SOURCE = resolve_plugin_source()    # None 가능 (deprecated 분기에�
 CACHE_ROOT = USER_CLAUDE / "plugins" / "cache" / "garimto81-aiden-auto" / "aiden-auto"
 MARKETPLACES = USER_CLAUDE / "plugins" / "marketplaces" / "garimto81-aiden-auto" / "plugins" / "aiden-auto"
 
-SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts"}
+SYNC_DIRS = {"agents", "skills", "hooks", "rules", "references", "commands", "lib", "hud", "scripts", "workflows"}
 # v4.0 (2026-05-23): hud + scripts 추가 — universal-deployment-checklist.md 의 universal 자산 정합.
+# v28.9 (2026-06-04): workflows 추가 — Dynamic Workflow 스크립트(~/.claude/workflows/*.js)도
+#   실행 자산이라 sync 대상. blog-incremental-analysis.js 등이 신규 PC 에 복제되도록 (framework-critic MED fix).
 # 자기복제율 ≥95% 달성 위해 모든 universal 디렉토리가 sync 대상이어야 함 (premise #1).
 
 # EXCLUDE 패턴 (2026-05-15 Part 9 — critic E1 적용)

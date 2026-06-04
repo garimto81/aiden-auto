@@ -318,6 +318,11 @@ Agent(subagent_type="executor-high", name="prd-writer", description="PRD 문서 
      - AC-001: {검증 가능한 수용 기준}
      - AC-002: ...
 
+     ## 7. Surfaced Assumptions (암묵 가정 → 명시 spec) — v28.9
+     - SA-001: {intent-analyst[Step 1.0]가 출력한 '암묵적 요구사항'을 검증 가능한 명시 FR/NFR spec 으로 변환}
+     - SA-002: ...
+     - (암묵 요구사항을 빠짐없이 명시화하여 Phase 2 build 전에 사양으로 고정. PRD 가 intent-analyst 보다 먼저 작성되면, intent-analyst 완료 직후 Lead 가 본 섹션을 Edit 로 갱신. 출처: claude.com/blog "How CodeRabbit used Claude" — blog 증분 #3)
+
      ## Changelog
      | 날짜 | 변경 내용 | 작성자 |
      |------|---------|--------|
@@ -423,6 +428,7 @@ Agent(subagent_type="analyst", name="intent-analyst", description="사용자 의
              4. 범위 경계 — 포함/제외 판단 (과잉 구현 방지)
              5. 위험 시나리오 2건+ — 잘못 해석하면 발생할 문제
              6. Planner 핵심 지시 (3줄 이내) — 계획 수립 시 반드시 반영할 사항
+             7. [v28.9 blog 증분 #3] 위 항목 2(암묵적 요구사항)를 PRD '## 7. Surfaced Assumptions' 에 넣을 명시 FR/NFR spec(SA-001, SA-002... 검증 가능 수준)으로도 함께 출력하라. analyst 는 Edit 권한이 없으므로 출력만 — Lead/prd-writer 가 이를 PRD 섹션 7에 기록(PRD 선작성 시 Edit append). 목적: 암묵→명시 변환을 PRD artifact 에 영구화.
              코드베이스를 Glob/Grep으로 탐색하여 기술적 맥락을 파악한 뒤 분석하세요.")
 
 # Mailbox로 결과 수신 후 모든 teammate shutdown_request

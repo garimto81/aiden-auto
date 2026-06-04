@@ -719,8 +719,14 @@ def main():
             sys.stdout.write(json.dumps(merged, ensure_ascii=False))
             sys.stdout.flush()
         elif raw_nonjson:
-            sys.stdout.write("\n".join(raw_nonjson))
-            sys.stdout.flush()
+            # 2026-06-04 LEAK FIX (다른 프로젝트 기능 실패 — 예: ebs docker 배포 명령 오염):
+            # Stop/SubagentStop 에서 비-decision 일반 텍스트 hook stdout 을 *절대 주입하지 않음*.
+            # 비차단 hook(telemetry/cleanup/checklist)이 찍는 count/timeout/status 텍스트가
+            # raw concat 되어 stdout 으로 주입 → 모델의 다음 턴/도구 호출을 오염시키던 결함.
+            # → 주입 대신 로그만. (정당한 stop 차단 신호는 JSON decision 경로로 위에서 이미 처리됨.)
+            log_event(event, "_dispatcher", "system", 0, 0,
+                      ("\n".join(raw_nonjson))[:2000],
+                      "raw non-JSON Stop stdout suppressed (leak fix 2026-06-04)")
         sys.exit(BLOCK if block_seen else SUCCESS)
 
     block_seen = False

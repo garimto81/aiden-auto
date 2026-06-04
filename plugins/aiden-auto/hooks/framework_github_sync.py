@@ -84,8 +84,8 @@ def sync_global_to_repo() -> None:
     framework_github_sync 가 commit/push 하기 전에 글로벌 변경물을 repo working tree에 반영.
     bidirectional_sync.py 가 cache 까지만 처리하고 aiden-auto-repo는 처리 안 함 → v6에서 추가.
 
-    대상 디렉토리: skills, agents, hooks, hud, references, rules, commands, lib, scripts
-    (= bidirectional_sync.SYNC_DIRS 9개와 정합. 2026-05-29 3축 critic iter1: 옛 docstring 의 'state' 잔재 제거 — 실제 line 88 목록에 없음)
+    대상 디렉토리: skills, agents, hooks, hud, references, rules, commands, lib, scripts, workflows
+    (= bidirectional_sync.SYNC_DIRS 10개와 정합. 2026-06-04 v28.9: workflows 추가. 2026-05-29 3축 critic iter1: 옛 docstring 의 'state' 잔재 제거 — 실제 목록에 없음)
     """
     import shutil
     try:
@@ -97,7 +97,7 @@ def sync_global_to_repo() -> None:
     if GLOBAL_PLUGIN_SOURCE_FOR_REPO is None or not GLOBAL_PLUGIN_SOURCE_FOR_REPO.parent.is_dir():
         log(f"v6 mirror: repo dir 없음 ({AIDEN_AUTO_REPO}) — skip")
         return
-    sync_dirs = ["skills", "agents", "hooks", "hud", "references", "rules", "commands", "lib", "scripts"]
+    sync_dirs = ["skills", "agents", "hooks", "hud", "references", "rules", "commands", "lib", "scripts", "workflows"]
     copied = 0
     for d in sync_dirs:
         src = USER_CLAUDE / d
