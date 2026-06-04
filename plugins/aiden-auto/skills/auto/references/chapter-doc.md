@@ -55,15 +55,18 @@ Phase 0.5 (Provenance Capture, NEW)
    └─ frontmatter Provenance Block 자동 주입
       │
       ▼
-Phase 1 (작성 — 4 step)
+Phase 1 (작성)
    ├─ Step 1.0: Reader Plan (Hook/Thesis/Anchor/Arc 사전 설계)
    ├─ Step 1.1: planner (목차 + 4-act 정렬)
    ├─ Step 1.2: writer (Reader Plan 인풋 + Feature Block 직접 작성)
-   └─ Step 1.3: Multi-perspective Validation (병렬 4시각)
+   └─ Step 1.4: Multi-perspective Validation (병렬 4시각 — 본문 확정)
       ├── critic (doc-critic, 18세 기준)
       ├── architect (기술 검증, 선택)
       ├── document-specialist (구조 일관성)
       └── reader-experience (P7 Hook/Thesis/Anchor/Rhythm/Arc)
+      │
+      ▼
+Step 1.5 (Exec Summary 추출 — 확정본 후처리, 활성 시만)
       │
       ▼
 Phase 4 (저장 + 커밋)
@@ -161,28 +164,9 @@ writer는 다음 4종을 사전 설계한 뒤에야 본문 작성 권한을 얻�
 - 중형 (100~300줄): Write skeleton + Edit 섹션별
 - 대형 (300줄+): Map-Reduce 청킹
 
-### Step 1.3: Executive Summary 작성 (NEW v28.5 — **v28.6 Phase -1.5 자율 판단 기반**)
+> **Executive Summary 는 Step 1.5 로 이동 (v28.9)** — 본문이 검토·확정(Step 1.4)된 *뒤* 생성해야 stale 이 안 됨. 요약은 "확정본의 핵심 비주얼·내용을 추출하는 후처리"이므로 검증 전이 아니라 검증 후가 정위치. (옛 v28.5~v28.8 의 Step 1.3 위치는 본문 확정 전 생성 → 1.4 에서 본문 수정 시 요약 낡음 결함 → 재배치.)
 
-**Trigger Logic (v28.6)**: Phase -1.5 Part D 결과로 `active-goal.json.executive_summary.enabled == true` 자동 설정 시 본 단계 발동. `false` (또는 부재) 시 자동 skip → Step 1.4 직행.
-
-### 자율 판단 결과별 동작
-
-| executive_summary.enabled | mode | 동작 |
-|--------------------------|------|------|
-| true | inline | 본문 첫 섹션 `## Executive Summary` 자동 생성 |
-| true | separate | 별도 파일 `docs/00-prd/{slug}.exec-summary.md` 자동 생성 |
-| false / 부재 | — | Step 1.3 skip → Step 1.4 직행 |
-
-### 양식
-
-- 구조 (≤50줄): Hook + Thesis + 3 다이어그램 + 5 결정 + 3 Action + 한 줄 결론
-- 양식 + 검증 룰: `references/executive-summary-template.md`
-- 자율 판단 휴리스틱: `references/phase-minus-1.5-deep-interview.md` Part D
-- 검증: 다음 Step 1.4 의 4 시각이 본문 + Executive Summary 모두 검증
-
-목적: 사용자가 본문 안 읽고도 1 페이지로 전체 파악 (Core Philosophy 정합 + 자율 판단으로 진입점 최소화).
-
-### Step 1.4: Multi-perspective Validation (병렬 4시각)
+### Step 1.4: Multi-perspective Validation (병렬 4시각 — 본문 검증·확정)
 
 ```
 4개 agent 동시 호출:
@@ -198,8 +182,9 @@ writer는 다음 4종을 사전 설계한 뒤에야 본문 작성 권한을 얻�
 └─────────────────────────┘
 
 집계:
-  ALL PASS → Phase 4
+  ALL PASS → Step 1.5 (Exec Summary 활성 시) → Phase 4
   ANY NEEDS_REVISION → writer 재호출 (max 2회)
+  ※ 본문만 검증 (요약은 아직 미생성 — 확정 후 Step 1.5 에서 생성)
 
 reader-experience REJECT 트리거:
   · P7-A 위반 → Hook 부재 / 메타 시작
@@ -208,6 +193,38 @@ reader-experience REJECT 트리거:
   · P7-D 위반 → 5섹션 연속 산문
   · P7-E 위반 → Act 누락 / 평탄 구조
 ```
+
+### Step 1.5: Executive Summary 추출 (v28.9 — 본문 확정 후 후처리)
+
+**Trigger**: Step 1.4 ALL PASS (본문 확정) + `active-goal.json.executive_summary.enabled == true`. 그 외 → 자동 skip → Phase 4 직행 (진입점 0 유지).
+
+**핵심 원칙**: 요약 = *확정본에서 핵심 비주얼·내용을 뽑는 추출 작업*. 새로 창작 X.
+
+```
+조건 충족 시 (mode 별 산출물):
+  Agent(subagent_type="document-specialist", model=plan["document-specialist"],
+    description="Executive Summary 추출",
+    prompt="확정된 본문 docs/00-prd/{slug}.md 에서:
+            ① 본문에 이미 있는 핵심 다이어그램 ≤3개를 '그대로 추출' (새 창작 금지 — 본문에 실재하는 것만)
+            ② Hook / Thesis / 5 핵심결정 / 3 Action / 한 줄 결론 요약
+            ③ mode 에 따라 출력:
+               - html (권장): docs/00-prd/{slug}.summary.html — B&W 한 장, 브라우저 열람용
+                 (Mermaid 는 mermaid.js CDN <pre class='mermaid'>, ASCII 는 <pre>)
+               - inline: 본문 첫 섹션 ## Executive Summary 삽입
+               - separate: docs/00-prd/{slug}.exec-summary.md
+            양식 + 검증 룰: references/executive-summary-template.md (≤50줄 환산, 시각 ≥50%).")
+```
+
+| executive_summary.enabled | mode | 산출물 |
+|--------------------------|------|--------|
+| true | html | `docs/00-prd/{slug}.summary.html` (브라우저 한 장 — 권장) |
+| true | inline | 본문 첫 섹션 `## Executive Summary` |
+| true | separate | `docs/00-prd/{slug}.exec-summary.md` |
+| false / 부재 | — | skip → Phase 4 |
+
+**검증**: 추출한 다이어그램이 본문에 실재하는지 (창작 아님) + (html) 파일 열림 + 시각 비율 ≥50%. FAIL → document-specialist 1회 재호출 → 2회 FAIL escalate.
+
+목적: 사용자가 본문 안 읽고도 1 페이지로 전체 파악. **확정본 기준**이라 stale 없음.
 
 ## Phase 4 — 저장 + 커밋 + Confluence Sync (NEW v28.5)
 

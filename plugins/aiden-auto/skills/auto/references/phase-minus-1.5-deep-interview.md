@@ -106,33 +106,40 @@ AskUserQuestion(
 
 ```
 AskUserQuestion(
-  question="작성할 문서에 Executive Summary(1페이지 요약)를 포함할까요? "
-           "본문을 안 읽어도 전체를 한눈에 파악할 수 있는 요약입니다.",
+  question="작성할 문서의 1페이지 요약(핵심만 한눈에)을 만들까요? "
+           "요약은 본문이 완성·검토된 뒤에 그 핵심 그림·내용을 뽑아 만듭니다.",
   header="Exec Summary",
   multiSelect=false,
   options=[
+    {label: "HTML 한 장",
+     description: "브라우저로 열면 한 장으로 보이는 요약 페이지 ({slug}.summary.html). 본문 핵심 그림을 그대로 담음 (기본 권장)."},
     {label: "본문 첫 섹션 포함",
-     description: "문서 맨 앞에 1페이지 요약 삽입 (기본 권장). 읽는 사람이 본문 전 전체를 빠르게 파악."},
-    {label: "별도 파일로",
+     description: "문서 맨 앞에 1페이지 요약 삽입. 읽는 사람이 본문 전 전체를 빠르게 파악."},
+    {label: "별도 .md 파일",
      description: "{slug}.exec-summary.md 로 분리 생성. 본문과 따로 공유·배포하기 좋음."},
-    {label: "포함 안 함",
-     description: "본문만 작성. 요약 페이지 생략."},
+    {label: "안 만듦",
+     description: "본문만 작성. 요약 생략."},
   ]
 )
 ```
+
+> **결정은 미리, 생성은 나중**: 여기서는 "요약을 만들지 여부 + 형식"만 정한다. 실제 생성은 본문이 검토·확정된 **뒤** (chapter-doc Step 1.5) 일어난다 — 확정본의 핵심 그림·내용을 추출하기 위함.
 
 ### 응답 처리
 
 | AskUserQuestion 답 (label) | active-goal.json 의 `executive_summary` |
 |---------|---------------------------------------|
+| HTML 한 장 | `{"enabled": true, "mode": "html"}` |
 | 본문 첫 섹션 포함 | `{"enabled": true, "mode": "inline"}` |
-| 별도 파일로 | `{"enabled": true, "mode": "separate"}` |
-| 포함 안 함 / 응답 없음 / 자동 skip | `{"enabled": false}` |
+| 별도 .md 파일 | `{"enabled": true, "mode": "separate"}` |
+| 안 만듦 / 응답 없음 / 자동 skip | `{"enabled": false}` |
 
-### Phase 1.3 동작 연동
+### Phase 1.5 동작 연동 (v28.9 — 1.3 → 1.5 재배치)
 
-`executive_summary.enabled = true` 시 chapter-doc 의 Step 1.3 자동 발동.
-`false` 시 Step 1.3 skip → Step 1.4 (Multi-perspective Validation) 직행.
+`executive_summary.enabled = true` 시 chapter-doc 의 **Step 1.5** (본문 확정 후) 자동 발동.
+`false` 시 Step 1.5 skip → Phase 4 직행.
+
+> v28.9 재배치: 옛 Step 1.3 (본문 확정 전) → Step 1.5 (Multi-perspective Validation 통과 후). 확정 전 생성 시 본문 수정으로 요약이 낡는(stale) 결함 해소.
 
 상세 양식 + 검증 룰: `references/executive-summary-template.md`.
 
