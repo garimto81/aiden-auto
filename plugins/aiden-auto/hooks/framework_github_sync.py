@@ -18,6 +18,7 @@ v5: 두 git repo 모두 자동 sync.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -40,6 +41,11 @@ except ImportError:
         p = Path.cwd() / "plugins" / "aiden-auto"
         return p if p.is_dir() else None
     def resolve_aiden_auto_repo():
+        # env 1순위 (정식 path_resolution 과 동작 일치 — import 실패 시에도 cwd 무관)
+        ep = os.getenv("AIDEN_AUTO_REPO")
+        if ep:
+            p = Path(ep)
+            return p if p.is_dir() and (p / ".git").is_dir() else None
         p = Path.cwd().parent / "aiden-auto-repo"
         return p if p.is_dir() and (p / ".git").is_dir() else None
     def is_dev_pc():  # fallback: repo-None 게이트가 안전망
