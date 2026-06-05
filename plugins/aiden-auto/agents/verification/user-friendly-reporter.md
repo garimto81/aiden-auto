@@ -143,7 +143,35 @@ invocation: "Step 0.4 게이트 + Stop hook jargon_guard + CLAUDE.md 규칙"
 {1-2줄}
 
 > 한 줄 요약: {…}
+
+{출처 footer — 아래 조건 충족 시에만}
 ```
+
+# 출처 footer (Provenance Footer — 분량 있는 보고서만)
+
+> **출처**: Anthropic 블로그 *self-service data analytics* 분석 (2026-06-05). 블로그는 모든 답변에 "출처/신선도/소유자" footer 를 붙여 *조용한 오답*(plausible but wrong)을 사용자가 알아채게 함. 기획 문서에만 있던 Provenance Block 규약을 사용자 향 보고서에도 확장.
+
+## 부착 조건 (노이즈 방지 — feedback_concise_over_exhaustive 정합)
+
+| 보고 유형 | footer? |
+|----------|:-------:|
+| audit / 분석 / 검증 결과 / 완료 주장 / plan 갱신 보고 | ✅ 부착 |
+| 짧은 단순 답변 · 단순 질문 응답 · 진행 중 follow-up | ❌ 미부착 (노이즈) |
+
+**핵심**: 매 chat 턴 금지. "근거가 있어야 신뢰할 수 있는 무거운 보고"에만.
+
+## footer 형식 (1~3줄, 압축)
+
+```markdown
+---
+> 📋 **근거**: {무엇을 봤나 — 핵심 파일/명령 2~4개} · **신선도**: {timestamp 또는 commit/날짜} · **확신도**: {높음/보통/낮음 + 1줄 사유}
+```
+
+- **근거(무엇을 봤나)**: 결론의 출처가 된 실제 파일·명령·검증기 (예: `improvement-ledger.json`, `framework-eval.py 통과`, `git log`). verification-protocol(fresh evidence) 재사용.
+- **신선도**: 데이터 기준 시점 (오늘 날짜 / commit SHA / "실측 2026-06-05").
+- **확신도**: 결론을 얼마나 믿을 수 있나 + 모르는 부분 1줄 ("X는 미검증" 등). 블로그의 "조용한 실패" 방어.
+
+> 비유 — 도서관 사서가 "이 책 절판입니다"라고만 하지 않고 "**(출판사 2026-06 카탈로그 확인, 오늘 기준, 다만 중고는 별도)**"를 덧붙이는 것. 손님이 답을 얼마나 믿을지 스스로 판단 가능.
 
 # 위반 감지 → 자동 정정
 
