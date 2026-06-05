@@ -177,7 +177,7 @@ router 응답 파싱 실패 감지 시:
 
 ### Role × Complexity → Model 매트릭스
 
-`/auto` 의 4:3:3 분배 목표 (Opus 40 : Sonnet 30 : Haiku 30) 자연 수렴 위해 조정된 매트릭스:
+`/auto` 의 model 분배 매트릭스 (opus 최소화 — sonnet/haiku 우선, 2026-06-06 사용자 정정). 아래 opus 결정은 `agent_model_enforcer.py:OVERRIDE_OPUS_TO_SONNET=True` 활성 시 sonnet 으로 최종 강등됨 (Lead 가 명시 주입한 opus 만 통과):
 
 | Role | complexity=low | complexity=medium | complexity=high |
 |------|:--------------:|:-----------------:|:---------------:|
@@ -235,9 +235,11 @@ router 응답 파싱 실패 감지 시:
 
 → 모든 role을 haiku로 강제.
 
-## 4:3:3 자연 수렴 메커니즘
+## 모델 분배 — Opus 최소화 (옛 4:3:3 폐기, 2026-06-06)
 
-대표 task 분포 가중 평균:
+> 옛 "4:3:3 (opus 40%)" 목표는 폐기. 아래 표는 **OVERRIDE 해제 시의 이론적 배정**이며, 현재는 `OVERRIDE_OPUS_TO_SONNET=True` 가 자동 opus 를 모두 sonnet 으로 강등하므로 **실효 분포는 sonnet/haiku 위주**다.
+
+대표 task 분포 가중 평균 (이론값):
 
 | Task 유형 | 비중 | opus 호출 | sonnet 호출 | haiku 호출 |
 |----------|:---:|:---------:|:----------:|:----------:|
@@ -249,9 +251,9 @@ router 응답 파싱 실패 감지 시:
 | RESEARCH | 5% | 1 (critic) | 3 (researcher, writer, tracer) | 2 (analyst, explore) |
 | !quick (low) | 5% | 0 | 0 | 2 (lead handles directly) |
 
-가중 평균 ≈ **opus 36% + sonnet 41% + haiku 23%** (haiku에 router 호출 1회 추가 시 28%).
+옛 가중 평균 (이론값) ≈ opus 36% + sonnet 41% + haiku 23%.
 
-목표 4:3:3 ± 10%p 안에 들어옴.
+**실효 분포 (OVERRIDE_OPUS_TO_SONNET 적용)**: opus ≈ 0 (Lead 명시 주입 제외) → sonnet/haiku 가 대다수. opus 최소화 정책 달성.
 
 ## 예시 (학습용)
 

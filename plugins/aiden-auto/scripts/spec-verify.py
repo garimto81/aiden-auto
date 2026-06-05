@@ -116,6 +116,21 @@ def layer1_physical():
                             else:
                                 issues.append(f"[L1] hook 부재: {event} / {hook_path.name}")
 
+    # 1.3 model-routing hook 등록 무결성 (2026-06-06 회귀 방지)
+    #   enforcer/logger .py 는 존재하나 registry 등록이 빠지면 opus 강제 미발동
+    #   (EBS opus-only root cause — registry 구조 전환 시 누락된 회귀 재발 차단)
+    for name, event in [("agent_model_enforcer", "PreToolUse"),
+                        ("agent_model_logger", "PostToolUse")]:
+        py = USER_CLAUDE / "hooks" / f"{name}.py"
+        reg = USER_CLAUDE / "hooks" / "registry" / event / f"{name}.json"
+        if py.exists():
+            total += 1
+            if reg.exists():
+                passed += 1
+            else:
+                issues.append(f"[L1] model-routing orphan: {name}.py 존재하나 "
+                              f"registry/{event}/{name}.json 미등록 (opus 강제 미발동 회귀)")
+
     return passed, total, issues
 
 

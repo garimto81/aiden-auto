@@ -1,0 +1,9 @@
+{
+  "name": "agent_model_enforcer",
+  "command": "python \"$HOME/.claude/hooks/agent_model_enforcer.py\"",
+  "timeout": 10,
+  "blocking": false,
+  "priority": 40,
+  "owner": "global",
+  "matcher": "Agent"
+}

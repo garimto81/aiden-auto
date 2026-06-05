@@ -1,0 +1,9 @@
+{
+  "name": "agent_model_logger",
+  "command": "python \"$HOME/.claude/hooks/agent_model_logger.py\"",
+  "timeout": 5,
+  "blocking": false,
+  "priority": 50,
+  "owner": "global",
+  "matcher": "Agent"
+}

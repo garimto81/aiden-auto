@@ -257,7 +257,10 @@ def setup_stream(stream_id: str, config: dict, project_root: Path,
                     print(f"  ⚠ hook source missing: {src}")
 
         # settings.local.json: Claude Code 공식 hooks 스키마
+        # model: 멀티 세션 Lead 를 sonnet 으로 고정 (opus 최소화 정책 — 부모 opus 상속 차단).
+        #   opus 가 정말 필요한 stream 은 세션 중 /model 또는 기동 시 --model opus 로 override.
         settings = {
+            "model": "sonnet",
             "hooks": {
                 "SessionStart": [
                     {

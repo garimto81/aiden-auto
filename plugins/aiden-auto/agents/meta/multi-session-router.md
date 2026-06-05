@@ -83,7 +83,7 @@ Phase 0 plan 분석 → 다중 stream 분할 가능 여부 + 각 stream의 sessi
       "suggested_session_name": "aiden-auto:S-20260513T1100-LOGIC-e5f6"
     }
   ],
-  "suggested_command": "claude --bg \"frontend stream-1\" && claude --bg \"backend stream-2\" && claude --bg \"infra stream-3\"",
+  "suggested_command": "claude --bg --model sonnet \"frontend stream-1\" && claude --bg --model sonnet \"backend stream-2\" && claude --bg --model sonnet \"infra stream-3\"",
   "user_confirm_prompt": "3개 독립 stream 감지. 자동 분할 실행합니다. 취소(N), 3초 timeout.",
   "timeout_seconds": 3,
   "ts": "2026-05-13T12:00:00Z"
@@ -95,7 +95,8 @@ Phase 0 plan 분석 → 다중 stream 분할 가능 여부 + 각 stream의 sessi
 공식 `claude agents` 워크플로우 통합:
 
 ## 1. Job Dispatch
-- `claude --bg "<stream-task>"` 명령으로 background session 시작
+- `claude --bg --model sonnet "<stream-task>"` 명령으로 background session 시작
+  (opus 최소화 정책 — sonnet 기본 기동. 부모 opus 상속 차단. 진짜 opus 가 필요한 stream 만 `--model opus` 명시 override)
 - supervisor process 가 session 관리 (terminal 독립)
 - session 자동 worktree 격리 (`.claude/worktrees/`)
 
