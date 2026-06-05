@@ -104,6 +104,8 @@ design 자체에 paradox / self-referential 결함이 있는 경우 (예: rule �
 
 **Trigger edge (orphan 방지)**: T3 (파괴적/아키텍처/정책) 자율 개선은 apply 전 **design-critic-convergence 를 수렴(또는 no-change)까지 먼저 실행** (Lead 가 호출 — 이게 엔진의 정식 caller). converged:true → 자율 구현. circuit_breaker_hit / no-change → **이번 cycle 보류 (forgo — 사용자 결정 2026-06-04: "검토해도 확신이 안 서면 안 고치는 것도 정답"). 억지 변경 금지.** design-critic-convergence 는 audit-loop 의 RESOLVED/PLATEAU 와 **다른 기계** — 자체 {converged, circuit_breaker_hit} 반환만 사용 (문자열 homograph 혼동 금지).
 
+**Forgone-approach 기록 (negative-results)**: forgo (circuit_breaker_hit / no-change) 또는 critic 이 over-engineering 으로 기각한 approach 는 Lead 가 `~/.claude/state/negative-results.json` 에 append 하고, 재제안 전 조회한다 (동일 dead-end 매 cycle 반복 방지). improvement-ledger 가 *성공* 만 기록하는 반쪽을 보완 — 블로그 "Negative Results Matter" (2026-06) 정합. 워크플로우는 filesystem-free 라 negative 를 caller 에게 반환만 하고 버리므로, persist 책임은 caller(Lead) 에 있다.
+
 > **자기검증 사례 (2026-06-04)**: design-critic-convergence 를 자가개선 아키텍처 자신에 4 round 돌린 결과 converged=false (circuit_breaker_hit). 검토자들이 **이전 round 들의 over-engineering 을 스스로 잡아냄** (meta-enforcer/quorum subsystem 등 — 실측 발생 0건). 정직한 결론 = 거창한 재설계 폐기, 검증된 최소 수정만. → 본 forgo 원칙의 실증. 단 진짜 코드 버그 1건 발견: 엔진의 `filter(Boolean)` 가 실패한 lens 를 "문제 없음" 으로 오인 → 거짓 수렴 (수정 완료).
 
 ---
