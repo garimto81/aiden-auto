@@ -4,15 +4,16 @@ category: QA
 pipeline: [triage, chapter-qa]
 next-skill: null
 handoff: .claude/state/auto/qa-{slug}.md
-agent_team: [qa-tester, architect, executor, test-engineer, security-reviewer, verifier]
-phase_path: [-2, -1.5, -1, 0, 3, 4, cleanup]
+agent_team: [prd-to-checklist, qa-tester, architect, executor, test-engineer, security-reviewer, verifier, e2e-qa-prover, iteration-screenshot-verifier, perfect-output-validator, user-friendly-reporter]
+phase_path: [-2, -1.5, -1, 0, QA-1, 3, 4, cleanup]
 ---
 
 # Chapter: QA — 테스트 / E2E / 검증
 
 > **카테고리**: QA
-> **트리거 키워드**: 테스트, test, E2E, 검증, QA, regression, 회귀, 품질
+> **트리거 키워드**: 테스트, test, E2E, 검증, QA, regression, 회귀, 품질, 스크린샷 QA, 화면 검수, QA 보고서, 체크리스트 검증
 > **v27.2 강화**: XML 구조화 + Multi-perspective + Cleanup + verifier 게이트
+> **v28.9 강화**: QA 스크린샷 워크플로우 (기획서→체크리스트→스크린샷→판정→자율수정→보고)
 
 <Purpose>
 사용자의 검증 요구를 받아 단위→통합→E2E→보안→성능 사이클로 자율 처리. 실패 시 D0-D4 디버깅 + Iteration Loop 자동 진입.
@@ -131,6 +132,110 @@ Cleanup:
 
 </Steps>
 
+<QA_Screenshot_Workflow>
+
+## QA 스크린샷 워크플로우 (v28.9, 5단계)
+
+> **활성 조건**: 기획 문서(PRD/spec)가 존재 + 트리거 키워드("스크린샷 QA", "화면 검수", "QA 보고서", "기획서 검수") 또는 화면 산출물 감지. 이 조건이면 Phase 0 다음에 본 5단계가 기존 Phase 3/4 를 대체·확장한다. 화면 없는 순수 코드 검증은 위 기본 Phase 3 경로 유지.
+
+```
+Phase 0 (검증 종류 결정)
+      │
+      ▼
+1단계  PRD → 체크리스트          [prd-to-checklist]
+   기획서 수락기준 → checklist.yaml (항목별 kind 박제)
+   out: test-results/qa-{slug}/checklist.yaml
+      │
+  ┌───┴─── 항목별 kind 분기 ───┐
+ VISUAL_INTERACTION       LOGIC_DATA
+      │                       │
+      ▼                       ▼
+2단계 스크린샷 수집        2'단계 텍스트 증거 수집
+ [iteration-screenshot-     [qa-tester Mode B]
+  verifier]                 E2E/unit + 로그 + status matrix
+ expected_route 순회        (스크린샷 금지 — §3.B)
+ 시작/핵심/성공 ≥3장        out: logic-evidence/{id}.md
+ out: shots/{id}-{state}.png
+      └──────────┬────────────┘
+                 ▼
+3단계 매핑 + 통과 판정
+   [checklist_screenshot_mapper.py] ← 파일 연결 + 구조 게이트
+   [e2e-qa-prover]                  ← 의미 판정(콘솔에러/coverage)
+   mapper 가 e2e 판정을 --verdicts 로 흡수 → checklist verdict 기록
+   [checklist_updater.py]           ← stats 갱신
+                 │
+            미통과(fail) > 0?
+            ┌────┴────┐
+           YES        NO
+            │          │
+            ▼          │
+4단계 자율 iteration    │
+   [pdca-iterator] + circuit-breaker(rule 17)
+   fail_reason → executor 수정 → 2단계 해당 route 재캡처 → 3단계 재판정
+   종료(rule 21 Case 3): 전항목 pass | CB 5회 | 동일 fail 3회 PLATEAU
+            └────┬─────┘
+                 ▼
+5단계 사용자 보고
+   [perfect-output-validator] Gate1 7항목
+   [user-friendly-reporter]   비개발자 변환
+   [event_dispatcher.py]      진행률
+   out: test-results/qa-{slug}/QA-REPORT.md
+```
+
+### 1단계 — 기획 문서 → 체크리스트
+
+```
+Agent(subagent_type="prd-to-checklist", model=plan["prd-to-checklist"] or "haiku",
+      prompt="PRD={prd_path}\nslug={slug}\n수락기준→checklist.yaml 변환, 항목별 kind 판정")
+→ test-results/qa-{slug}/checklist.yaml (pending[] 에 kind/acceptance_criteria/expected_route)
+```
+
+kind 조기 판정 — `iteration-spec-classifier` audience 로직 재사용:
+`user|art-designer → VISUAL_INTERACTION` / `developer|모호 → LOGIC_DATA` / `!visual|!logic` override.
+
+### 2단계 — 증거 수집 (kind 분기)
+
+- **VISUAL 항목** → `iteration-screenshot-verifier`: `expected_route` 순회, 상태 변형(초기/핵심/성공) ≥3장 → `test-results/qa-{slug}/shots/{id}-{state}.png`. 정적 mockup 은 `scripts/screenshot-capture.ps1` 배치 캡처.
+- **LOGIC 항목** → `qa-tester` Mode B: E2E/unit + 로그/status matrix → `test-results/qa-{slug}/logic-evidence/{id}.md` (스크린샷 금지).
+
+### 3단계 — 매핑 + 통과 판정
+
+```bash
+# 1) e2e-qa-prover 가 kind별 의미 판정 → verdicts.json 산출
+#    (VISUAL: 콘솔에러0+edge≥3 / LOGIC: status matrix+ERROR0+coverage≥80%)
+# 2) mapper 가 파일 연결 + 구조 게이트(VISUAL≥3장, LOGIC 증거존재) + e2e verdict 흡수
+python "$HOME/.claude/scripts/checklist_screenshot_mapper.py" \
+  --checklist test-results/qa-{slug}/checklist.yaml \
+  --verdicts test-results/qa-{slug}/e2e-verdicts.json
+# → 각 항목 evidence + verdict(pass|fail) + fail_reason 기록, all_pass 요약 stdout
+```
+
+### 4단계 — 자율 iteration (circuit-breaker 연결)
+
+```
+mapper 요약 all_pass == false →
+  pdca_iterator.count += 1 (state/circuit-breaker.json, rule 17)
+  count < 5:
+    fail 항목 fail_reason → executor 수정
+    → 2단계 재진입 (해당 route/항목만 재캡처)
+    → 3단계 재판정 (mapper 재실행)
+    ※ screenshot-verifier regression diff 로 "수정이 다른 화면 깨뜨렸나" 자동 감지
+  count >= 5 OR 동일 fail_reason 3회 PLATEAU:
+    → rule 17 Circuit Breaker 에스컬 출력 (요구사항 재정의/reset/중단)
+```
+
+### 5단계 — QA 문서 보고
+
+```
+perfect-output-validator (Gate1 7항목) PASS
+  → user-friendly-reporter 가 QA-REPORT.md 비개발자 변환
+  → event_dispatcher.py COMPLETED 이벤트
+```
+
+`QA-REPORT.md` 구성: TL;DR 한 줄(통과 N/총 M) + 체크리스트 통과 현황 표 + 화면 갤러리(VISUAL, 캡션) + "테스트 N건 통과"(LOGIC, 스크린샷 없음) + 자동 수정 내역 + 한 줄 요약. 내부 ID(QA-003)/verdict 코드는 reporter 가 평문 변환.
+
+</QA_Screenshot_Workflow>
+
 <User_Friendly_Explanation>
 
 ```
@@ -144,6 +249,21 @@ Cleanup:
          · 건축가: 결과 해석
   3단계: 검증관(verifier)이 결과 진짜인지 확인
   4단계: 보고서 + 정리
+
+  실패 5번 반복 → 사용자 보고 (무한 루프 방지)"
+```
+
+스크린샷 QA(화면 검수) 일 때:
+
+```
+"화면 검수 작업이군요. 이렇게 진행할게요:
+
+  1단계: 기획서를 읽고 '확인할 항목 목록'(체크리스트)을 만들어요
+         (화면 항목은 사진으로, 백엔드 항목은 테스트로 자동 구분)
+  2단계: 화면을 실제로 띄워서 사진을 최대한 많이 찍어요
+  3단계: 체크리스트 항목마다 알맞은 사진/테스트를 붙여 통과 여부 판정
+  4단계: 통과 못한 항목은 자동으로 고치고 다시 찍어 재확인 (반복)
+  5단계: 사진 갤러리 + 통과 현황표가 담긴 QA 보고서를 드려요
 
   실패 5번 반복 → 사용자 보고 (무한 루프 방지)"
 ```
