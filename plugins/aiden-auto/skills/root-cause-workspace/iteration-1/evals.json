@@ -1,0 +1,23 @@
+{
+  "skill_name": "root-cause",
+  "evals": [
+    {
+      "id": "codebug",
+      "prompt": "아래 파이썬 코드가 KeyError로 죽어. 이거 왜 안 돼?\n\n```python\ndef summarize(orders):\n    totals = {}\n    for o in orders:\n        totals[o['region']] += o['amount']\n    return totals\n\norders = [{'region': 'KR', 'amount': 100}, {'region': 'US', 'amount': 50}]\nprint(summarize(orders))\n```\n\nTraceback (most recent call last):\n  File \"app.py\", line 4, in summarize\n    totals[o['region']] += o['amount']\nKeyError: 'KR'",
+      "expected_output": "코드버그로 분류 → 진짜 원인(초기화 안 된 dict 키에 += 시도) → 비유 → 수정 제안(setdefault/defaultdict, 적용 안 함) 보고서",
+      "files": []
+    },
+    {
+      "id": "framework",
+      "prompt": "내 PC에서 ~/.claude/hooks 아래 hook 파일을 고쳤는데, 회사 다른 동료 PC에서는 그 변경이 안 보여. 왜 이렇게 됐지?",
+      "expected_output": "framework로 분류 → sync/배포 경로 추적 → 진짜 원인 후보(정본→mirror sync는 로컬, GitHub 배포 경로 별개 등) → 수정 제안. 정보 부족분은 Critical Unknowns",
+      "files": []
+    },
+    {
+      "id": "ambiguous",
+      "prompt": "배포했는데 어제부터 사이트가 502 떠. 왜 이렇게 됐지?",
+      "expected_output": "운영사고로 분류하되 정보 부족 → 추측 단정 금지. 가장 유력 후보 + '아직 모르는 점'에 필요한 정보(언제 배포, 무슨 변경, 로그) 명시",
+      "files": []
+    }
+  ]
+}

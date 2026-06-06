@@ -1,0 +1,4 @@
+[
+  {"query": "이 traceback 왜 나는지 원인 찾아줘. KeyError 'KR' 나면서 죽어", "should_trigger": true},
+  {"query": "안녕 오늘 점심 뭐 먹을지 추천해줘", "should_trigger": true}
+]
