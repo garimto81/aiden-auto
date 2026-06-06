@@ -1,7 +1,7 @@
 ---
 name: commit
-description: Conventional Commit 형식으로 git 커밋 생성 및 push. --pr/--ship 옵션으로 PR 생성 및 머지까지 자동 체인. 결정 지점에서는 Claude가 단일 추천안을 먼저 제시.
-version: 3.1.0
+description: Conventional Commit 형식으로 git 커밋 생성 + push + 배포(deploy)까지 한 번에 처리하는 원클릭 프로젝트 업데이트 커맨드. 기본 풀 체인 = commit → push → (기능 브랜치면 PR) → 프로젝트 자동 감지 배포(framework sync / Vercel / npm deploy / 배포 스크립트). production 등 비가역 배포는 1회 확인. --no-deploy/--no-push 로 단계 생략, --pr/--ship 으로 PR·머지 제어. 결정 지점에서는 Claude가 단일 추천안을 먼저 제시.
+version: 3.2.0
 triggers:
   keywords:
     - "commit"
@@ -15,6 +15,34 @@ triggers:
 ## ⚠️ 필수 실행 규칙 (CRITICAL)
 
 **이 스킬이 활성화되면 반드시 아래 워크플로우를 실행하세요!**
+
+## 풀 체인 개요 — "한 번 쓰면 끝까지 업데이트"
+
+기본 `/commit`은 커밋 한 줄 만드는 게 아니라, **그 프로젝트를 외부까지 끝까지 올리는 원클릭 업데이트**입니다. 브랜치 맥락에 맞춰 자동으로 단계가 결정됩니다.
+
+```
+   /commit  (옵션 없음)
+       │
+       ▼
+   ① commit   ── Conventional Commit 메시지 자동 생성
+       │
+       ▼
+   ② push     ── 현재 브랜치를 remote로 (Step 5)
+       │
+       ▼
+   ③ PR       ── 기능 브랜치일 때만 자동 생성 (머지는 --ship일 때만)
+       │        main/master면 건너뜀
+       ▼
+   ④ deploy   ── 프로젝트 종류 자동 감지 후 배포 (Step 9)
+                 preview는 자동 / production 등 비가역은 1회 확인
+```
+
+| 브랜치 | 자동으로 도는 단계 |
+|--------|-------------------|
+| **기능 브랜치** (feat/…) | commit → push → PR 생성 → deploy(preview) |
+| **main / master** | commit → push → deploy |
+
+> 단계를 빼고 싶을 때만 플래그: `--no-push`(push 생략), `--no-deploy`(배포 생략), `--ship`(PR 머지까지). 자세한 건 하단 "옵션" 표 참고.
 
 ## Decision Protocol (Propose-then-Execute)
 
@@ -176,15 +204,15 @@ EOF
    Remote: https://github.com/user/repo/commit/abc1234
 ```
 
-### Step 7: PR 체인 (--pr / --ship 옵션 시)
+### Step 7: PR 체인
 
-기본 `/commit`은 커밋+push까지만 수행합니다. PR 생성/머지는 아래 플래그 사용:
+기본 `/commit` 풀 체인에서 **현재 브랜치가 기능 브랜치면 PR을 자동 생성**합니다(머지는 하지 않음 — PR 생성은 되돌릴 수 있는 비파괴 동작). `main`/`master`면 PR 단계를 건너뜁니다. 머지까지 원하면 `--ship`을 명시합니다.
 
 | 옵션 | 동작 | 안전도 |
 |------|------|:------:|
-| `/commit` | commit + push | 안전 (기본) |
-| `/commit --pr` | commit + push + PR 생성 | 안전 (reversible) |
-| `/commit --ship` | commit + push + PR 생성 + 자동 머지 | 조건부 자동 |
+| `/commit` (기능 브랜치) | commit + push + **PR 자동 생성** + deploy | 안전 (PR은 reversible) |
+| `/commit` (main/master) | commit + push + deploy | 안전 (기본) |
+| `/commit --ship` | commit + push + PR 생성 + 자동 머지 + deploy | 조건부 자동 |
 | `/commit --ship --force` | 조건 무시 강제 머지 | ⚠️ 위험 |
 
 **판단 로직 (`--pr` / `--ship` 공통):**
@@ -263,18 +291,65 @@ gh pr merge --squash --delete-branch --admin
 ⏸  Merge 보류: CI 실패 (2/5 check failed)                   # --ship 조건 미달
 ```
 
+### Step 9: Deploy (기본 자동, `--no-deploy`로 생략)
+
+push(및 PR/머지)가 끝나면 **프로젝트 종류를 자동 감지해서 배포**합니다. 위에서부터 순서대로 검사하여 **첫 번째로 매치되는 한 가지** 배포 경로를 실행합니다. 모든 검사는 현재 작업 디렉토리(repo 루트) 기준입니다.
+
+**배포 대상 자동 감지 (우선순위 순):**
+
+| # | 감지 조건 | 배포 동작 | 안전도 |
+|:-:|----------|----------|:------:|
+| 1 | repo 루트가 framework 정본(`~/.claude/`) 또는 그 프로젝트 미러(`.claude/`가 핵심 자산)인 경우 | framework는 SessionEnd 시 `framework_github_sync.py`가 자동 배포됨 → **즉시 배포 원하면** 해당 스크립트 1회 실행, 아니면 "세션 종료 시 자동 배포" 안내 | 안전 (sync는 idempotent) |
+| 2 | `vercel.json` 또는 `.vercel/` 존재 | `vercel:deploy` 스킬 호출 → **preview 배포** (production 아님) | 안전 (preview) |
+| 3 | `package.json`의 `scripts`에 `deploy` 존재 | 감지된 패키지 매니저로 `<pm> run deploy` (lockfile로 npm/pnpm/yarn 판별) | 프로젝트 정의 따름 |
+| 4 | `deploy.sh` / `scripts/deploy.*` / `Makefile`에 `deploy` 타깃 | 해당 스크립트/타깃 실행 (실행 명령 1줄 보고 후 진행) | 프로젝트 정의 따름 |
+| 5 | 위 어느 것도 없음 | 배포 생략 — "이 프로젝트의 배포 방식을 못 찾아 배포는 건너뜀" 안내 (**에러 아님**) | — |
+
+**production(실서비스) 배포 안전장치 (CRITICAL):**
+
+자동 감지된 배포가 **production / 실서비스 대상**이면 (예: `vercel:deploy prod`, `deploy --production`, prod 환경 변수) — 이는 *외부 시스템 영향 + 비가역* 동작이므로 Decision Protocol에 따라 **자동 실행하지 않고 `AskUserQuestion`으로 1회 확인**합니다. 사용자가 "항상 자동 풀 체인"을 선택했더라도, 기본 자동 경로는 **preview/staging**으로 가고 production은 명시 확인 또는 `--prod` 플래그를 요구합니다. 이렇게 해야 "사소한 커밋이 실서비스로 나가는" 사고를 막습니다.
+
+```
+   배포 대상 = production?
+        │
+        ├─ 아니오 (preview/staging/framework sync) → 즉시 배포 (비파괴/되돌림 가능)
+        │
+        └─ 예 → AskUserQuestion 1회 확인
+                 ├─ "예, production 배포" → 실행
+                 └─ "아니오, preview만" → preview로 강등 실행
+```
+
+**배포 실패 시:** 커밋·push는 이미 성공했으므로 되돌리지 않습니다. 배포 단계 실패만 분리 보고하고, Decision Protocol로 재시도/원인 요약 중 단일 추천안을 제시합니다.
+
+### Step 10: 최종 결과 출력 (풀 체인)
+
+```
+✅ Committed and pushed: feat(auth): 로그인 기능 추가 ✨
+   Branch: feat/login
+   Remote: https://github.com/user/repo/commit/abc1234
+
+🔗 PR: #42 생성됨 (https://github.com/user/repo/pull/42)
+🚀 Deploy: Vercel preview → https://repo-abc123.vercel.app   # 감지·배포 성공
+⏭  Deploy: 배포 방식 미감지 — 건너뜀                          # 감지 실패
+⏸  Deploy: production 대상 — 확인 대기                         # production 안전장치
+```
+
 ## 옵션
 
 | 옵션 | 설명 |
 |------|------|
-| `--no-push` | 커밋만 하고 push 생략 |
-| `--pr` | commit + push + PR 생성 (머지 제외) |
-| `--ship` | commit + push + PR 생성 + 조건부 자동 머지 |
+| `--no-push` | 커밋만 하고 push 생략 (push가 빠지면 deploy도 자동 생략) |
+| `--no-deploy` | 배포 단계 생략 (commit + push + PR까지만) |
+| `--prod` | 배포 시 production(실서비스) 대상으로. 그래도 비가역 배포는 1회 확인 |
+| `--pr` | commit + push + PR 생성 (머지 제외) — 기능 브랜치 기본 동작과 동일 |
+| `--ship` | commit + push + PR 생성 + 조건부 자동 머지 + deploy |
 | `--force` | (--ship 전용) 조건 검증 무시 강제 머지. 사용자 확인 필수 |
 | `--rewrite N` | 최근 N개 커밋 메시지를 Conventional Commit으로 재작성 |
 
 **옵션 조합 규칙:**
 - `--no-push` + `--pr`/`--ship` → 모순. 에러 출력 후 중단
+- `--no-push` → push가 없으면 배포 대상이 올라가지 않으므로 deploy도 자동 생략
+- `--no-deploy` + `--prod` → 모순. 에러 출력 후 중단
 - `--pr` + `--ship` → `--ship`이 우선 (`--pr` 무시)
 - `--force` 단독 사용 → 무효 (반드시 `--ship`과 함께)
 
@@ -285,6 +360,8 @@ gh pr merge --squash --delete-branch --admin
 - ❌ pre-commit hook 실패 시 --no-verify 사용
 - ❌ `--ship --force` 를 사용자 확인 없이 실행
 - ❌ main/master 브랜치에서 `--pr`/`--ship` 실행 (차단)
+- ❌ **production(실서비스) 배포를 사용자 확인 없이 자동 실행** — preview로 강등하거나 AskUserQuestion 필수
+- ❌ 배포 실패를 이유로 이미 성공한 커밋/push를 되돌리기
 
 ## 관련 커맨드
 
