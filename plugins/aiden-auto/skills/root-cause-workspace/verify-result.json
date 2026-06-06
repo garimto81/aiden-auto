@@ -1,0 +1,51 @@
+{
+  "mode": "measure_installed",
+  "match_token": "root-cause",
+  "results": [
+    {
+      "query": "서버 메모리가 계속 차오르다가 OOM으로 죽어. 근본 원인 좀 짚어줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 KeyError 그냥 빨리 고쳐줘. 원인 설명은 필요 없고 동작만 되게",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "framework-github-sync.log 파일 내용 좀 보여줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 합산 코드 성능 좀 최적화해줘. 느려",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "파이썬이 왜 GIL을 쓰는지 개념적으로 설명해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  }
+}

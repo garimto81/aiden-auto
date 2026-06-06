@@ -1,0 +1,171 @@
+{
+  "mode": "measure_installed",
+  "match_token": "root-cause",
+  "results": [
+    {
+      "query": "테스트가 어제까지 잘 됐는데 오늘 갑자기 다 깨져. 왜 이렇게 됐지?",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 traceback 왜 나는지 원인 좀 찾아줘. KeyError 'KR' 나면서 summarize 함수에서 죽어",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "배포하고 나서 어제부터 사이트가 갑자기 500 에러 나는데 왜 이런지 추적해줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "hook 분명히 등록했는데 안 도는 이유가 뭐야? 원인 좀 알려줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "내 PC에서 고친 설정이 동료 PC에서는 안 보여. 근본 원인이 뭘까",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "sync가 자꾸 drift 나는데 진짜 원인 분석해서 쉽게 설명해줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "CI 빌드가 main 브랜치에서만 실패하고 feature 브랜치는 통과해. 왜 이렇게 됐는지 추적 부탁",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "로그인이 한 시간마다 풀려버려. 왜 그런지 원인 찾고 비개발자도 알게 설명해줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "서버 메모리가 계속 차오르다가 OOM으로 죽어. 근본 원인 좀 짚어줘",
+      "should_trigger": true,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": false
+    },
+    {
+      "query": "agent 라우팅이 자꾸 opus로만 가는데 왜 이러지? 원인 분석해줘",
+      "should_trigger": true,
+      "trigger_rate": 1.0,
+      "triggers": 2,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 summarize 함수 좀 리팩토링해서 깔끔하게 정리해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "로그인 기능 JWT로 새로 만들어줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 PR 코드 리뷰해서 문제 있으면 코멘트 달아줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 KeyError 그냥 빨리 고쳐줘. 원인 설명은 필요 없고 동작만 되게",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 hook 파일이 무슨 일을 하는 건지 설명해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "summarize 함수에 대한 pytest 테스트 코드 작성해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "framework-github-sync.log 파일 내용 좀 보여줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "주문 테이블 DB 스키마 새로 설계해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "이 합산 코드 성능 좀 최적화해줘. 느려",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    },
+    {
+      "query": "파이썬이 왜 GIL을 쓰는지 개념적으로 설명해줘",
+      "should_trigger": false,
+      "trigger_rate": 0.0,
+      "triggers": 0,
+      "runs": 2,
+      "pass": true
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "passed": 19,
+    "failed": 1
+  }
+}

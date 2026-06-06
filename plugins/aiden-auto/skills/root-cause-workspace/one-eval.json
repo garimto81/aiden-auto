@@ -1,0 +1,3 @@
+[
+  {"query": "이 traceback 왜 나는지 원인 찾아줘. KeyError 나면서 죽어", "should_trigger": true}
+]

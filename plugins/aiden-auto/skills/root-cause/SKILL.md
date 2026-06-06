@@ -2,13 +2,13 @@
 name: root-cause
 description: >
   문제의 근본 원인을 추적해서 비개발자도 한눈에 이해하는 보고서로 만들어 주는 스킬.
-  에러·테스트 실패·배포 사고·hook/sync 이상·"왜 이렇게 됐지" 같은 의문이 나오면
+  에러·테스트 실패·배포 사고·메모리 누수/OOM·크래시·성능 저하/멈춤·hook/sync 이상·"왜 이렇게 됐지" 같은 의문이 나오면
   반드시 사용한다. 기존 tracer + user-friendly-reporter 를 묶어 "조사 → 완성 보고서 →
   수정 제안" 까지 한 번에 처리한다. 수정은 제안만 하고 직접 적용하지 않는다 (READ-ONLY).
   실제로 뭔가 실패·오작동한 상황의 원인을 찾을 때 적극 사용할 것. 직접 grep 으로 뒤지기 전에 먼저.
   단, "그냥 빨리 고쳐만 줘"(수정만 원함)·"이 파일 보여줘"(읽기)·"왜 GIL 을 쓰나" 같은
   일반 지식 질문에는 쓰지 않는다 (조사할 실제 문제가 있을 때만).
-version: 1.0.1
+version: 1.0.2
 triggers:
   keywords:
     - "root cause"
@@ -24,6 +24,7 @@ triggers:
     - "에러/예외/traceback 의 원인을 알고 싶을 때"
     - "테스트·빌드·배포가 실패한 이유를 찾을 때"
     - "framework hook/sync/agent 라우팅이 이상하게 동작할 때"
+    - "메모리 누수·OOM·크래시·응답 멈춤·성능 저하 등 런타임 자원 장애의 원인을 찾을 때"
 auto_trigger: true
 dependencies:
   - tracer

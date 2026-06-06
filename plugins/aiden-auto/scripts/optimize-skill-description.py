@@ -265,6 +265,88 @@ def run_single_query(query, skill_name, skill_description, timeout, project_root
             command_file.unlink()
 
 
+def run_single_query_installed(query, match_token, timeout, project_root, model=None) -> bool:
+    """Measure whether the ALREADY-INSTALLED skill triggers, WITHOUT injecting a
+    stub command. Detects Skill/Read tool calls whose target contains
+    match_token (e.g. the skill name).
+
+    Use this to honestly measure a skill that is already registered: the stub
+    approach is shadowed by the real skill in that case, so trigger rates read 0
+    even for queries that genuinely fire the skill. Writes no files, so it never
+    pollutes the .claude/commands namespace.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+    cmd = ["claude", "-p", query, "--output-format", "stream-json",
+           "--verbose", "--include-partial-messages"]
+    if model:
+        cmd.extend(["--model", model])
+    process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        cwd=project_root, env=env, text=True,
+        encoding="utf-8", errors="replace", bufsize=1,
+    )
+    result = {"triggered": False}
+    state = {"pending_tool_name": None, "accumulated_json": ""}
+
+    def reader():
+        try:
+            for raw_line in process.stdout:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                verdict = _detect_from_line(line, state, match_token)
+                if verdict is not None:
+                    result["triggered"] = verdict
+                    return
+        except Exception:
+            pass
+
+    t = threading.Thread(target=reader, daemon=True)
+    t.start()
+    t.join(timeout)
+    if process.poll() is None:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except Exception:
+            pass
+    return result["triggered"]
+
+
+def run_measure(eval_set, match_token, num_workers, timeout, project_root,
+                runs_per_query, trigger_threshold, model) -> dict:
+    """One measurement pass over the eval set against the installed skill."""
+    query_triggers: dict[str, list[bool]] = {}
+    query_items: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        fut_to_q = {}
+        for item in eval_set:
+            for _ in range(runs_per_query):
+                fut = executor.submit(run_single_query_installed, item["query"],
+                                      match_token, timeout, str(project_root), model)
+                fut_to_q[fut] = item["query"]
+                query_items[item["query"]] = item
+        for fut in as_completed(fut_to_q):
+            q = fut_to_q[fut]
+            query_triggers.setdefault(q, [])
+            try:
+                query_triggers[q].append(fut.result())
+            except Exception as e:
+                print(f"Warning: query failed: {e}", file=sys.stderr)
+                query_triggers[q].append(False)
+
+    results = []
+    for query, triggers in query_triggers.items():
+        item = query_items[query]
+        rate = sum(triggers) / len(triggers)
+        should = item["should_trigger"]
+        did_pass = (rate >= trigger_threshold) if should else (rate < trigger_threshold)
+        results.append({"query": query, "should_trigger": should, "trigger_rate": rate,
+                        "triggers": sum(triggers), "runs": len(triggers), "pass": did_pass})
+    passed = sum(1 for r in results if r["pass"])
+    return {"results": results, "summary": {"total": len(results), "passed": passed, "failed": len(results) - passed}}
+
+
 def run_eval(eval_set, skill_name, description, num_workers, timeout,
              project_root, runs_per_query=1, trigger_threshold=0.5, model=None) -> dict:
     """Run the full eval set and return pass/fail per query."""
@@ -511,6 +593,12 @@ def main():
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--timeout", type=int, default=45)
     ap.add_argument("--apply", action="store_true", help="Write best_description back into SKILL.md")
+    ap.add_argument("--measure-installed", action="store_true",
+                    help="Measure the ALREADY-INSTALLED skill's current trigger accuracy "
+                         "(no stub, no improve loop) — use when the skill is already registered")
+    ap.add_argument("--match-token", default=None,
+                    help="Token to match in Skill/Read tool calls (default: skill name). "
+                         "Only used with --measure-installed")
     ap.add_argument("--out", default=None, help="Write the JSON result to this path")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
@@ -520,6 +608,28 @@ def main():
         print(f"Error: No SKILL.md at {skill_path}", file=sys.stderr)
         sys.exit(1)
     eval_set = json.loads(Path(args.eval_set).expanduser().read_text(encoding="utf-8"))
+
+    if args.measure_installed:
+        name, _, _ = parse_skill_md(skill_path)
+        match_token = args.match_token or name
+        project_root = find_project_root()
+        if args.verbose:
+            print(f"Measuring installed-skill triggering (match token: {match_token!r})", file=sys.stderr)
+        m = run_measure(eval_set, match_token, args.num_workers, args.timeout,
+                        project_root, args.runs_per_query, args.trigger_threshold, args.model)
+        if args.verbose:
+            p, rc, ac, correct, tot = _stats(m["results"])
+            print(f"\nInstalled trigger accuracy: {correct}/{tot} correct, "
+                  f"precision={p:.0%} recall={rc:.0%} accuracy={ac:.0%}", file=sys.stderr)
+            for r in sorted(m["results"], key=lambda x: (not x["should_trigger"], x["query"])):
+                print(f"  [{'PASS' if r['pass'] else 'FAIL'}] {r['triggers']}/{r['runs']} "
+                      f"expected={r['should_trigger']}: {r['query'][:64]}", file=sys.stderr)
+        out = {"mode": "measure_installed", "match_token": match_token, **m}
+        text = json.dumps(out, indent=2, ensure_ascii=False)
+        print(text)
+        if args.out:
+            Path(args.out).expanduser().write_text(text, encoding="utf-8")
+        return
 
     output = run_loop(
         eval_set=eval_set, skill_path=skill_path, num_workers=args.num_workers,
