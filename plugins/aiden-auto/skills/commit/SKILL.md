@@ -1,13 +1,20 @@
 ---
 name: commit
-description: Conventional Commit 형식으로 git 커밋 생성 + push + 배포(deploy)까지 한 번에 처리하는 원클릭 프로젝트 업데이트 커맨드. 기본 풀 체인 = commit → push → (기능 브랜치면 PR) → 프로젝트 자동 감지 배포(framework sync / Vercel / npm deploy / 배포 스크립트). production 등 비가역 배포는 1회 확인. --no-deploy/--no-push 로 단계 생략, --pr/--ship 으로 PR·머지 제어. 결정 지점에서는 Claude가 단일 추천안을 먼저 제시.
-version: 3.2.0
+description: git 커밋을 Conventional Commit 형식으로 만들고 push + 배포(deploy)까지 한 번에 끝내는 원클릭 프로젝트 업데이트 커맨드. "커밋해줘", "푸시해줘", "이거 올려줘", "배포까지 해줘", "작업 끝났으니 프로젝트에 반영해", "한 번에 업데이트", "feat 커밋 만들어 ship" 처럼 변경사항을 저장소·외부에 반영하거나 배포하려는 모든 요청에 적극 사용. 풀 체인 = commit → push → (기능 브랜치면 PR 자동생성) → 프로젝트 자동 감지 배포(framework sync / Vercel preview / npm run deploy / 배포 스크립트). production 등 비가역 배포는 1회 확인. --no-deploy/--no-push 로 단계 생략, --pr/--ship 으로 PR·머지 제어. 단, 커밋 메시지 뜻 설명·git log 조회·PR 코드 리뷰·커밋 되돌리기(revert)·배포 상태 확인·배포 실패 원인 분석처럼 새 변경을 올리는 게 아닌 요청에는 쓰지 않는다(각각 다른 커맨드). 결정 지점에서는 Claude가 단일 추천안을 먼저 제시.
+version: 3.3.0
 triggers:
   keywords:
     - "commit"
     - "커밋"
     - "git commit"
     - "/commit"
+    - "push"
+    - "푸시"
+    - "deploy"
+    - "배포"
+    - "올려줘"
+    - "반영해"
+    - "ship"
 ---
 
 # /commit - Conventional Commit & Push (+ PR/Merge Chain)
