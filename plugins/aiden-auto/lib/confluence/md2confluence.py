@@ -559,9 +559,6 @@ def build_causality_panel(fm, repo_map=None, current_dir=None, repo_root=None):
         '<ac:rich-text-body>'
         '<p><strong>ℹ️ 문서 인과관계</strong> <em>(frontmatter 자동 생성)</em></p>'
         f'<ul>{inner}</ul>'
-        '<p><em>전체 인과관계 그래프</em>: '
-        '<ac:link><ri:page ri:content-title="EBS 문서 인과관계 대시보드"/>'
-        '<ac:plain-text-link-body><![CDATA[대시보드]]></ac:plain-text-link-body></ac:link></p>'
         '</ac:rich-text-body>'
         '</ac:structured-macro>'
     )
@@ -601,6 +598,13 @@ def build_repo_path_to_pageid_map(repo_root):
         if url in ("null", "None", ""):
             url = ""
 
+        # EBS: frontmatter pointing at a deprecated space (CONFLUENCE_DEPRECATED_SPACES,
+        # e.g. WSOPLive) is treated as unmapped, so cross-links to it downgrade to plain
+        # text instead of linking into an unmanaged space. No-op when the env is unset.
+        _dep = [s.strip() for s in os.environ.get("CONFLUENCE_DEPRECATED_SPACES", "").split(",") if s.strip()]
+        if url and any(f"/spaces/{d}/" in url for d in _dep):
+            continue
+
         if not page_id and not url:
             continue
 
@@ -619,13 +623,19 @@ def build_repo_path_to_pageid_map(repo_root):
 def transform_cross_links(html, repo_map, current_dir, repo_root):
     """Convert <a href="../Foundation.md">...</a> to Confluence <ac:link> when target is mapped.
 
-    Rule 22 — GitHub SSOT first: in-repo .md links resolve to their GitHub
-    canonical URL. Mirrors `_linkify_path`; Confluence (URL→page-id) is the
-    no-GitHub-remote fallback.
+    Mirrors `_linkify_path` resolution order (Cycle 11 v2.0): URL-first because
+    page-id-based URLs survive Confluence title changes; ri:content-title
+    fallback only when no URL is available.
     """
     if not repo_root or not current_dir:
         return html
     repo_map = repo_map or {}
+
+    # EBS strict mode (active only when CONFLUENCE_DEPRECATED_SPACES is set): unmapped
+    # .md links downgrade to plain <code> (no dead Confluence link), and anchor bodies
+    # containing inline tags (e.g. <code>name.md</code>) are matched too. When the env
+    # is unset, behavior is byte-for-byte identical to before (other projects unaffected).
+    strict = bool(os.environ.get("CONFLUENCE_DEPRECATED_SPACES"))
 
     def _replace(match):
         href = match.group(1)
@@ -652,6 +662,9 @@ def transform_cross_links(html, repo_map, current_dir, repo_root):
                     return f'<a href="{_esc(gh)}">{_esc(safe_text)}</a>'
             entry = repo_map.get(rel) or repo_map.get(Path(path_part).name)
             if not entry:
+                if strict:
+                    safe_text = re.sub(r'<[^>]+>', '', text).strip() or Path(path_part).stem
+                    return f'<code>{_esc(safe_text)}</code>'
                 return match.group(0)
             page_id, title, url = entry
             safe_text = re.sub(r'<[^>]+>', '', text).strip() or title
@@ -670,8 +683,9 @@ def transform_cross_links(html, repo_map, current_dir, repo_root):
         except Exception:
             return match.group(0)
 
+    body_pat = r'(.*?)' if strict else r'([^<]+)'
     return re.sub(
-        r'<a\s+href="([^"]+\.md(?:#[^"]*)?)"[^>]*>([^<]+)</a>',
+        r'<a\s+href="([^"]+\.md(?:#[^"]*)?)"[^>]*>' + body_pat + r'</a>',
         _replace, html,
     )
 
@@ -737,6 +751,69 @@ def apply_labels(cfg, page_id, fm):
 # HTML post-processing for Confluence Storage Format
 # ---------------------------------------------------------------------------
 
+# Table column auto-width tuning constants (Confluence default body ~760px)
+_TBL_PX_PER_UNIT = 7      # px per display-unit (CJK glyph=2 units, ASCII=1)
+_TBL_CELL_PAD = 24        # left+right cell padding + breathing room (px)
+_TBL_MIN_COL = 70         # never shrink a column below this (px)
+_TBL_MAX_COL = 440        # cap a single column so long prose wraps (px)
+_TBL_MAX_TOTAL = 760      # Confluence default content width (px)
+
+
+def _display_width(text):
+    """Approximate rendered width in units: CJK/full-width glyph=2, else 1."""
+    w = 0
+    for ch in text:
+        # Hangul, CJK ideographs, kana, full-width forms render ~2x wide
+        if ch >= "ᄀ" and (
+            "가" <= ch <= "힣"      # Hangul syllables
+            or "一" <= ch <= "鿿"   # CJK unified ideographs
+            or "぀" <= ch <= "ヿ"   # kana
+            or "　" <= ch <= "〿"   # CJK punctuation
+            or "＀" <= ch <= "￯"   # full-width forms
+        ):
+            w += 2
+        else:
+            w += 1
+    return w
+
+
+def _fit_table_columns(html):
+    """Inject per-column px widths (fitted to text) into bare data tables.
+
+    Only matches attribute-less ``<table>`` (pandoc data tables). Layout blocks
+    use ``<table role="presentation">`` and never match, so they are untouched.
+    Data tables are not nested, so the non-greedy span is safe.
+    """
+    def _process(match):
+        table = match.group(1)
+        rows = re.findall(r"<tr>(.*?)</tr>", table, re.DOTALL)
+        col_w = {}
+        for row in rows:
+            cells = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", row, re.DOTALL)
+            for i, cell in enumerate(cells):
+                text = re.sub(r"<[^>]+>", "", cell)            # strip tags
+                text = html_unescape(text).strip()
+                col_w[i] = max(col_w.get(i, 0), _display_width(text))
+        if not col_w:
+            return match.group(0)
+        ncol = max(col_w) + 1
+        widths = [
+            max(_TBL_MIN_COL,
+                min(_TBL_MAX_COL, col_w.get(i, 1) * _TBL_PX_PER_UNIT + _TBL_CELL_PAD))
+            for i in range(ncol)
+        ]
+        total = sum(widths)
+        if total > _TBL_MAX_TOTAL:                              # scale down to fit
+            scale = _TBL_MAX_TOTAL / total
+            widths = [max(40, round(w * scale)) for w in widths]
+        colgroup = "<colgroup>" + "".join(
+            f'<col style="width: {w}px" />' for w in widths
+        ) + "</colgroup>"
+        body = re.sub(r"<colgroup>.*?</colgroup>", "", table, count=1, flags=re.DOTALL)
+        return f'<table data-layout="default">{colgroup}{body}</table>'
+
+    return re.sub(r"<table>(.*?)</table>", _process, html, flags=re.DOTALL)
+
 
 def postprocess_html(html):
     """Transform pandoc HTML into Confluence storage format."""
@@ -759,6 +836,29 @@ def postprocess_html(html):
         )
 
     html = re.sub(r'<pre[^>]*>\s*<code[^>]*>.*?</code>\s*</pre>', _code_block_to_macro, html, flags=re.DOTALL)
+
+    # 0a.5) <details><summary>…</summary>…</details> → Confluence expand macro.
+    #       Runs after 0a so the inner ```fence``` is already a code macro. Requires
+    #       a <summary> (attribute-only <details> is left untouched). The whole match
+    #       is replaced, so raw <details>/<summary> never reach 0b's attr-stripper or
+    #       the Confluence sanitizer (which would silently drop them).
+    #       Authoring contract (GitHub-native, pandoc-safe): a blank line after
+    #       </summary> and before </details> so pandoc parses the inner fence as a
+    #       code block. title text is already HTML-escaped by pandoc — do NOT re-escape.
+    def _details_to_expand(match):
+        title = re.sub(r'<[^>]+>', '', match.group(1)).strip() or '펼쳐 보기'
+        body = match.group(2).strip()
+        return (
+            f'<ac:structured-macro ac:name="expand">'
+            f'<ac:parameter ac:name="title">{title}</ac:parameter>'
+            f'<ac:rich-text-body>{body}</ac:rich-text-body>'
+            f'</ac:structured-macro>'
+        )
+
+    html = re.sub(
+        r'<details[^>]*>\s*<summary[^>]*>(.*?)</summary>(.*?)</details>',
+        _details_to_expand, html, flags=re.DOTALL,
+    )
 
     # 0b) Strip foreign class/id/style attributes (preserve ac:/ri: elements)
     def _strip_foreign_attrs(match):
@@ -809,8 +909,15 @@ def postprocess_html(html):
         html,
     )
 
-    # 2) Table styling - auto-width via data-layout
-    html = html.replace("<table>", '<table data-layout="default">')
+    # 2) Table styling - per-column width fitted to text length.
+    #    pandoc emits bare <col /> (no width) inside <colgroup>; combined with
+    #    data-layout="default" Confluence stretches the table to full page width
+    #    and distributes columns evenly -> short cells become absurdly wide.
+    #    Fix: measure each column's max display width (CJK=2, ASCII=1) and inject
+    #    proportional px into the colgroup so the table fits its content.
+    #    Only bare "<table>" (data tables) match; layout blocks use
+    #    <table role="presentation"> and are left untouched.
+    html = _fit_table_columns(html)
 
     # 3) Wrap bare <th>/<td> content in <p> tags (Confluence requires this)
     def _wrap_cell(match):
