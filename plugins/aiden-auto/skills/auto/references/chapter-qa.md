@@ -138,6 +138,37 @@ Cleanup:
 
 > **활성 조건**: 기획 문서(PRD/spec)가 존재 + 트리거 키워드("스크린샷 QA", "화면 검수", "QA 보고서", "기획서 검수") 또는 화면 산출물 감지. 이 조건이면 Phase 0 다음에 본 5단계가 기존 Phase 3/4 를 대체·확장한다. 화면 없는 순수 코드 검증은 위 기본 Phase 3 경로 유지.
 
+### ⭐ QA 증거 폴더 명명 규칙 (정본 — 사용자 결정 2026-06-08)
+
+> **모든 QA 처리 폴더는 `{YYYYMMDD_HHMM_Description}` 형식으로 저장한다.**
+> (예: `20260608_1430_card-deck-images`). 이전의 cycle*/goal-*/qa-YYYYMMDD-HHMMSS
+> 등 제각각 명명을 **단일 형식으로 통일** — "혼란스럽게 저장됨" 문제 해소.
+
+| 요소 | 값 |
+|------|-----|
+| 형식 | `YYYYMMDD_HHMM_Description` (날짜 8자리 + `_` + 24h 시각 4자리 + `_` + 설명 kebab) |
+| 시각 | **로컬 시각** 기본 (사람이 QA 돌린 시점 직관). UTC 필요 시 `--utc` |
+| Description | kebab-case, ≤6 단어. 이번 QA 회차가 다룬 대상 (한글 허용) |
+| 생성 (강제) | `RUN_SLUG="$(python "$HOME/.claude/scripts/qa_evidence_dir.py" "<설명>")"` |
+
+```
+   ┌─ 항상-최신 (매 run 재생성, 사람은 여기만 열어 검토) ─┐
+   │  <evidence-root>/_latest/                            │
+   └──────────────────────────────────────────────────────┘
+                       │ run 종료 시 동결 복사
+                       ▼
+   ┌─ 회차 동결 스냅샷 (정본 명명) ───────────────────────┐
+   │  <evidence-root>/{YYYYMMDD_HHMM_Description}/         │
+   │  예) 20260608_1430_card-deck-images/                 │
+   └──────────────────────────────────────────────────────┘
+```
+
+- **본 챕터의 모든 `{slug}` := `{YYYYMMDD_HHMM_Description}`** (위 헬퍼 출력). 따라서
+  아래 `test-results/qa-{slug}/` 작업 폴더는 `test-results/qa-20260608_1430_<desc>/` 로,
+  프로젝트 증거 스냅샷은 prefix 없이 `{YYYYMMDD_HHMM_Description}/` 로 생성된다.
+- `_latest/` (또는 영역 폴더 `cc/`·`lobby/`·`gameplay/`) 는 **롤링 검토 폴더로 유지** — 본 명명 규칙은 *동결 스냅샷*에 적용.
+- **기존 폴더는 보존**("Removal ≠ Answer") — 신규 회차만 본 형식 사용. 프로젝트별 INDEX 가 있으면 그 규칙도 본 형식으로 정합.
+
 ```
 Phase 0 (검증 종류 결정)
       │
@@ -224,12 +255,20 @@ mapper 요약 all_pass == false →
     → rule 17 Circuit Breaker 에스컬 출력 (요구사항 재정의/reset/중단)
 ```
 
-### 5단계 — QA 문서 보고
+### 5단계 — QA 문서 보고 + 회차 동결
 
 ```
 perfect-output-validator (Gate1 7항목) PASS
   → user-friendly-reporter 가 QA-REPORT.md 비개발자 변환
   → event_dispatcher.py COMPLETED 이벤트
+  → 회차 동결: _latest/ → {YYYYMMDD_HHMM_Description}/ 복사 (정본 명명 규칙)
+```
+
+회차 동결 (정본 명명 규칙 적용):
+```bash
+RUN_SLUG="$(python "$HOME/.claude/scripts/qa_evidence_dir.py" "<이번 QA 설명>")"
+# 예: RUN_SLUG=20260608_1430_card-deck-images
+cp -r <evidence-root>/_latest "<evidence-root>/$RUN_SLUG"   # 동결 스냅샷 보존
 ```
 
 `QA-REPORT.md` 구성: TL;DR 한 줄(통과 N/총 M) + 체크리스트 통과 현황 표 + 화면 갤러리(VISUAL, 캡션) + "테스트 N건 통과"(LOGIC, 스크린샷 없음) + 자동 수정 내역 + 한 줄 요약. 내부 ID(QA-003)/verdict 코드는 reporter 가 평문 변환.
@@ -264,6 +303,8 @@ perfect-output-validator (Gate1 7항목) PASS
   3단계: 체크리스트 항목마다 알맞은 사진/테스트를 붙여 통과 여부 판정
   4단계: 통과 못한 항목은 자동으로 고치고 다시 찍어 재확인 (반복)
   5단계: 사진 갤러리 + 통과 현황표가 담긴 QA 보고서를 드려요
+         이번 회차 사진은 '날짜_시각_설명' 폴더(예: 20260608_1430_카드덱)에
+         가지런히 저장돼요 — 폴더가 뒤죽박죽 안 되게 이름이 항상 같은 규칙
 
   실패 5번 반복 → 사용자 보고 (무한 루프 방지)"
 ```

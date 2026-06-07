@@ -116,6 +116,28 @@ def test_transform_cross_links_confluence_fallback():
     assert '<a href="https://wiki/pages/123">B doc</a>' in out
 
 
+def test_transform_cross_links_preserves_absolute_github_url():
+    # rule 22 regression (2026-06-08): an already-final absolute GitHub URL
+    # ending in '.md' must NOT be re-resolved as a repo cross-link. In strict
+    # mode (CONFLUENCE_DEPRECATED_SPACES set) that downgraded it to <code>,
+    # silently dropping every GitHub SSOT body link on Confluence push.
+    root, docs = _make_repo()
+    _seed(root, "https://github.com/o/r/blob/main")
+    url = "https://github.com/o/r/blob/main/docs/Overview.md"
+    html = f'<p>see <a href="{url}">Overview.md §3.9</a></p>'
+    prev = os.environ.get("CONFLUENCE_DEPRECATED_SPACES")
+    os.environ["CONFLUENCE_DEPRECATED_SPACES"] = "WSOPLive"
+    try:
+        out = md.transform_cross_links(html, {}, docs, root)
+    finally:
+        if prev is None:
+            os.environ.pop("CONFLUENCE_DEPRECATED_SPACES", None)
+        else:
+            os.environ["CONFLUENCE_DEPRECATED_SPACES"] = prev
+    assert f'<a href="{url}">' in out
+    assert "<code>" not in out
+
+
 if __name__ == "__main__":
     import sys
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

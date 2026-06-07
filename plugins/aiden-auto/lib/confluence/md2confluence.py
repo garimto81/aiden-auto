@@ -642,6 +642,12 @@ def transform_cross_links(html, repo_map, current_dir, repo_root):
         text = match.group(2)
         if not (href.endswith(".md") or ".md#" in href):
             return match.group(0)
+        # Absolute URLs are already-final links (e.g. rule 22 GitHub SSOT
+        # canonical URLs end in '.md'). They must NOT be re-resolved as repo
+        # cross-links — in strict mode that downgrades them to <code>, silently
+        # dropping the link. Leave any http(s)/protocol-relative/mailto href as-is.
+        if href.startswith(("http://", "https://", "//", "mailto:")):
+            return match.group(0)
         try:
             path_part = href.split("#", 1)[0]
             target = (current_dir / path_part).resolve()
