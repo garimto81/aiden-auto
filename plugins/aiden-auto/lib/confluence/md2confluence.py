@@ -24,7 +24,7 @@ import mimetypes
 import time
 from html import unescape as html_unescape
 from pathlib import Path
-from urllib.parse import unquote as url_unquote
+from urllib.parse import unquote as url_unquote, quote as url_quote
 
 import requests
 
@@ -356,10 +356,77 @@ def _esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
-    """Resolve a markdown-relative path to a clickable Confluence link.
+# ─────────────────────────────────────────────────────────────────────────
+# Rule 22 — GitHub SSOT (2026-06-08 user decision): document cross-links resolve
+# to the GitHub canonical URL (always-latest, default branch) instead of
+# Confluence/Figma. The repo's GitHub slug is auto-derived from
+# `git remote get-url origin`, so no per-doc frontmatter is required. Falls back
+# to Confluence linking when the repo has no GitHub remote. Opt out: GITHUB_SSOT=0.
+# ─────────────────────────────────────────────────────────────────────────
+_GITHUB_BASE_CACHE = {}
 
-    Resolution order (S11 Cycle 11 — Confluence_Sync_Spec.md v2.0):
+
+def _github_slug(remote_url):
+    """Extract 'owner/repo' from a git remote URL (https or ssh). '' if not GitHub."""
+    if not remote_url:
+        return ""
+    m = re.search(r'github\.com[:/]+([^/\s]+/[^/\s]+?)(?:\.git)?/?$', remote_url.strip())
+    return m.group(1) if m else ""
+
+
+def derive_github_base(repo_root):
+    """Derive the GitHub canonical base URL for a repo.
+
+    Returns e.g. 'https://github.com/owner/repo/blob/main', or '' when the repo
+    has no GitHub remote (→ graceful fallback to Confluence linking).
+
+    Branch defaults to 'main' (always-latest policy — rule 22); override with
+    GITHUB_SSOT_BRANCH. Disable entirely per-project with GITHUB_SSOT=0.
+    """
+    if os.environ.get("GITHUB_SSOT", "1") == "0":
+        return ""
+    key = str(repo_root)
+    if key in _GITHUB_BASE_CACHE:
+        return _GITHUB_BASE_CACHE[key]
+    base = ""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=5,
+        )
+        slug = _github_slug(result.stdout)
+        if slug:
+            branch = os.environ.get("GITHUB_SSOT_BRANCH", "main")
+            base = f"https://github.com/{slug}/blob/{branch}"
+    except Exception:
+        base = ""
+    _GITHUB_BASE_CACHE[key] = base
+    return base
+
+
+def github_url_for(repo_root, rel_path):
+    """Build the GitHub canonical URL for a repo-relative doc path.
+
+    Returns '' when no GitHub remote is derivable. Path segments are
+    URL-encoded (docs paths often contain spaces); '/' separators preserved.
+    """
+    base = derive_github_base(repo_root)
+    if not base:
+        return ""
+    rel = str(rel_path).replace("\\", "/").lstrip("/")
+    encoded = "/".join(url_quote(seg) for seg in rel.split("/") if seg)
+    return f"{base}/{encoded}"
+
+
+def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
+    """Resolve a markdown-relative path to a clickable link.
+
+    Resolution order (rule 22 — GitHub SSOT, 2026-06-08):
+        0. in-repo .md target + GitHub remote derivable → GitHub canonical URL
+           (always-latest, default branch). This is the SSOT and takes priority
+           over Confluence. Below tiers are the no-GitHub-remote fallback.
+
+    Confluence fallback order (S11 Cycle 11 — Confluence_Sync_Spec.md v2.0):
         1. confluence-url present → <a href="{url}"> anchor.
            URL is page-id-based (e.g. .../pages/3625189547) so it remains
            valid even when the Confluence page title differs from the file
@@ -379,8 +446,9 @@ def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
     path_str: 'Foundation.md (§Ch.4 ...)' or '../Lobby/Overview.md' or 'BS-05-00'
     Strips parenthetical descriptions and anchors before lookup.
     """
-    if not repo_map or not current_dir or not repo_root:
+    if not current_dir or not repo_root:
         return f"<code>{_esc(path_str)}</code>"
+    repo_map = repo_map or {}
 
     # Extract the path portion. Real EBS docs paths contain spaces
     # (e.g. "2. Development/2.4 Command Center/Overview.md"), so a naive
@@ -398,10 +466,19 @@ def _linkify_path(path_str, repo_map=None, current_dir=None, repo_root=None):
 
     try:
         target = (Path(current_dir) / path_token).resolve()
+        in_repo = True
         try:
             rel = str(target.relative_to(repo_root)).replace("\\", "/")
         except ValueError:
+            in_repo = False
             rel = Path(path_token).name
+        # Rule 22 — GitHub SSOT: an in-repo .md target links to its GitHub
+        # canonical URL (full replacement of Confluence cross-links). Falls
+        # through to Confluence linking when no GitHub remote is derivable.
+        if in_repo and target.exists():
+            gh = github_url_for(repo_root, rel)
+            if gh:
+                return f'<a href="{_esc(gh)}">{_esc(path_str)}</a>'
         entry = repo_map.get(rel) or repo_map.get(Path(path_token).name)
         if not entry:
             return f"<code>{_esc(path_str)}</code>"
@@ -542,12 +619,13 @@ def build_repo_path_to_pageid_map(repo_root):
 def transform_cross_links(html, repo_map, current_dir, repo_root):
     """Convert <a href="../Foundation.md">...</a> to Confluence <ac:link> when target is mapped.
 
-    Mirrors `_linkify_path` resolution order (Cycle 11 v2.0): URL-first because
-    page-id-based URLs survive Confluence title changes; ri:content-title
-    fallback only when no URL is available.
+    Rule 22 — GitHub SSOT first: in-repo .md links resolve to their GitHub
+    canonical URL. Mirrors `_linkify_path`; Confluence (URL→page-id) is the
+    no-GitHub-remote fallback.
     """
-    if not repo_map:
+    if not repo_root or not current_dir:
         return html
+    repo_map = repo_map or {}
 
     def _replace(match):
         href = match.group(1)
@@ -557,11 +635,21 @@ def transform_cross_links(html, repo_map, current_dir, repo_root):
         try:
             path_part = href.split("#", 1)[0]
             target = (current_dir / path_part).resolve()
+            in_repo = True
             try:
                 rel = str(target.relative_to(repo_root)).replace("\\", "/")
             except ValueError:
                 # Fallback to basename
+                in_repo = False
                 rel = Path(path_part).name
+            # Rule 22 — GitHub SSOT first: in-repo .md links point to their
+            # GitHub canonical URL (full replacement). Falls through to
+            # Confluence linking when no GitHub remote is derivable.
+            if in_repo and target.exists():
+                gh = github_url_for(repo_root, rel)
+                if gh:
+                    safe_text = re.sub(r'<[^>]+>', '', text).strip() or Path(path_part).stem
+                    return f'<a href="{_esc(gh)}">{_esc(safe_text)}</a>'
             entry = repo_map.get(rel) or repo_map.get(Path(path_part).name)
             if not entry:
                 return match.group(0)
@@ -965,18 +1053,20 @@ def convert(md_path, page_id, dry_run=False, base_url=None, parent_id=None, repo
 
         # Phase 2 — 인과관계 박스 prepend + cross-link 변환
         repo_map = build_repo_path_to_pageid_map(repo_root)
+        github_base = derive_github_base(repo_root)  # rule 22 — GitHub SSOT
         causality_html = build_causality_panel(fm, repo_map, md_path.parent, repo_root)
         if causality_html:
             html = causality_html + "\n" + html
             link_in_panel = causality_html.count("ri:page")
             print(f"  [causality] Info macro injected (frontmatter 9 fields, {link_in_panel} hyperlinks)")
-        if repo_map:
+        if repo_map or github_base:
             before_count = len(re.findall(r'<a\s+href="[^"]+\.md', html))
             html = transform_cross_links(html, repo_map, md_path.parent, repo_root)
             after_count = len(re.findall(r'<a\s+href="[^"]+\.md', html))
             converted = before_count - after_count
             if converted > 0:
-                print(f"  [cross-link] {converted}/{before_count} markdown links → Confluence page links")
+                dest = "GitHub canonical (SSOT)" if github_base else "Confluence page"
+                print(f"  [cross-link] {converted}/{before_count} markdown links → {dest} links")
 
         print(f"[5/6] Uploading {len(images)} attachments...")
 

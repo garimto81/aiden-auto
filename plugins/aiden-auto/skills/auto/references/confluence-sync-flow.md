@@ -18,6 +18,15 @@ purpose: GG NETWORK Confluence 자동 sync 흐름
 > 본관 도서관 (로컬 docs/) → 회사 협력 도서관 (GG NETWORK Confluence) 자동 사본 전달.
 > 작성자가 출고 결정 (Deep Interview Q5) → 시스템이 자동 운반.
 
+## 참조 링크 = GitHub 정본 (rule 22, 2026-06-08)
+
+Confluence 로 사본을 보낼 때, 문서 안의 **상호 참조 링크는 Confluence 페이지가 아니라 GitHub 정본**(`https://github.com/{owner}/{repo}/blob/main/{경로}`)을 가리킨다. `md2confluence.py` 가 `git remote` 에서 주소를 자동 계산해 교체하므로 별도 설정 불필요.
+
+- 정본(SSOT) = GitHub. Confluence/Figma 는 복사본이며 그 안의 링크도 GitHub 로 모인다.
+- GitHub remote 없는 프로젝트 → 기존 Confluence 링크로 자동 fallback.
+- 탈출구: `GITHUB_SSOT=0` (비활성), `GITHUB_SSOT_BRANCH` (브랜치 변경).
+- 상세: `~/.claude/rules/22-github-ssot-links.md`
+
 ## 전제 조건 자동 검증
 
 | 항목 | 확인 방법 | 부재 시 |

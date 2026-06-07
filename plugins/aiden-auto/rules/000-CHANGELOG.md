@@ -2,7 +2,7 @@
 
 > **목적**: `.claude/rules/`의 번호 sparse(누락) 사유를 추적하고 다음 신규 룰 자리를 명문화. 번호 자체는 git blame·history reference 보존을 위해 재정렬 안 함.
 
-## 현재 활성 룰 (8개)
+## 현재 활성 룰 (9개)
 
 | 번호 | 파일 | 용도 |
 |------|------|------|
@@ -14,6 +14,7 @@
 | 15 | backlog-capture.md | 백로그 즉시 기록 |
 | 16 | auto-default.md | /auto 자동 실행 (REVIVED in v27.6 after deprecation in 6af0e83) |
 | 21 | cycle-termination.md | 자율 cycle 종료 정의 — design SSOT critic 4 게이트 (D1 사용자 결정 반영) |
+| 22 | github-ssot-links.md | GitHub = 문서 SSOT — 참조 링크 항상 GitHub 정본 (사용자 결정 2026-06-08) |
 
 ## 사라진 번호 추적 (Historical)
 
@@ -48,9 +49,11 @@
 | 14 | ✅ **사용 가능** (생성 이력 없음) |
 | 17 | ❌ aiden-auto plugin 점유 |
 | 18-20 | ❌ 글로벌 SSOT 점유 |
-| 21+ | ✅ **권장 신규 자리** |
+| 21 | ❌ cycle-termination.md 점유 |
+| 22 | ❌ github-ssot-links.md 점유 |
+| 23+ | ✅ **권장 신규 자리** |
 
-→ 신규 룰은 **21번부터** 부여. 14번은 의도적 reserved slot (역사적 sparse 패턴 보존).
+→ 신규 룰은 **23번부터** 부여. 14번은 의도적 reserved slot (역사적 sparse 패턴 보존).
 
 ## 번호 체계 운영 정책
 
@@ -72,3 +75,4 @@
 |------|------|------|
 | 2026-05-10 | 본 파일 신규 작성 | critic 보고서 H4 결정 — sparse 번호 사유 명문화 |
 | 2026-05-26 | rule 21 신규 등록 (cycle-termination.md) | D1 사용자 결정 — "until no more cycles" 종료 정의 (design SSOT critic 4 게이트). G1 갭 해소 |
+| 2026-06-08 | rule 22 신규 등록 (github-ssot-links.md) | 사용자 결정 — GitHub = 문서 SSOT, 참조 링크 항상 GitHub 정본 (main, 완전 교체). md2confluence.py GitHub-first 링크 + 13 테스트 |
