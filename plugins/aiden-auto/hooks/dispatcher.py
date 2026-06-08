@@ -86,7 +86,7 @@ LOG_DB.parent.mkdir(parents=True, exist_ok=True)
 LOCK_DIR = HOME / ".claude" / "state" / "dispatch-locks"
 DISPATCH_LOCK_TTL = 5.0  # 초. 거의 동시(<1s)인 double-fire 차단용 — 정상 반복 호출은 통과
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SUCCESS = 0
 BLOCK = 2
 
@@ -643,6 +643,33 @@ def run_self_test():
 
 # === Main ===
 STOP_EVENTS = {"Stop", "SubagentStop"}
+# 컨텍스트 주입형 이벤트 — 여러 hook 의 JSON 출력을 단일 객체로 병합해야 함.
+# (SessionStart 에 8개 hook 이 각각 JSON/텍스트를 raw concat → 객체 2개+ 가 붙어
+#  유효하지 않은 JSON 이 되어 CC 가 파싱 실패 → raw 노출 + hook 신호 유실되던 결함.)
+CONTEXT_MERGE_EVENTS = {"SessionStart"}
+
+
+def merge_context_decisions(decisions: list):
+    """여러 SessionStart hook 의 JSON 을 단일 객체로 병합.
+    continue 는 하나라도 False 면 False, message/additionalContext 는 concat.
+    (merge_stop_decisions 의 SessionStart 판본 — raw concat 으로 JSON 깨지던 결함 방지.)"""
+    dicts = [d for d in decisions if isinstance(d, dict)]
+    if not dicts:
+        return None
+    cont = not any(d.get("continue") is False for d in dicts)
+    msgs = []
+    for d in dicts:
+        m = d.get("message") or d.get("systemMessage")
+        if not m:
+            hso = d.get("hookSpecificOutput")
+            if isinstance(hso, dict):
+                m = hso.get("additionalContext")
+        if m and str(m).strip():
+            msgs.append(str(m).strip())
+    merged = {"continue": cont}
+    if msgs:
+        merged["message"] = "\n".join(msgs)
+    return merged
 
 
 def merge_stop_decisions(decisions: list):
@@ -743,6 +770,33 @@ def main():
             log_event(event, "_dispatcher", "system", 0, 0,
                       ("\n".join(raw_nonjson))[:2000],
                       "raw non-JSON Stop stdout suppressed (leak fix 2026-06-04)")
+        sys.exit(BLOCK if block_seen else SUCCESS)
+
+    # SessionStart 등 컨텍스트 주입형: Stop 과 동일하게 여러 hook 의 JSON 을 단일 객체로
+    # 병합해 한 번만 출력. non-JSON stdout 은 주입하지 않고 로그만 (raw 노출 차단).
+    if event in CONTEXT_MERGE_EVENTS:
+        block_seen = False
+        decisions = []
+        raw_nonjson = []
+        for spec in hooks:
+            code, out = run_hook(event, spec, stdin_data, collect=True)
+            if code == BLOCK:
+                block_seen = True
+            out = (out or "").strip()
+            if not out:
+                continue
+            try:
+                decisions.append(json.loads(out))
+            except Exception:
+                raw_nonjson.append(out)
+        merged = merge_context_decisions(decisions)
+        if merged is not None:
+            sys.stdout.write(json.dumps(merged, ensure_ascii=False))
+            sys.stdout.flush()
+        if raw_nonjson:
+            log_event(event, "_dispatcher", "system", 0, 0,
+                      ("\n".join(raw_nonjson))[:2000],
+                      "raw non-JSON SessionStart stdout suppressed (merge fix 2026-06-09)")
         sys.exit(BLOCK if block_seen else SUCCESS)
 
     block_seen = False

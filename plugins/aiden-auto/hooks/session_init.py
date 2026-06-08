@@ -825,9 +825,9 @@ def main():
         # 출력
         if session_info:
             message = "\n".join(session_info)
-            print(json.dumps({"continue": True, "message": f"📍 세션 시작\n\n{message}"}))
+            print(json.dumps({"continue": True, "message": f"📍 세션 시작\n\n{message}"}, ensure_ascii=False))
         else:
-            print(json.dumps({"continue": True}))
+            print(json.dumps({"continue": True}, ensure_ascii=False))
 
         # statusline bootstrap (비파괴 — 기존 설정 있으면 skip)
         try:
