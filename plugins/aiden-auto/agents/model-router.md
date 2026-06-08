@@ -35,7 +35,7 @@ hint=<특별 신호. 예: "보안 critical">                       (선택)
     "explore": "haiku",
     "planner": "sonnet",
     "executor": "sonnet",
-    "executor-high": "opus",
+    "executor-high": "sonnet",
     "qa-tester": "sonnet",
     "quality-gate": "sonnet",
     "gap-detector": "sonnet",
@@ -46,9 +46,9 @@ hint=<특별 신호. 예: "보안 critical">                       (선택)
     "researcher": "sonnet",
     "analyst": "haiku",
     "critic": "sonnet",
-    "architect": "opus",
+    "architect": "sonnet",
     "code-reviewer": "sonnet",
-    "security-reviewer": "opus",
+    "security-reviewer": "sonnet",
     "test-engineer": "sonnet",
     "tracer": "sonnet",
     "verifier": "sonnet",
@@ -116,7 +116,7 @@ hint=<특별 신호. 예: "보안 critical">                       (선택)
 
 1. **전 31키 기본 `off`**. `high` 는 아래 자격 + complexity 충족 시에만 부여.
 2. **기계적 역할은 영구 비대상 (절대 `high` 불가)**: `executor`, `executor-high`, `qa-tester`, `quality-gate`, `writer`, `document-specialist`, `designer`, `researcher`, `analyst`, `reader-experience`, `test-engineer`, `verifier`(보안 신호 제외), `iteration-runner`, `iteration-e2e-orchestrator`, `iteration-spec-validator`, `iteration-screenshot-verifier`, `iteration-spec-author`, `explore`, `harness-watcher`, `harness-critic`, `harness-applier`.
-3. **결합 규칙**: `effort_plan[role]=="high"` 는 `model_plan[role]=="opus"` 일 때만 (effort ≤ 모델 등급). haiku/sonnet 역할에 ultrathink 주입 금지 (낭비).
+3. **결합 규칙**: `effort_plan[role]=="high"` 는 `model_plan[role]=="opus"` 일 때만 (effort ≤ 모델 등급). haiku/sonnet 역할에 ultrathink 주입 금지 (낭비). **→ 2026-06-09 사용자 결정으로 모든 subagent 가 sonnet 으로 capped 되었으므로, effort high 는 어떤 subagent 에도 적용되지 않는다 (전 subagent `off`). high-effort 추론은 Lead(opus) 자신의 몫.**
 4. **비용 cap**: `high` 개수 ≤ `opus` 개수. complexity ≤ medium 이면 `high` 개수 ≤ 2.
 
 ### effort-tier 매트릭스 (역할 class × complexity)
@@ -177,47 +177,47 @@ router 응답 파싱 실패 감지 시:
 
 ### Role × Complexity → Model 매트릭스
 
-`/auto` 의 model 분배 매트릭스 (opus 최소화 — sonnet/haiku 우선, 2026-06-06 사용자 정정). 아래 opus 결정은 `agent_model_enforcer.py:OVERRIDE_OPUS_TO_SONNET=True` 활성 시 sonnet 으로 최종 강등됨 (Lead 가 명시 주입한 opus 만 통과):
+`/auto` 의 model 분배 매트릭스 (**subagent 는 opus 금지 — 모든 subagent ∈ {sonnet, haiku}**, 사용자 결정 2026-06-09 "lead opus, but every select model sonnet and haiku"). opus 는 Lead(conductor) 전용 — 어떤 subagent 도 opus 로 선택하지 않는다. `agent_model_enforcer.py:OVERRIDE_OPUS_TO_SONNET=True` 가 안전망으로 잔여 opus 를 sonnet 으로 강등. (복원: 본 표 opus 환원 + OVERRIDE=False):
 
 | Role | complexity=low | complexity=medium | complexity=high |
 |------|:--------------:|:-----------------:|:---------------:|
 | **explore** | haiku | haiku | haiku |
-| **planner** | haiku | sonnet | opus |
-| **executor** | sonnet | sonnet | opus |
-| **executor-high** | sonnet | opus | opus |
+| **planner** | haiku | sonnet | sonnet |
+| **executor** | sonnet | sonnet | sonnet |
+| **executor-high** | sonnet | sonnet | sonnet |
 | **qa-tester** | haiku | sonnet | sonnet |
 | **quality-gate** | haiku | sonnet | sonnet |
-| **gap-detector** | haiku | sonnet | opus |
+| **gap-detector** | haiku | sonnet | sonnet |
 | **designer** | sonnet | sonnet | sonnet |
 | **writer** | haiku | haiku | sonnet |
 | **document-specialist** | haiku | haiku | sonnet |
 | **reader-experience** | haiku | sonnet | sonnet |
 | **researcher** | haiku | sonnet | sonnet |
 | **analyst** | haiku | haiku | sonnet |
-| **critic** | haiku | sonnet | opus |
-| **architect** | sonnet | opus | opus |
-| **code-reviewer** | haiku | sonnet | opus |
-| **security-reviewer** | sonnet | opus | opus |
+| **critic** | haiku | sonnet | sonnet |
+| **architect** | sonnet | sonnet | sonnet |
+| **code-reviewer** | haiku | sonnet | sonnet |
+| **security-reviewer** | sonnet | sonnet | sonnet |
 | **test-engineer** | haiku | sonnet | sonnet |
-| **tracer** | haiku | sonnet | opus |
+| **tracer** | haiku | sonnet | sonnet |
 | **verifier** | haiku | sonnet | sonnet |
-| **iteration-curator-a** | sonnet | sonnet | opus |
-| **iteration-curator-b** | sonnet | sonnet | opus |
-| **iteration-drift-reconciler** | sonnet | opus | opus |
-| **iteration-runner** | sonnet | sonnet | opus |
+| **iteration-curator-a** | sonnet | sonnet | sonnet |
+| **iteration-curator-b** | sonnet | sonnet | sonnet |
+| **iteration-drift-reconciler** | sonnet | sonnet | sonnet |
+| **iteration-runner** | sonnet | sonnet | sonnet |
 | **iteration-e2e-orchestrator** | haiku | sonnet | sonnet |
 | **iteration-spec-validator** | sonnet | sonnet | sonnet |
 | **iteration-screenshot-verifier** | haiku | haiku | haiku |
-| **iteration-spec-author** | sonnet | sonnet | opus |
+| **iteration-spec-author** | sonnet | sonnet | sonnet |
 | **harness-watcher** | haiku | haiku | haiku |
-| **harness-critic** | sonnet | opus | opus |
+| **harness-critic** | sonnet | sonnet | sonnet |
 | **harness-applier** | sonnet | sonnet | sonnet |
 
 ### 특수 신호 → 매트릭스 override
 
 다음 신호가 task/context/hint 에 등장하면 강제 조정:
 
-**model 상향 (→ opus 고정)**:
+**model 상향 (→ sonnet 고정, subagent opus 금지 — 사용자 결정 2026-06-09)**:
 - 보안, 인증, 권한, RLS, 토큰, 비밀번호, 결제, PII
 - 데이터 마이그레이션, schema 변경, downtime
 - 트랜잭션 무결성, 동시성, lock
@@ -225,7 +225,7 @@ router 응답 파싱 실패 감지 시:
 - 다중 외부 API, 새 라이브러리, 패러다임 전환
 - compliance, GDPR, 감사 로그
 
-→ architect / security-reviewer / critic / gap-detector를 opus로 강제.
+→ architect / security-reviewer / critic / gap-detector 를 **sonnet 으로** 고정 (subagent 의 model 천장 = sonnet). 이런 고난도 추론에 opus 가 필요하면 **Lead(opus) 가 직접 처리** — opus subagent 를 spawn 하지 않는다.
 
 **model 하향 (→ haiku 고정)**:
 - !quick / !just / !hotfix (Magic Word — 본 router 우회 가능, 호출 시에도 모두 haiku)
@@ -263,7 +263,7 @@ router 응답 파싱 실패 감지 시:
 
 출력:
 ```json
-{"category":"code","complexity":"medium","confidence":0.85,"model_plan":{"explore":"haiku","planner":"sonnet","executor":"sonnet","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"sonnet","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"sonnet","researcher":"sonnet","analyst":"haiku","critic":"sonnet","architect":"opus","code-reviewer":"sonnet","security-reviewer":"opus","test-engineer":"sonnet","tracer":"sonnet","verifier":"sonnet","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"off","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"off","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"off","architect":"high","code-reviewer":"off","security-reviewer":"high","test-engineer":"off","tracer":"off","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"표준 UI 추가, 인증 폼이라 security 강화"}
+{"category":"code","complexity":"medium","confidence":0.85,"model_plan":{"explore":"haiku","planner":"sonnet","executor":"sonnet","executor-high":"sonnet","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"sonnet","designer":"sonnet","writer":"haiku","document-specialist":"haiku","reader-experience":"sonnet","researcher":"sonnet","analyst":"haiku","critic":"sonnet","architect":"sonnet","code-reviewer":"sonnet","security-reviewer":"sonnet","test-engineer":"sonnet","tracer":"sonnet","verifier":"sonnet","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"off","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"off","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"off","architect":"off","code-reviewer":"off","security-reviewer":"off","test-engineer":"off","tracer":"off","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"표준 UI 추가, 인증 폼이라 security 강화 (subagent 는 sonnet 천장, opus 0)"}
 ```
 
 ### 예시 2: 단순 docs (low)
@@ -281,7 +281,7 @@ router 응답 파싱 실패 감지 시:
 
 출력:
 ```json
-{"category":"code","complexity":"high","confidence":0.95,"model_plan":{"explore":"haiku","planner":"opus","executor":"opus","executor-high":"opus","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"opus","designer":"sonnet","writer":"sonnet","document-specialist":"sonnet","reader-experience":"sonnet","researcher":"sonnet","analyst":"sonnet","critic":"opus","architect":"opus","code-reviewer":"opus","security-reviewer":"opus","test-engineer":"sonnet","tracer":"opus","verifier":"sonnet","iteration-curator-a":"opus","iteration-curator-b":"opus","iteration-drift-reconciler":"opus","iteration-runner":"opus","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"opus","harness-watcher":"haiku","harness-critic":"opus","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"high","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"high","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"high","architect":"high","code-reviewer":"high","security-reviewer":"high","test-engineer":"off","tracer":"high","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"결제+서명검증, 보안 critical 게이트 ultrathink 주입"}
+{"category":"code","complexity":"high","confidence":0.95,"model_plan":{"explore":"haiku","planner":"sonnet","executor":"sonnet","executor-high":"sonnet","qa-tester":"sonnet","quality-gate":"sonnet","gap-detector":"sonnet","designer":"sonnet","writer":"sonnet","document-specialist":"sonnet","reader-experience":"sonnet","researcher":"sonnet","analyst":"sonnet","critic":"sonnet","architect":"sonnet","code-reviewer":"sonnet","security-reviewer":"sonnet","test-engineer":"sonnet","tracer":"sonnet","verifier":"sonnet","iteration-curator-a":"sonnet","iteration-curator-b":"sonnet","iteration-drift-reconciler":"sonnet","iteration-runner":"sonnet","iteration-e2e-orchestrator":"sonnet","iteration-spec-validator":"sonnet","iteration-screenshot-verifier":"haiku","iteration-spec-author":"sonnet","harness-watcher":"haiku","harness-critic":"sonnet","harness-applier":"sonnet"},"effort_plan":{"explore":"off","planner":"off","executor":"off","executor-high":"off","qa-tester":"off","quality-gate":"off","gap-detector":"off","designer":"off","writer":"off","document-specialist":"off","reader-experience":"off","researcher":"off","analyst":"off","critic":"off","architect":"off","code-reviewer":"off","security-reviewer":"off","test-engineer":"off","tracer":"off","verifier":"off","iteration-curator-a":"off","iteration-curator-b":"off","iteration-drift-reconciler":"off","iteration-runner":"off","iteration-e2e-orchestrator":"off","iteration-spec-validator":"off","iteration-screenshot-verifier":"off","iteration-spec-author":"off","harness-watcher":"off","harness-critic":"off","harness-applier":"off"},"rationale":"결제+서명검증 보안 critical 이나 subagent 는 sonnet 천장 — opus/ultrathink 는 Lead 전용"}
 ```
 
 ## 금지 사항
@@ -294,7 +294,8 @@ router 응답 파싱 실패 감지 시:
 - ❌ 사용자에게 질문 (컨텍스트 부족 시 보수적 sonnet + effort off 디폴트)
 - ❌ Glob/Grep 3회+ 호출 (latency 폭증)
 - ❌ 기계적 역할에 effort `high` 부여 (불변식 #2 위반)
-- ❌ `model_plan != "opus"` 역할에 effort `high` 부여 (결합 규칙 #3 위반)
+- ❌ subagent 역할에 `"opus"` 배정 (사용자 결정 2026-06-09 — subagent 는 sonnet/haiku 만, opus 는 Lead 전용)
+- ❌ 어떤 역할에든 effort `high` 부여 (opus subagent 0 → 결합 규칙 #3상 high 불가)
 
 ## 출력 검증 체크리스트 (응답 직전)
 
@@ -303,6 +304,6 @@ router 응답 파싱 실패 감지 시:
 3. 모든 키가 하이픈 표기? (언더스코어 0건)
 4. confidence 숫자 0.0~1.0 범위?
 5. rationale 80자 이내?
-6. 특수 신호(보안/마이그레이션) 시 opus 적용?
-7. **effort `high` 개수 ≤ opus 개수?** (결합 규칙)
-8. **모든 `high` 역할이 effort-tier 자격 + `model_plan=="opus"`?** (기계적 역할 전부 off, complexity≤medium 시 high≤2)
+6. 특수 신호(보안/마이그레이션) 시에도 **subagent 는 sonnet 천장 유지? (opus 0건)** — opus 는 Lead 전용 (사용자 결정 2026-06-09)
+7. **effort `high` = 0건?** (subagent opus 0 → 결합 규칙상 high 불가, 전 역할 `off`)
+8. **model_plan 에 `"opus"` 0건?** (모든 subagent ∈ {sonnet, haiku})
