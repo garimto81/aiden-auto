@@ -55,6 +55,22 @@ HOME = Path(os.path.expanduser("~"))
 # os.path.expandvars 가 HOME 미설정 시 $HOME 을 못 펴 깨진 리터럴 경로로 전부 실패.
 # setdefault 로 HOME 보장 (이미 set 시 미변경 — git-bash/Unix 무영향, idempotent, cross-OS).
 os.environ.setdefault("HOME", str(HOME))
+
+# 외부배포 인코딩 정합 (2026-06-09, "텍스트 깨짐" 재발 fix):
+# Windows 콘솔 기본 코드페이지(cp949/cp1252) ↔ 본 dispatcher 의 Popen(encoding="utf-8")
+# 디코딩 불일치로, 한글을 print 하는 자식 hook 출력이 깨지던 결함을 차단.
+#   - PYTHONUTF8/PYTHONIOENCODING: os.environ 상속 → 자식 hook 이 utf-8 로 인코딩
+#     → Popen 의 utf-8 디코딩과 일치 (pipe 경계 mojibake 해소).
+#   - sys.stdout/stderr reconfigure: dispatcher 자신의 최종 콘솔 출력도 utf-8 강제.
+# setdefault/try 라 이미 utf-8 이면 무영향(idempotent) + Unix 무해 = device/OS-agnostic.
+os.environ.setdefault("PYTHONUTF8", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # py3.7+
+    except (AttributeError, ValueError):
+        pass  # reconfigure 미지원/이미 utf-8 — 무해
+
 GLOBAL_REGISTRY = HOME / ".claude" / "hooks" / "registry"
 PROJECT_REGISTRY = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")) / ".claude" / "hooks" / "registry"
 PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
