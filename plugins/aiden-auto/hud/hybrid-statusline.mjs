@@ -99,18 +99,40 @@ function getProjectFolder(cwd) {
 // --- Context window ---
 
 function getContextPercent(stdinObj) {
+  // 1순위: stdin context_window (CC 가 제공할 때 — 빠름)
   try {
     const ctx = stdinObj.context_window || {};
     const usage = ctx.current_usage || {};
-    const windowSize = ctx.context_window_size || 200000;
-    const total =
-      (usage.input_tokens || 0) +
-      (usage.cache_read_input_tokens || 0) +
-      (usage.cache_creation_input_tokens || 0);
-    return Math.min(100, Math.round((total / windowSize) * 100));
-  } catch {
-    return 0;
-  }
+    if (ctx.current_usage) {
+      const windowSize = ctx.context_window_size || 200000;
+      const total =
+        (usage.input_tokens || 0) +
+        (usage.cache_read_input_tokens || 0) +
+        (usage.cache_creation_input_tokens || 0);
+      if (total > 0) return Math.min(100, Math.round((total / windowSize) * 100));
+    }
+  } catch { /* fall through to transcript */ }
+
+  // 2순위: transcript 의 마지막 main-chain assistant usage 합산 (버전 독립)
+  try {
+    const tp = stdinObj.transcript_path;
+    if (tp && existsSync(tp)) {
+      const lines = readFileSync(tp, "utf8").trim().split("\n");
+      for (let i = lines.length - 1; i >= 0; i--) {
+        let o;
+        try { o = JSON.parse(lines[i]); } catch { continue; }
+        if (o.isSidechain) continue;               // subagent 컨텍스트 제외
+        const u = o.message && o.message.usage;
+        if (!u) continue;
+        const total =
+          (u.input_tokens || 0) +
+          (u.cache_read_input_tokens || 0) +
+          (u.cache_creation_input_tokens || 0);
+        if (total > 0) return Math.min(100, Math.round((total / 200000) * 100));
+      }
+    }
+  } catch { /* silent */ }
+  return 0;
 }
 
 function getContextColor(percent) {
@@ -286,7 +308,12 @@ async function main() {
     const cached = await getUsage();
     const usageStr = renderUsage(cached);
 
-    // (context % 제거 — CC 빌트인이 자체 표시. 중복 제거 2026-06-01)
+    // 2b. Context window 사용량 (사용자 요청 2026-06-11 재추가 — transcript 기반 계산)
+    //     CC 빌트인 표시와 중복될 수 있으나, 본 계기판 줄에서도 명시 표시 요청.
+    const ctxPct = getContextPercent(stdinObj);
+    const ctxStr = ctxPct > 0
+      ? `${colors.dim}ctx:${colors.reset}${getContextColor(ctxPct)}${ctxPct}%${colors.reset}`
+      : "";
 
     // 3. Folder + Branch
     const folder = getProjectFolder(cwd);
@@ -296,10 +323,11 @@ async function main() {
       branch ? `${colors.magenta}🌿 ${branch}${colors.reset}` : "",
     ].filter(Boolean).join("  ");
 
-    // 계기판 줄1: 모델 | 🎯목표진행 | 연료 | 폴더/branch
+    // 계기판 줄1: 모델 | 🎯목표진행 | 연료 | ctx | 폴더/branch
     const mainParts = [modelPart];
     if (goalPart) mainParts.push(goalPart);
     mainParts.push(usageStr);
+    if (ctxStr) mainParts.push(ctxStr);
     if (hubStr) mainParts.push(hubStr);
     console.log(mainParts.join(" | "));
   } catch {
