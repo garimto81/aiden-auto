@@ -289,6 +289,62 @@ def render_mermaid_blocks(md_content, output_dir):
 # Pandoc MD -> HTML
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Lossless macro preservation (round-trip contract with confluence2md.py)
+# ---------------------------------------------------------------------------
+#
+# confluence2md (the pull half) preserves proprietary Confluence macros that
+# have no Markdown equivalent — e.g. the Table of Contents macro — verbatim
+# inside a fence:
+#
+#     ```confluence-storage name=toc
+#     <ac:structured-macro ac:name="toc">...</ac:structured-macro>
+#     ```
+#
+# On push we must re-inject that storage XML UNCHANGED so the macro renders
+# again in Confluence. Pandoc would mangle the XML, so we extract the fence
+# content to a placeholder BEFORE pandoc and restore it AFTER postprocess.
+# No fence present → both functions are no-ops (zero impact on existing push).
+
+_PRESERVE_FENCE_RE = re.compile(
+    r"```confluence-storage[^\n]*\n(.*?)\n```", re.DOTALL,
+)
+_PRESERVE_TOKEN = "CONFLUENCESTORAGEINJECT{n}X"
+_PRESERVE_TOKEN_RE = re.compile(r"CONFLUENCESTORAGEINJECT(\d+)X")
+
+
+def _extract_preserved_storage(md_content):
+    """Pull ```confluence-storage fences out to placeholders (pre-pandoc).
+
+    Returns (md_with_placeholders, preserved_xml_list).
+    """
+    preserved = []
+
+    def _repl(m):
+        idx = len(preserved)
+        preserved.append(m.group(1))
+        # Blank lines so pandoc renders the token as a standalone paragraph.
+        return f"\n\n{_PRESERVE_TOKEN.format(n=idx)}\n\n"
+
+    return _PRESERVE_FENCE_RE.sub(_repl, md_content), preserved
+
+
+def _restore_preserved_storage(html, preserved):
+    """Replace placeholders with the original storage XML (post-postprocess)."""
+    if not preserved:
+        return html
+
+    def _repl(m):
+        idx = int(m.group(1))
+        return preserved[idx] if 0 <= idx < len(preserved) else m.group(0)
+
+    # Pandoc wraps the bare token in <p>…</p>; unwrap that first, then catch any
+    # stragglers (e.g. token left inside a table cell).
+    html = re.sub(r"<p>\s*CONFLUENCESTORAGEINJECT(\d+)X\s*</p>", _repl, html)
+    html = _PRESERVE_TOKEN_RE.sub(_repl, html)
+    return html
+
+
 def md_to_html(md_content, resource_path):
     is_win = sys.platform == "win32"
     base_cmd = [
@@ -1158,11 +1214,18 @@ def convert(md_path, page_id, dry_run=False, base_url=None, parent_id=None, repo
         print(f"[3/6] Rendering {mermaid_count} Mermaid diagrams...")
         modified_md, mermaid_pngs = render_mermaid_blocks(md_content, tmp_dir)
 
+        # Lossless: pull confluence-storage fences out before pandoc so
+        # proprietary macros (e.g. TOC) round-trip verbatim. No-op when absent.
+        modified_md, preserved_storage = _extract_preserved_storage(modified_md)
+        if preserved_storage:
+            print(f"  [preserve] {len(preserved_storage)} confluence-storage block(s) held for verbatim re-inject")
+
         print("[4/6] Converting MD -> Confluence HTML...")
         html = md_to_html(modified_md, base_dir)
 
         images = collect_images(modified_md, base_dir, tmp_dir)
         html = postprocess_html(html)
+        html = _restore_preserved_storage(html, preserved_storage)
 
         # Phase 2 — 인과관계 박스 prepend + cross-link 변환
         repo_map = build_repo_path_to_pageid_map(repo_root)
