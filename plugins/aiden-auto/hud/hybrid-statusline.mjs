@@ -98,12 +98,18 @@ function getProjectFolder(cwd) {
 
 // --- Context window ---
 
+// 컨텍스트 윈도우 사용률(%). CC 내장 계산값을 그대로 사용 → 1M/200K 윈도우 자동 반영.
 function getContextPercent(stdinObj) {
-  // 1순위: stdin context_window (CC 가 제공할 때 — 빠름)
-  try {
-    const ctx = stdinObj.context_window || {};
-    const usage = ctx.current_usage || {};
-    if (ctx.current_usage) {
+  const ctx = (stdinObj && typeof stdinObj.context_window === "object") ? stdinObj.context_window : null;
+
+  if (ctx) {
+    // 1순위: CC 가 미리 계산해 주는 used_percentage (auto-compact 기준 정합, 윈도우 크기 자동)
+    if (typeof ctx.used_percentage === "number") {
+      return Math.min(100, Math.max(0, Math.round(ctx.used_percentage)));
+    }
+    // 2순위: current_usage 를 윈도우 크기(1M/200K)로 직접 환산
+    const usage = ctx.current_usage;
+    if (usage) {
       const windowSize = ctx.context_window_size || 200000;
       const total =
         (usage.input_tokens || 0) +
@@ -111,12 +117,13 @@ function getContextPercent(stdinObj) {
         (usage.cache_creation_input_tokens || 0);
       if (total > 0) return Math.min(100, Math.round((total / windowSize) * 100));
     }
-  } catch { /* fall through to transcript */ }
+  }
 
-  // 2순위: transcript 의 마지막 main-chain assistant usage 합산 (버전 독립)
+  // 3순위(구버전 CC 안전망): transcript 마지막 main-chain usage / 윈도우 크기
   try {
     const tp = stdinObj.transcript_path;
     if (tp && existsSync(tp)) {
+      const windowSize = (ctx && ctx.context_window_size) || 200000;
       const lines = readFileSync(tp, "utf8").trim().split("\n");
       for (let i = lines.length - 1; i >= 0; i--) {
         let o;
@@ -128,7 +135,7 @@ function getContextPercent(stdinObj) {
           (u.input_tokens || 0) +
           (u.cache_read_input_tokens || 0) +
           (u.cache_creation_input_tokens || 0);
-        if (total > 0) return Math.min(100, Math.round((total / 200000) * 100));
+        if (total > 0) return Math.min(100, Math.round((total / windowSize) * 100));
       }
     }
   } catch { /* silent */ }
