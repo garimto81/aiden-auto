@@ -392,10 +392,22 @@ def run_hook(event: str, spec: Dict[str, Any], stdin_data: str, collect: bool = 
             duration_ms = int((datetime.now() - start).total_seconds() * 1000)
             log_event(event, name, owner, -1, duration_ms, stderr or "", f"timeout {timeout}s")
             return (SUCCESS, "") if collect else SUCCESS
+        except OSError:
+            # 자식이 stdin 을 읽지 않고 (작업만 하고) 먼저 종료하면 stdin 파이프 쓰기가
+            # 실패 (Windows [Errno 22] Invalid argument / POSIX EPIPE). 자식 작업은 이미
+            # 끝났으므로 남은 출력만 회수해 정상 완료로 처리 — SessionEnd 의 stdin 미사용
+            # hook (session_snapshot/memory_sync/session_cleanup) 이 가짜 실패(-1) 로
+            # 기록되던 결함 차단. (2026-06-11 SessionEnd [Errno 22] fix.)
+            try:
+                stdout, stderr = proc.communicate(timeout=2)
+            except Exception:
+                _kill_tree(proc.pid)
+                stdout, stderr = "", ""
 
         duration_ms = int((datetime.now() - start).total_seconds() * 1000)
-        log_event(event, name, owner, proc.returncode, duration_ms, stderr or "", "")
-        code = proc.returncode if blocking else SUCCESS
+        rc = proc.returncode if proc.returncode is not None else SUCCESS
+        log_event(event, name, owner, rc, duration_ms, stderr or "", "")
+        code = rc if blocking else SUCCESS
         if collect:
             return (code, stdout or "")
         if stdout:
